@@ -1,0 +1,14 @@
+# folders
+node_modules/
+lib
+
+*.log
+*.tgz
+
+.env
+.env.*
+!.env.example
+
+artifacts
+typechain
+cache

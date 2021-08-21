@@ -1,0 +1,14 @@
+extends:
+    - airbnb-base-typescript-prettier
+parserOptions:
+    project: ./tsconfig.json
+root: true
+rules:
+    "import/extensions":
+        - "error"
+        - { "ts": "never", "d.ts": "never" }
+    "import/prefer-default-export": "off"
+    "import/no-extraneous-dependencies": "off"
+    # Needed for Mocha context
+    "prefer-arrow-callback": "off"
+    "prefer-destructuring": "off"
