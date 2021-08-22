@@ -1,6 +1,5 @@
 pragma solidity 0.7.5;
 
-
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 

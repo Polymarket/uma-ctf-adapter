@@ -1,7 +1,7 @@
 pragma solidity 0.7.5;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
- 
+
 interface IOptimisticOracle {
 
     /**
