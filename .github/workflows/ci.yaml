@@ -1,0 +1,62 @@
+name: CI
+
+on:
+    push:
+        branches: main
+    pull_request:
+        branches: "*"
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v2
+              with:
+                  persist-credentials: false
+            - name: Install node
+              uses: actions/setup-node@v1
+              with:
+                  node-version: 15
+            - name: Install dependencies
+              run: yarn
+            - name: Typechain
+              run: yarn typechain
+            - name: Test
+              run: yarn test
+    lint-typescript:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v2
+              with:
+                  persist-credentials: false
+            - name: Install node
+              uses: actions/setup-node@v1
+              with:
+                  node-version: 15
+            - name: Install dependencies
+              run: yarn
+            - name: Typechain
+              run: yarn typechain
+            - name: Lint Typescript
+              run: yarn lint:ts
+    lint-solidity:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v2
+              with:
+                  persist-credentials: false
+            - name: Install node
+              uses: actions/setup-node@v1
+              with:
+                  node-version: 14
+            - name: Install dependencies
+              run: yarn
+            - name: Lint Solidity
+              run: yarn lint:sol
+
+env:
+    MNEMONIC: "we need a mnemonic phrase so that continuous integration will not fail"
+    INFURA_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
