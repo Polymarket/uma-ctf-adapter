@@ -1,18 +1,16 @@
 import hre, { deployments } from "hardhat";
 
 import { Contract } from "ethers";
-import { UmaConditionalTokensBinaryAdapter, IConditionalTokens, IOptimisticOracle } from "../typechain";
+import { expect } from "chai";
+import { MockContract } from "@ethereum-waffle/mock-contract";
+import { UmaConditionalTokensBinaryAdapter } from "../typechain";
 import { Signers } from "../types";
-import { deploy } from "./helpers";
+import { deploy, deployMock } from "./helpers";
 
 const setup = deployments.createFixture(async () => {
-    const conditionalToken: Contract = await deploy<IConditionalTokens>("IConditionalTokens", {
-        args: [],
-    });
+    const conditionalToken = await deployMock("IConditionalTokens");
 
-    const optimisticOracle: Contract = await deploy<IOptimisticOracle>("IOptimisticOracle", {
-        args: [],
-    });
+    const optimisticOracle = await deployMock("IOptimisticOracle");
 
     const umaBinaryAdapter: Contract = await deploy<UmaConditionalTokensBinaryAdapter>(
         "UmaConditionalTokensBinaryAdapter",
@@ -38,15 +36,25 @@ describe("", function () {
     });
 
     describe("Uma Conditional Token Binary Adapter", function () {
-        let conditionalToken: Contract;
-        let optimisticOracle: Contract;
-        let umaBinaryAdapter: Contract;
+        describe("contracts are setup correctly", function () {
+            let conditionalToken: MockContract;
+            let optimisticOracle: MockContract;
+            let umaBinaryAdapter: Contract;
 
-        before(async function () {
-            const deployment = await setup();
-            conditionalToken = deployment.conditionalToken;
-            optimisticOracle = deployment.optimisticOracle;
-            umaBinaryAdapter = deployment.umaBinaryAdapter;
+            before(async function () {
+                const deployment = await setup();
+                conditionalToken = deployment.conditionalToken;
+                optimisticOracle = deployment.optimisticOracle;
+                umaBinaryAdapter = deployment.umaBinaryAdapter;
+            });
+
+            it("correctly sets up contracts", async function () {
+                const returnedConditionalToken = await umaBinaryAdapter.conditionalTokenContract();
+                expect(conditionalToken).eq(returnedConditionalToken);
+
+                const returnedOptimisticOracle = await umaBinaryAdapter.optimisticOracleContract();
+                expect(optimisticOracle).eq(returnedOptimisticOracle);
+            });
         });
     });
 });

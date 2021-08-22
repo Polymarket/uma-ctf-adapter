@@ -12,3 +12,4 @@ rules:
     # Needed for Mocha context
     "prefer-arrow-callback": "off"
     "prefer-destructuring": "off"
+    "func-names": "off"

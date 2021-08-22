@@ -28,7 +28,7 @@
         "cz-conventional-changelog": "^3.3.0",
         "dotenv": "^8.2.0",
         "eslint": "^7.11.0",
-        "eslint-config-airbnb-typescript-prettier": "^4.2.0",
+        "eslint-config-airbnb-base-typescript-prettier": "^4.1.0",
         "eslint-config-prettier": "^6.12.0",
         "eslint-plugin-import": "^2.22.1",
         "ethereum-waffle": "^3.2.2",
