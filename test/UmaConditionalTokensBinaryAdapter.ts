@@ -50,10 +50,10 @@ describe("", function () {
 
             it("correctly sets up contracts", async function () {
                 const returnedConditionalToken = await umaBinaryAdapter.conditionalTokenContract();
-                expect(conditionalToken).eq(returnedConditionalToken);
+                expect(conditionalToken.address).eq(returnedConditionalToken);
 
                 const returnedOptimisticOracle = await umaBinaryAdapter.optimisticOracleContract();
-                expect(optimisticOracle).eq(returnedOptimisticOracle);
+                expect(optimisticOracle.address).eq(returnedOptimisticOracle);
             });
         });
     });
