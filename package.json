@@ -9,13 +9,13 @@
         }
     ],
     "devDependencies": {
-        "@openzeppelin/contracts": "3.4.0",
         "@commitlint/cli": "^9.1.2",
         "@commitlint/config-conventional": "^9.1.2",
         "@ethersproject/abstract-signer": "^5.0.6",
         "@ethersproject/bignumber": "^5.0.8",
         "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
         "@nomiclabs/hardhat-waffle": "^2.0.1",
+        "@openzeppelin/contracts": "3.4.0",
         "@typechain/ethers-v5": "^5.0.0",
         "@typechain/hardhat": "^1.0.1",
         "@types/chai": "^4.2.13",
@@ -28,7 +28,7 @@
         "cz-conventional-changelog": "^3.3.0",
         "dotenv": "^8.2.0",
         "eslint": "^7.11.0",
-        "eslint-config-airbnb-base-typescript-prettier": "^4.1.0",
+        "eslint-config-airbnb-typescript-prettier": "^4.2.0",
         "eslint-config-prettier": "^6.12.0",
         "eslint-plugin-import": "^2.22.1",
         "ethereum-waffle": "^3.2.2",
@@ -75,5 +75,8 @@
         "test": "hardhat test",
         "typechain": "hardhat typechain",
         "deploy": "hardhat deploy"
+    },
+    "dependencies": {
+        "ethers": "^5.4.5"
     }
 }

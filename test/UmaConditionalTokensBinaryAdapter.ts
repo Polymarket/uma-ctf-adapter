@@ -1,16 +1,9 @@
-import hre from "hardhat";
-import { Artifact } from "hardhat/types";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import { deployMockContract } from "@ethereum-waffle/mock-contract";
-import { expect } from "chai";
-import { deployments, ethers } from "hardhat";
+import hre, { deployments } from "hardhat";
 
+import { Contract } from "ethers";
 import { UmaConditionalTokensBinaryAdapter, IConditionalTokens, IOptimisticOracle } from "../typechain";
 import { Signers } from "../types";
 import { deploy } from "./helpers";
-import { Contract } from "ethers";
-
-
 
 const setup = deployments.createFixture(async () => {
     const conditionalToken: Contract = await deploy<IConditionalTokens>("IConditionalTokens", {
@@ -21,17 +14,19 @@ const setup = deployments.createFixture(async () => {
         args: [],
     });
 
-    const umaBinaryAdapter: Contract = await deploy<UmaConditionalTokensBinaryAdapter>("UmaConditionalTokensBinaryAdapter", {
-        args: [conditionalToken.address, optimisticOracle.address],
-    });
+    const umaBinaryAdapter: Contract = await deploy<UmaConditionalTokensBinaryAdapter>(
+        "UmaConditionalTokensBinaryAdapter",
+        {
+            args: [conditionalToken.address, optimisticOracle.address],
+        },
+    );
 
     return {
         conditionalToken,
         optimisticOracle,
-        umaBinaryAdapter
+        umaBinaryAdapter,
     };
 });
-
 
 describe("", function () {
     before(async function () {
@@ -47,13 +42,11 @@ describe("", function () {
         let optimisticOracle: Contract;
         let umaBinaryAdapter: Contract;
 
-        before(async function (){
+        before(async function () {
             const deployment = await setup();
             conditionalToken = deployment.conditionalToken;
             optimisticOracle = deployment.optimisticOracle;
             umaBinaryAdapter = deployment.umaBinaryAdapter;
         });
-
     });
-
-})
+});

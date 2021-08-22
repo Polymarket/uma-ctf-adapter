@@ -60,3 +60,4 @@ jobs:
 env:
     MNEMONIC: "we need a mnemonic phrase so that continuous integration will not fail"
     INFURA_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+    MATICVIGIL_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzz"
