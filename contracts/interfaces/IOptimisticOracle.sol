@@ -37,4 +37,19 @@ interface IOptimisticOracle {
         uint256 timestamp,
         bytes memory ancillaryData
     ) external virtual returns (int256);
+
+    /**
+     * @notice Checks if a given request has resolved or been settled (i.e the optimistic oracle has a price).
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @return true if price has resolved or settled, false otherwise.
+     */
+    function hasPrice(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData
+    ) external view virtual returns (bool);
 }

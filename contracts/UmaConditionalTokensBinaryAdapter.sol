@@ -3,8 +3,12 @@ pragma solidity 0.7.5;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { IOptimisticOracle } from "./interfaces/IOptimisticOracle.sol";
+
+import "hardhat/console.sol";
 
 /**
  *
@@ -13,12 +17,14 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
     IConditionalTokens public immutable conditionalTokenContract;
     IOptimisticOracle public immutable optimisticOracleContract;
 
-    bytes public constant oracleQueryIdentifier = bytes("YES_OR_NO_QUERY");
+    bytes32 public constant oracleQueryIdentifier = bytes32("YES_OR_NO_QUERY");
 
     struct QuestionData {
         bytes32 questionID;
         bytes ancillaryData;
         uint256 resolutionTime;
+        address rewardToken;
+        uint256 reward;
     }
 
     mapping(bytes32 => QuestionData) public questions;
@@ -38,33 +44,64 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
         optimisticOracleContract = IOptimisticOracle(optimisticOracleAddress);
     }
 
+    /**
+     * @notice Initializes a question on the Adapter to report on. Once initialized, the resolution conditions may not be changed.
+     * @dev Only the owner can call initializeQuestion
+     *
+     * @param questionID     - The questionID of condition
+     * @param ancillaryData  - Holds data used to resolve a question
+     * @param resolutionTime - timestamp at which the Adapter can resolve a question
+     * @param rewardToken    - ERC20 token address used for payment of rewards and fees
+     * @param reward         - reward offered to a successful proposer
+     */
     function initializeQuestion(
         bytes32 questionID,
         bytes memory ancillaryData,
-        uint256 resolutionTime
+        uint256 resolutionTime,
+        address rewardToken,
+        uint256 reward
     ) public onlyOwner {
         require(questions[questionID].resolutionTime == 0, "Question already initialized");
-        questions[questionID] = QuestionData({
-            questionID: questionID,
-            ancillaryData: ancillaryData,
-            resolutionTime: resolutionTime
-        });
-
+        questions[questionID] = QuestionData(questionID, ancillaryData, resolutionTime, rewardToken, reward);
         emit QuestionInitialized(questionID, ancillaryData, resolutionTime);
     }
 
+    /**
+     * @notice - Checks whether or not a question can start the resolution process
+     */
     function readyToRequestResolution(bytes32 questionID) public view returns (bool) {
         // solhint-disable-next-line not-rely-on-time
         return block.timestamp > (questions[questionID].resolutionTime + 2 hours);
     }
 
-    function requestResolutionData(bytes32 questionID) public {
-        // requests resolution data from the optimistic oracle, calls `optimisticOracle.requestPrice`
-        // require(readyToRequestResolution(questionID));
+    /**
+     * @notice - Requests question resolution data from the Optimistic Oracle
+     */
+    function requestResolutionData(bytes32 questionID) public returns (uint256) {
+        require(readyToRequestResolution(questionID), "Question not ready to be resolved");
+        QuestionData storage questionData = questions[questionID];
+        console.logBytes32(oracleQueryIdentifier);
+        optimisticOracleContract.requestPrice(
+            oracleQueryIdentifier,
+            questionData.resolutionTime,
+            questionData.ancillaryData,
+            IERC20(questionData.rewardToken),
+            questionData.reward
+        );
     }
 
     function readyToReportPayouts(bytes32 questionID) public view returns (bool) {
-        // a function that calls `optimisticOracle.hasPrice` to verify that the OO has price data
+        QuestionData storage questionData = questions[questionID];
+        if (questionData.resolutionTime == 0) {
+            return false;
+        }
+        return
+            optimisticOracleContract.hasPrice(
+                address(this),
+                oracleQueryIdentifier,
+                questionData.resolutionTime,
+                questionData.ancillaryData
+            );
     }
 
     function reportPayouts(bytes32 questionID) public {

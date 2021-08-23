@@ -2,6 +2,10 @@ import { MockContract } from "ethereum-waffle";
 import { Contract, Signer } from "ethers";
 import { deployments, ethers, waffle } from "hardhat";
 
+export function createQuestionID(title: string, description: string) {
+    return ethers.utils.solidityKeccak256(["string", "string"], [title, description]);
+}
+
 export async function deploy<T extends Contract>(
     deploymentName: string,
     { from, args, connect }: { from?: string; args: Array<unknown>; connect?: Signer },
