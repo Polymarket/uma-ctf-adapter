@@ -6,7 +6,8 @@ import { MockContract } from "@ethereum-waffle/mock-contract";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signers";
 import { TestERC20, UmaConditionalTokensBinaryAdapter } from "../typechain";
 import { Signers } from "../types";
-import { createQuestionID, deploy, deployMock } from "./helpers";
+import { createQuestionID, deploy, deployMock, getAncillaryData } from "./helpers";
+import { DESC, QUESTION_TITLE } from "./constants";
 
 const setup = deployments.createFixture(async () => {
     const signers = await hre.ethers.getSigners();
@@ -84,28 +85,26 @@ describe("", function () {
             });
 
             it("correctly initializes a question", async function () {
-                const questionTitle = "This is a mock question title?";
-                const description =
-                    "This is a binary market on the mock question title. p1: 0, p2: 1. Where p2 corresponds to YES, p1 to a NO";
-                const questionID = createQuestionID(questionTitle, description);
+                const questionID = createQuestionID(QUESTION_TITLE, DESC);
                 const resolutionTime = Math.floor(new Date().getTime() / 1000);
-                const ancillaryData = ethers.utils.toUtf8Bytes(questionTitle + description);
+                const ancillaryData = getAncillaryData(QUESTION_TITLE, DESC);
 
-                await (
+                // Verify QuestionInitialized event emitted
+                expect(
                     await umaBinaryAdapter.initializeQuestion(
                         questionID,
                         ancillaryData,
                         resolutionTime,
                         testRewardToken.address,
                         0,
-                    )
-                ).wait();
+                    ),
+                ).to.emit(umaBinaryAdapter, "QuestionInitialized");
 
                 const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
 
+                // Verify question data stored
                 expect(returnedQuestionData.questionID).eq(questionID);
-                // const ancillaryDataResp = ethers.utils.toUtf8String(ancillaryData);
-                // expect(ancillaryDataResp).eq(ancillaryData);
+                expect(returnedQuestionData.ancillaryData).eq(ethers.utils.hexlify(ancillaryData));
                 expect(returnedQuestionData.resolutionTime).eq(resolutionTime);
                 expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
                 expect(returnedQuestionData.reward).eq(0);

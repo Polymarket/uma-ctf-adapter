@@ -30,8 +30,16 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
     mapping(bytes32 => QuestionData) public questions;
 
     // Events
-    event QuestionInitialized(bytes32 indexed questionID, bytes question, uint256 resolutionTime);
+    event QuestionInitialized(
+        bytes32 indexed questionID,
+        bytes question,
+        uint256 resolutionTime,
+        address rewardToken,
+        uint256 reward
+    );
+
     event QuestionResolved(bytes32 indexed questionId, bool indexed emergencyReport);
+
     event ResolutionDataRequested(
         address indexed identifier,
         uint256 indexed timestamp,
@@ -63,7 +71,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
     ) public onlyOwner {
         require(questions[questionID].resolutionTime == 0, "Question already initialized");
         questions[questionID] = QuestionData(questionID, ancillaryData, resolutionTime, rewardToken, reward);
-        emit QuestionInitialized(questionID, ancillaryData, resolutionTime);
+        emit QuestionInitialized(questionID, ancillaryData, resolutionTime, rewardToken, reward);
     }
 
     /**

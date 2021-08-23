@@ -6,6 +6,10 @@ export function createQuestionID(title: string, description: string) {
     return ethers.utils.solidityKeccak256(["string", "string"], [title, description]);
 }
 
+export function getAncillaryData(title: string, description: string) {
+    return ethers.utils.toUtf8Bytes(`q: ${title}d: ${description}`);
+}
+
 export async function deploy<T extends Contract>(
     deploymentName: string,
     { from, args, connect }: { from?: string; args: Array<unknown>; connect?: Signer },
