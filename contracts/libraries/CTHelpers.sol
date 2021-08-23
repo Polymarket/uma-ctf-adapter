@@ -23,12 +23,12 @@ library CTHelpers {
         return keccak256(abi.encodePacked(oracle, questionId, outcomeSlotCount));
     }
 
-    uint256 constant P = 21888242871839275222246405745257275088696311157297823662689037894645226208583;
-    uint256 constant B = 3;
+    uint256 public constant P = 21888242871839275222246405745257275088696311157297823662689037894645226208583;
+    uint256 public constant B = 3;
 
     function sqrt(uint256 x) private pure returns (uint256 y) {
         uint256 p = P;
-        // solium-disable-next-line security/no-inline-assembly
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             // add chain generated via https://crypto.stackexchange.com/q/27179/71252
             // and transformed to the following program:
