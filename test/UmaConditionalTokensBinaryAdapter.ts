@@ -54,6 +54,9 @@ describe("", function () {
 
                 const returnedOptimisticOracle = await umaBinaryAdapter.optimisticOracleContract();
                 expect(optimisticOracle.address).eq(returnedOptimisticOracle);
+
+                const returnedQueryIdentifier = await umaBinaryAdapter.oracleQueryIdentifier();
+                expect(returnedQueryIdentifier).eq("0x5945535f4f525f4e4f5f5155455259");
             });
         });
     });
