@@ -4,7 +4,7 @@ import { Contract } from "ethers";
 import { expect } from "chai";
 import { MockContract } from "@ethereum-waffle/mock-contract";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signers";
-import { TestERC20, UmaConditionalTokensBinaryAdapter } from "../typechain";
+import { MockConditionalTokens, TestERC20, UmaConditionalTokensBinaryAdapter } from "../typechain";
 import { Signers } from "../types";
 import { createQuestionID, deploy, deployMock, getAncillaryData } from "./helpers";
 import { DESC, QUESTION_TITLE } from "./constants";
@@ -12,7 +12,11 @@ import { DESC, QUESTION_TITLE } from "./constants";
 const setup = deployments.createFixture(async () => {
     const signers = await hre.ethers.getSigners();
     const admin: SignerWithAddress = signers[0];
-    const conditionalToken = await deployMock("IConditionalTokens");
+
+    const conditionalTokens = await deploy<MockConditionalTokens>("MockConditionalTokens", {
+        args: [],
+        connect: admin,
+    });
     const testRewardToken = await deploy<TestERC20>("TestERC20", {
         args: ["TestERC20", "TST"],
         connect: admin,
@@ -23,13 +27,13 @@ const setup = deployments.createFixture(async () => {
     const umaBinaryAdapter: Contract = await deploy<UmaConditionalTokensBinaryAdapter>(
         "UmaConditionalTokensBinaryAdapter",
         {
-            args: [conditionalToken.address, optimisticOracle.address],
+            args: [conditionalTokens.address, optimisticOracle.address],
             connect: admin,
         },
     );
 
     return {
-        conditionalToken,
+        conditionalTokens,
         optimisticOracle,
         testRewardToken,
         umaBinaryAdapter,
@@ -47,20 +51,20 @@ describe("", function () {
 
     describe("Uma Conditional Token Binary Adapter", function () {
         describe("contracts are setup correctly", function () {
-            let conditionalToken: MockContract;
+            let conditionalTokens: Contract;
             let optimisticOracle: MockContract;
             let umaBinaryAdapter: Contract;
 
             before(async function () {
                 const deployment = await setup();
-                conditionalToken = deployment.conditionalToken;
+                conditionalTokens = deployment.conditionalTokens;
                 optimisticOracle = deployment.optimisticOracle;
                 umaBinaryAdapter = deployment.umaBinaryAdapter;
             });
 
             it("correctly sets up contracts", async function () {
                 const returnedConditionalToken = await umaBinaryAdapter.conditionalTokenContract();
-                expect(conditionalToken.address).eq(returnedConditionalToken);
+                expect(conditionalTokens.address).eq(returnedConditionalToken);
 
                 const returnedOptimisticOracle = await umaBinaryAdapter.optimisticOracleContract();
                 expect(optimisticOracle.address).eq(returnedOptimisticOracle);
@@ -73,21 +77,34 @@ describe("", function () {
         });
 
         describe("Question scenarios", function () {
-            // let conditionalToken: MockContract;
+            let conditionalTokens: Contract;
             // let optimisticOracle: MockContract;
             let testRewardToken: Contract;
             let umaBinaryAdapter: Contract;
 
             before(async function () {
                 const deployment = await setup();
+                conditionalTokens = deployment.conditionalTokens;
                 umaBinaryAdapter = deployment.umaBinaryAdapter;
                 testRewardToken = deployment.testRewardToken;
+            });
+
+            it("correctly prepares a question using the adapter as oracle", async function () {
+                const oracle = umaBinaryAdapter.address;
+                const questionID = createQuestionID(QUESTION_TITLE, DESC);
+                const outcomeSlotCount = 2; // Only YES/NO
+                const conditionID = await conditionalTokens.getConditionId(oracle, questionID, outcomeSlotCount);
+
+                expect(await conditionalTokens.prepareCondition(oracle, questionID, outcomeSlotCount))
+                    .to.emit(conditionalTokens, "ConditionPreparation")
+                    .withArgs(conditionID, oracle, questionID, outcomeSlotCount);
             });
 
             it("correctly initializes a question", async function () {
                 const questionID = createQuestionID(QUESTION_TITLE, DESC);
                 const resolutionTime = Math.floor(new Date().getTime() / 1000);
                 const ancillaryData = getAncillaryData(QUESTION_TITLE, DESC);
+                const ancillaryDataHexlified = ethers.utils.hexlify(ancillaryData);
 
                 // Verify QuestionInitialized event emitted
                 expect(
@@ -98,13 +115,15 @@ describe("", function () {
                         testRewardToken.address,
                         0,
                     ),
-                ).to.emit(umaBinaryAdapter, "QuestionInitialized");
+                )
+                    .to.emit(umaBinaryAdapter, "QuestionInitialized")
+                    .withArgs(questionID, ancillaryDataHexlified, resolutionTime, testRewardToken.address, 0);
 
                 const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
 
                 // Verify question data stored
                 expect(returnedQuestionData.questionID).eq(questionID);
-                expect(returnedQuestionData.ancillaryData).eq(ethers.utils.hexlify(ancillaryData));
+                expect(returnedQuestionData.ancillaryData).eq(ancillaryDataHexlified);
                 expect(returnedQuestionData.resolutionTime).eq(resolutionTime);
                 expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
                 expect(returnedQuestionData.reward).eq(0);
