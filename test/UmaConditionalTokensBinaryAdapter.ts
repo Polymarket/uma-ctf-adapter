@@ -128,6 +128,21 @@ describe("", function () {
                 expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
                 expect(returnedQuestionData.reward).eq(0);
             });
+
+            it("should revert when trying to reinitialize a question", async function () {
+                const questionID = createQuestionID(QUESTION_TITLE, DESC);
+                const resolutionTime = Math.floor(new Date().getTime() / 1000);
+                const ancillaryData = ethers.utils.randomBytes(10);
+                await expect(
+                    umaBinaryAdapter.initializeQuestion(
+                        questionID,
+                        ancillaryData,
+                        resolutionTime,
+                        testRewardToken.address,
+                        0,
+                    ),
+                ).to.be.revertedWith("Adapter::initializeQuestion: Question already initialized");
+            });
         });
     });
 });

@@ -69,7 +69,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
         address rewardToken,
         uint256 reward
     ) public onlyOwner {
-        require(questions[questionID].resolutionTime == 0, "Question already initialized");
+        require(questions[questionID].resolutionTime == 0, "Adapter::initializeQuestion: Question already initialized");
         questions[questionID] = QuestionData(questionID, ancillaryData, resolutionTime, rewardToken, reward);
         emit QuestionInitialized(questionID, ancillaryData, resolutionTime, rewardToken, reward);
     }
