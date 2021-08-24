@@ -80,14 +80,14 @@ describe("", function () {
 
         describe("Question scenarios", function () {
             let conditionalTokens: Contract;
-            let optimisticOracle: MockContract;
+            // let optimisticOracle: MockContract;
             let testRewardToken: Contract;
             let umaBinaryAdapter: Contract;
 
             before(async function () {
                 const deployment = await setup();
                 conditionalTokens = deployment.conditionalTokens;
-                optimisticOracle = deployment.optimisticOracle;
+                // optimisticOracle = deployment.optimisticOracle;
                 testRewardToken = deployment.testRewardToken;
                 umaBinaryAdapter = deployment.umaBinaryAdapter;
             });
