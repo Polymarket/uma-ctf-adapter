@@ -39,3 +39,8 @@ export async function deployMock(contractName: string, connect?: Signer): Promis
     const deployer = await ethers.getNamedSigner("deployer");
     return waffle.deployMockContract(connect ?? deployer, artifact.abi);
 }
+
+export async function hardhatIncreaseTime(secondsToIncrease: number) {
+    await ethers.provider.send("evm_increaseTime", [secondsToIncrease]);
+    await ethers.provider.send("evm_mine", []);
+}

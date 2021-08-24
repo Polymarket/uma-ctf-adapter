@@ -6,7 +6,7 @@ import { MockContract } from "@ethereum-waffle/mock-contract";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signers";
 import { MockConditionalTokens, TestERC20, UmaConditionalTokensBinaryAdapter } from "../typechain";
 import { Signers } from "../types";
-import { createQuestionID, deploy, deployMock, getAncillaryData } from "./helpers";
+import { createQuestionID, deploy, deployMock, getAncillaryData, hardhatIncreaseTime } from "./helpers";
 import { DESC, QUESTION_TITLE } from "./constants";
 
 const setup = deployments.createFixture(async () => {
@@ -102,9 +102,10 @@ describe("", function () {
 
             it("correctly initializes a question", async function () {
                 const questionID = createQuestionID(QUESTION_TITLE, DESC);
-                const resolutionTime = Math.floor(new Date().getTime() / 1000);
+                const resolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
                 const ancillaryData = getAncillaryData(QUESTION_TITLE, DESC);
                 const ancillaryDataHexlified = ethers.utils.hexlify(ancillaryData);
+                expect(questionID).to.eq("0x5e2a133421146a87d09584a2a95ce678a4fba12efb4d27866affca702bf54fca");
 
                 // Verify QuestionInitialized event emitted
                 expect(
@@ -142,6 +143,15 @@ describe("", function () {
                         0,
                     ),
                 ).to.be.revertedWith("Adapter::initializeQuestion: Question already initialized");
+            });
+
+            it("should correctly call readyToRequestResolution", async function () {
+                const questionID = createQuestionID(QUESTION_TITLE, DESC);
+                expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(false);
+
+                // 1 hour ahead
+                await hardhatIncreaseTime(60 * 60);
+                expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
             });
         });
     });

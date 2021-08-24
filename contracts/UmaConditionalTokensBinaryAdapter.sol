@@ -79,7 +79,10 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
      */
     function readyToRequestResolution(bytes32 questionID) public view returns (bool) {
         // solhint-disable-next-line not-rely-on-time
-        return block.timestamp > (questions[questionID].resolutionTime + 2 hours);
+        if (questions[questionID].resolutionTime == 0) {
+            return false;
+        }
+        return block.timestamp > questions[questionID].resolutionTime;
     }
 
     /**
