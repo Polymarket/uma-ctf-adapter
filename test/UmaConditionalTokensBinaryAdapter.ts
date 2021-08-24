@@ -161,7 +161,8 @@ describe("", function () {
                 const questionID = createQuestionID(QUESTION_TITLE, DESC);
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
                 await (await umaBinaryAdapter.requestResolutionData(questionID)).wait();
-                expect(await umaBinaryAdapter.resolutionDataRequests(questionID)).eq(true);
+                const questionData = await umaBinaryAdapter.questions(questionID);
+                expect(await questionData.resolutionDataRequested).eq(true);
             });
 
             it("should revert if question is not initialized", async function () {

@@ -1,8 +1,6 @@
 pragma solidity 0.7.5;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
@@ -23,10 +21,10 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
         uint256 resolutionTime;
         address rewardToken;
         uint256 reward;
+        bool resolutionDataRequested;
     }
 
     mapping(bytes32 => QuestionData) public questions;
-    mapping(bytes32 => bool) public resolutionDataRequests;
 
     // Events
     event QuestionInitialized(
@@ -69,7 +67,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
         uint256 reward
     ) public onlyOwner {
         require(questions[questionID].resolutionTime == 0, "Adapter::initializeQuestion: Question already initialized");
-        questions[questionID] = QuestionData(questionID, ancillaryData, resolutionTime, rewardToken, reward);
+        questions[questionID] = QuestionData(questionID, ancillaryData, resolutionTime, rewardToken, reward, false);
         emit QuestionInitialized(questionID, ancillaryData, resolutionTime, rewardToken, reward);
     }
 
@@ -92,11 +90,11 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
             readyToRequestResolution(questionID),
             "Adapter::requestResolutionData: Question not ready to be resolved"
         );
+        QuestionData storage questionData = questions[questionID];
         require(
-            resolutionDataRequests[questionID] == false,
+            questionData.resolutionDataRequested == false,
             "Adapter::requestResolutionData: ResolutionData already requested"
         );
-        QuestionData storage questionData = questions[questionID];
         optimisticOracleContract.requestPrice(
             oracleQueryIdentifier,
             questionData.resolutionTime,
@@ -104,7 +102,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
             IERC20(questionData.rewardToken),
             questionData.reward
         );
-        resolutionDataRequests[questionID] = true;
+        questionData.resolutionDataRequested = true;
     }
 
     function readyToReportPayouts(bytes32 questionID) public view returns (bool) {
