@@ -1,4 +1,5 @@
 import hre, { deployments, ethers } from "hardhat";
+import { HashZero } from "@ethersproject/constants";
 
 import { Contract } from "ethers";
 import { expect } from "chai";
@@ -23,6 +24,7 @@ const setup = deployments.createFixture(async () => {
     });
 
     const optimisticOracle = await deployMock("IOptimisticOracle");
+    await optimisticOracle.mock.requestPrice.returns(0);
 
     const umaBinaryAdapter: Contract = await deploy<UmaConditionalTokensBinaryAdapter>(
         "UmaConditionalTokensBinaryAdapter",
@@ -78,15 +80,16 @@ describe("", function () {
 
         describe("Question scenarios", function () {
             let conditionalTokens: Contract;
-            // let optimisticOracle: MockContract;
+            let optimisticOracle: MockContract;
             let testRewardToken: Contract;
             let umaBinaryAdapter: Contract;
 
             before(async function () {
                 const deployment = await setup();
                 conditionalTokens = deployment.conditionalTokens;
-                umaBinaryAdapter = deployment.umaBinaryAdapter;
+                optimisticOracle = deployment.optimisticOracle;
                 testRewardToken = deployment.testRewardToken;
+                umaBinaryAdapter = deployment.umaBinaryAdapter;
             });
 
             it("correctly prepares a question using the adapter as oracle", async function () {
@@ -149,9 +152,30 @@ describe("", function () {
                 const questionID = createQuestionID(QUESTION_TITLE, DESC);
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(false);
 
-                // 1 hour ahead
-                await hardhatIncreaseTime(60 * 60);
+                // 2 hours ahead
+                await hardhatIncreaseTime(7200);
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
+            });
+
+            it("should correctly call request resolution data from the optimistic oracle", async function () {
+                const questionID = createQuestionID(QUESTION_TITLE, DESC);
+                expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
+                await (await umaBinaryAdapter.requestResolutionData(questionID)).wait();
+                expect(await umaBinaryAdapter.resolutionDataRequests(questionID)).eq(true);
+            });
+
+            it("should revert if question is not initialized", async function () {
+                const questionID = HashZero;
+                await expect(umaBinaryAdapter.requestResolutionData(questionID)).to.be.revertedWith(
+                    "Adapter::requestResolutionData: Question not ready to be resolved",
+                );
+            });
+
+            it("should revert if resolution data previously requested", async function () {
+                const questionID = createQuestionID(QUESTION_TITLE, DESC);
+                await expect(umaBinaryAdapter.requestResolutionData(questionID)).to.be.revertedWith(
+                    "Adapter::requestResolutionData: ResolutionData already requested",
+                );
             });
         });
     });

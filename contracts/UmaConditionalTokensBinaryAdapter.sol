@@ -8,8 +8,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { IOptimisticOracle } from "./interfaces/IOptimisticOracle.sol";
 
-import "hardhat/console.sol";
-
 /**
  *
  */
@@ -28,6 +26,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
     }
 
     mapping(bytes32 => QuestionData) public questions;
+    mapping(bytes32 => bool) public resolutionDataRequests;
 
     // Events
     event QuestionInitialized(
@@ -89,9 +88,15 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
      * @notice - Requests question resolution data from the Optimistic Oracle
      */
     function requestResolutionData(bytes32 questionID) public returns (uint256) {
-        require(readyToRequestResolution(questionID), "Question not ready to be resolved");
+        require(
+            readyToRequestResolution(questionID),
+            "Adapter::requestResolutionData: Question not ready to be resolved"
+        );
+        require(
+            resolutionDataRequests[questionID] == false,
+            "Adapter::requestResolutionData: ResolutionData already requested"
+        );
         QuestionData storage questionData = questions[questionID];
-        console.logBytes32(oracleQueryIdentifier);
         optimisticOracleContract.requestPrice(
             oracleQueryIdentifier,
             questionData.resolutionTime,
@@ -99,6 +104,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
             IERC20(questionData.rewardToken),
             questionData.reward
         );
+        resolutionDataRequests[questionID] = true;
     }
 
     function readyToReportPayouts(bytes32 questionID) public view returns (bool) {
