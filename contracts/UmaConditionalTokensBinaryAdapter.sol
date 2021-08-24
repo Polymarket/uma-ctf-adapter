@@ -77,10 +77,10 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
      * @notice - Checks whether or not a question can start the resolution process
      */
     function readyToRequestResolution(bytes32 questionID) public view returns (bool) {
-        // solhint-disable-next-line not-rely-on-time
         if (questions[questionID].resolutionTime == 0) {
             return false;
         }
+        // solhint-disable-next-line not-rely-on-time
         return block.timestamp > questions[questionID].resolutionTime;
     }
 

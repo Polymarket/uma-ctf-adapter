@@ -2,11 +2,11 @@ import { MockContract } from "ethereum-waffle";
 import { Contract, Signer } from "ethers";
 import { deployments, ethers, waffle } from "hardhat";
 
-export function createQuestionID(title: string, description: string) {
+export function createQuestionID(title: string, description: string): string {
     return ethers.utils.solidityKeccak256(["string", "string"], [title, description]);
 }
 
-export function getAncillaryData(title: string, description: string) {
+export function getAncillaryData(title: string, description: string): Uint8Array {
     return ethers.utils.toUtf8Bytes(`q: ${title}d: ${description}`);
 }
 
