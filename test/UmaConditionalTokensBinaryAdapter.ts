@@ -71,10 +71,8 @@ describe("", function () {
                 const returnedOptimisticOracle = await umaBinaryAdapter.optimisticOracleContract();
                 expect(optimisticOracle.address).eq(returnedOptimisticOracle);
 
-                const returnedQueryIdentifier = await umaBinaryAdapter.oracleQueryIdentifier();
-                expect(returnedQueryIdentifier).eq(
-                    "0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000",
-                );
+                const returnedIdentifier = await umaBinaryAdapter.identifier();
+                expect(returnedIdentifier).eq("0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000");
             });
         });
 
@@ -175,7 +173,7 @@ describe("", function () {
             it("should revert if resolution data previously requested", async function () {
                 const questionID = createQuestionID(QUESTION_TITLE, DESC);
                 await expect(umaBinaryAdapter.requestResolutionData(questionID)).to.be.revertedWith(
-                    "Adapter::requestResolutionData: ResolutionData already requested",
+                    "Adapter::requestResolutionData: Question not ready to be resolved",
                 );
             });
         });

@@ -13,15 +13,23 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
     IConditionalTokens public immutable conditionalTokenContract;
     IOptimisticOracle public immutable optimisticOracleContract;
 
-    bytes32 public constant oracleQueryIdentifier = bytes32("YES_OR_NO_QUERY");
+    bytes32 public constant identifier = bytes32("YES_OR_NO_QUERY");
 
     struct QuestionData {
+        // @notice - Unique ID of a condition
         bytes32 questionID;
+        // @notice - Data used to resolve a condition
         bytes ancillaryData;
+        // @notice - Unix timestamp at which a market can be resolved
         uint256 resolutionTime;
+        // @notice - ERC20 token address used for payment of rewards and fees
         address rewardToken;
+        // @notice - reward offered to a successful proposer
         uint256 reward;
+        // @notice - Flag marking whether resolution data has been requested from the Oracle
         bool resolutionDataRequested;
+        // @notice - Flag marking whether a question is resolved
+        bool resolved;
     }
 
     mapping(bytes32 => QuestionData) public questions;
@@ -53,7 +61,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
      * @notice Initializes a question on the Adapter to report on. Once initialized, the resolution conditions may not be changed.
      * @dev Only the owner can call initializeQuestion
      *
-     * @param questionID     - The questionID of condition
+     * @param questionID     - The unique questionID of condition
      * @param ancillaryData  - Holds data used to resolve a question
      * @param resolutionTime - timestamp at which the Adapter can resolve a question
      * @param rewardToken    - ERC20 token address used for payment of rewards and fees
@@ -67,7 +75,15 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
         uint256 reward
     ) public onlyOwner {
         require(questions[questionID].resolutionTime == 0, "Adapter::initializeQuestion: Question already initialized");
-        questions[questionID] = QuestionData(questionID, ancillaryData, resolutionTime, rewardToken, reward, false);
+        questions[questionID] = QuestionData({
+            questionID: questionID,
+            ancillaryData: ancillaryData,
+            resolutionTime: resolutionTime,
+            rewardToken: rewardToken,
+            reward: reward,
+            resolutionDataRequested: false,
+            resolved: false
+        });
         emit QuestionInitialized(questionID, ancillaryData, resolutionTime, rewardToken, reward);
     }
 
@@ -75,15 +91,22 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
      * @notice - Checks whether or not a question can start the resolution process
      */
     function readyToRequestResolution(bytes32 questionID) public view returns (bool) {
-        if (questions[questionID].resolutionTime == 0) {
+        QuestionData storage questionData = questions[questionID];
+        if (questionData.resolutionTime == 0) {
+            return false;
+        }
+        if (questionData.resolutionDataRequested == true) {
+            return false;
+        }
+        if (questionData.resolved == true) {
             return false;
         }
         // solhint-disable-next-line not-rely-on-time
-        return block.timestamp > questions[questionID].resolutionTime;
+        return block.timestamp > questionData.resolutionTime;
     }
 
     /**
-     * @notice - Requests question resolution data from the Optimistic Oracle
+     * @notice - Requests resolution data from the Optimistic Oracle
      */
     function requestResolutionData(bytes32 questionID) public returns (uint256) {
         require(
@@ -91,12 +114,8 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
             "Adapter::requestResolutionData: Question not ready to be resolved"
         );
         QuestionData storage questionData = questions[questionID];
-        require(
-            questionData.resolutionDataRequested == false,
-            "Adapter::requestResolutionData: ResolutionData already requested"
-        );
         optimisticOracleContract.requestPrice(
-            oracleQueryIdentifier,
+            identifier,
             questionData.resolutionTime,
             questionData.ancillaryData,
             IERC20(questionData.rewardToken),
@@ -106,14 +125,15 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
     }
 
     function readyToReportPayouts(bytes32 questionID) public view returns (bool) {
-        QuestionData storage questionData = questions[questionID];
-        if (questionData.resolutionTime == 0) {
+        if (readyToRequestResolution(questionID) == false) {
             return false;
         }
+
+        QuestionData storage questionData = questions[questionID];
         return
             optimisticOracleContract.hasPrice(
                 address(this),
-                oracleQueryIdentifier,
+                identifier,
                 questionData.resolutionTime,
                 questionData.ancillaryData
             );
