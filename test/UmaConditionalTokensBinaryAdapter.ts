@@ -351,6 +351,12 @@ describe("", function () {
                 await expect(umaBinaryAdapter.emergencyReportPayouts(questionID, payouts)).to.be.revertedWith(
                     "Adapter::emergencyReportPayouts: payouts must be binary",
                 );
+
+                // invalid conditional payout
+                const nonBinaryPayoutVector = [0, 0, 0, 0, 1, 2, 3, 4, 5];
+                await expect(
+                    umaBinaryAdapter.emergencyReportPayouts(questionID, nonBinaryPayoutVector),
+                ).to.be.revertedWith("Adapter::emergencyReportPayouts: payouts must be binary");
             });
         });
     });
