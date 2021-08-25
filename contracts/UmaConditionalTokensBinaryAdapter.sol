@@ -7,7 +7,8 @@ import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { IOptimisticOracle } from "./interfaces/IOptimisticOracle.sol";
 
 /**
- *
+ * @title UmaConditionalTokensBinaryAdapter
+ * @notice allows a condition on a ConditionalTokens contract to be resolved via UMA's Optimistic Oracle
  */
 contract UmaConditionalTokensBinaryAdapter is Ownable {
     IConditionalTokens public immutable conditionalTokenContract;
@@ -15,6 +16,9 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
 
     // @notice Unique query identifier for the Optimistic Oracle
     bytes32 public constant identifier = bytes32("YES_OR_NO_QUERY");
+
+    // @notice Time period after which the owner can emergency resolve a condition
+    uint256 public constant emergencySafetyPeriod = 30 days;
 
     struct QuestionData {
         // @notice Unique ID of a condition
@@ -63,7 +67,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
     /**
      * @notice Initializes a question on the Adapter to report on. Once initialized, the resolution conditions may not be changed.
      *
-     * @param questionID     - The unique questionID of condition
+     * @param questionID     - The unique questionID of the condition
      * @param ancillaryData  - Holds data used to resolve a question
      * @param resolutionTime - timestamp at which the Adapter can resolve a question
      * @param rewardToken    - ERC20 token address used for payment of rewards and fees
@@ -91,6 +95,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
 
     /**
      * @notice - Checks whether or not a question can start the resolution process
+     * @param questionID - The unique questionID of the condition
      */
     function readyToRequestResolution(bytes32 questionID) public view returns (bool) {
         if (!isQuestionInitialized(questionID)) {
@@ -108,7 +113,8 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
     }
 
     /**
-     * @notice - Requests resolution data from the Optimistic Oracle
+     * @notice Called by anyone to request resolution data from the Optimistic Oracle
+     * @param questionID - The unique questionID of the condition
      */
     function requestResolutionData(bytes32 questionID) public returns (uint256) {
         require(
@@ -128,7 +134,8 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
     }
 
     /**
-     * @notice - Checks whether a questionID is ready to report payouts
+     * @notice Checks whether a questionID is ready to report payouts
+     * @param questionID - The unique questionID of the condition
      */
     function readyToReportPayouts(bytes32 questionID) public view returns (bool) {
         if (!isQuestionInitialized(questionID)) {
@@ -151,11 +158,15 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
             );
     }
 
+    /**
+     * @notice Can be called by anyone to resolve a condition
+     * @param questionID - The unique questionID of the condition
+     */
     function reportPayouts(bytes32 questionID) public {
         require(readyToReportPayouts(questionID), "Adapter::reportPayouts: questionID not ready to report payouts");
         QuestionData storage questionData = questions[questionID];
 
-        // fetches resolution data,
+        // fetches resolution data from OO
         uint256 resolutionData = uint256(
             optimisticOracleContract.settleAndGetPrice(
                 identifier,
@@ -183,8 +194,26 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
         emit QuestionResolved(questionID, false);
     }
 
+    /**
+     * @notice Allows the owner to report payouts in an emergency
+     * @param questionID - The unique questionID of the condition
+     */
     function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external onlyOwner {
-        // allows the adapter owner to resolve payouts in emergency situations
+        require(isQuestionInitialized(questionID), "Adapter::emergencyReportPayouts: questionID is not initialized");
+
+        require(
+            // solhint-disable-next-line not-rely-on-time
+            block.timestamp > questions[questionID].resolutionTime + emergencySafetyPeriod,
+            "Adapter::emergencyReportPayouts: safety period has not passed"
+        );
+
+        require((payouts[0] + payouts[1]) == 1, "Adapter::emergencyReportPayouts: payouts must be binary");
+
+        QuestionData storage questionData = questions[questionID];
+
+        conditionalTokenContract.reportPayouts(questionID, payouts);
+        questionData.resolved = true;
+        emit QuestionResolved(questionID, true);
     }
 
     function isQuestionInitialized(bytes32 questionID) internal view returns (bool) {

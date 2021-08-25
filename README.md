@@ -18,7 +18,7 @@ Compile the contracts with `yarn compile`
 
 ### Build
 
-Build the contracts and generate typechain artifacts with `yarn build`
+Generate typechain artifacts with `yarn typechain`
 
 
 ### Test

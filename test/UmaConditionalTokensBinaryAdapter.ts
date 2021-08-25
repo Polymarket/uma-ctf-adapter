@@ -15,8 +15,10 @@ import {
     hardhatIncreaseTime,
     prepareCondition,
     initializeQuestion,
+    takeSnapshot,
+    revertToSnapshot,
 } from "./helpers";
-import { DESC, QUESTION_TITLE } from "./constants";
+import { DESC, QUESTION_TITLE, thirtyDays } from "./constants";
 
 const setup = deployments.createFixture(async () => {
     const signers = await hre.ethers.getSigners();
@@ -73,6 +75,9 @@ describe("", function () {
             });
 
             it("correctly sets up contracts", async function () {
+                const admin = await umaBinaryAdapter.owner();
+                expect(admin).eq(this.signers.admin.address);
+
                 const returnedConditionalToken = await umaBinaryAdapter.conditionalTokenContract();
                 expect(conditionalTokens.address).eq(returnedConditionalToken);
 
@@ -246,8 +251,12 @@ describe("", function () {
             let testRewardToken: Contract;
             let umaBinaryAdapter: Contract;
             let questionID: string;
+            let snapshot: string;
 
             beforeEach(async function () {
+                // capture hardhat chain snapshot
+                snapshot = await takeSnapshot();
+
                 const deployment = await setup();
                 conditionalTokens = deployment.conditionalTokens;
                 optimisticOracle = deployment.optimisticOracle;
@@ -269,6 +278,11 @@ describe("", function () {
 
                 // request resolution data
                 await umaBinaryAdapter.requestResolutionData(questionID);
+            });
+
+            afterEach(async function () {
+                // revert to snapshot
+                await revertToSnapshot(snapshot);
             });
 
             it("reportPayouts emits ConditionResolved if resolution data exists", async function () {
@@ -302,6 +316,40 @@ describe("", function () {
 
                 await expect(umaBinaryAdapter.reportPayouts(questionID)).to.be.revertedWith(
                     "Adapter::reportPayouts: Invalid resolution data",
+                );
+            });
+
+            it("should allow emergency reporting by the owner", async function () {
+                // fast forward the chain to after the emergencySafetyPeriod
+                await hardhatIncreaseTime(thirtyDays + 1000);
+
+                // YES conditional payout
+                const payouts = [1, 0];
+                expect(await umaBinaryAdapter.emergencyReportPayouts(questionID, payouts))
+                    .to.emit(umaBinaryAdapter, "QuestionResolved")
+                    .withArgs(questionID, true);
+
+                // Verify resolved flag on the QuestionData struct has been updated
+                const questionData = await umaBinaryAdapter.questions(questionID);
+                expect(await questionData.resolved).eq(true);
+            });
+
+            it("should reverts if emergencyReport is called before the safety period", async function () {
+                // YES conditional payout
+                const payouts = [1, 0];
+                await expect(umaBinaryAdapter.emergencyReportPayouts(questionID, payouts)).to.be.revertedWith(
+                    "Adapter::emergencyReportPayouts: safety period has not passed",
+                );
+            });
+
+            it("should reverts if emergencyReport is called with invalid payout", async function () {
+                // fast forward the chain to after the emergencySafetyPeriod
+                await hardhatIncreaseTime(thirtyDays + 1000);
+
+                // invalid conditional payout
+                const payouts = [10, 22];
+                await expect(umaBinaryAdapter.emergencyReportPayouts(questionID, payouts)).to.be.revertedWith(
+                    "Adapter::emergencyReportPayouts: payouts must be binary",
                 );
             });
         });
