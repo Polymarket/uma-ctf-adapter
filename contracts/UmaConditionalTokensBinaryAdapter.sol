@@ -189,8 +189,8 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
             payouts[1] = 0;
         }
 
-        conditionalTokenContract.reportPayouts(questionID, payouts);
         questionData.resolved = true;
+        conditionalTokenContract.reportPayouts(questionID, payouts);
         emit QuestionResolved(questionID, false);
     }
 
@@ -211,8 +211,8 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
 
         QuestionData storage questionData = questions[questionID];
 
-        conditionalTokenContract.reportPayouts(questionID, payouts);
         questionData.resolved = true;
+        conditionalTokenContract.reportPayouts(questionID, payouts);
         emit QuestionResolved(questionID, true);
     }
 
