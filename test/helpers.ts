@@ -6,8 +6,35 @@ export function createQuestionID(title: string, description: string): string {
     return ethers.utils.solidityKeccak256(["string", "string"], [title, description]);
 }
 
-export function getAncillaryData(title: string, description: string): Uint8Array {
+export function createAncillaryData(title: string, description: string): Uint8Array {
     return ethers.utils.toUtf8Bytes(`q: ${title}d: ${description}`);
+}
+
+export async function prepareCondition(
+    conditionalTokens: Contract,
+    oracle: string,
+    title: string,
+    description: string,
+): Promise<void> {
+    const questionID = createQuestionID(title, description);
+    await conditionalTokens.prepareCondition(oracle, questionID, 2);
+}
+
+export async function initializeQuestion(
+    adapter: Contract,
+    title: string,
+    description: string,
+    rewardAddress: string,
+    resolutionTime?: number,
+): Promise<string> {
+    const questionID = createQuestionID(title, description);
+    const defaultResolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
+
+    const resTime = resolutionTime != null ? resolutionTime : defaultResolutionTime;
+    const ancillaryData = createAncillaryData(title, description);
+
+    await adapter.initializeQuestion(questionID, ancillaryData, resTime, rewardAddress, 0);
+    return questionID;
 }
 
 export async function deploy<T extends Contract>(

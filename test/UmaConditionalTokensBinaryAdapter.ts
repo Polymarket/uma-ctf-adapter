@@ -7,7 +7,15 @@ import { MockContract } from "@ethereum-waffle/mock-contract";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signers";
 import { MockConditionalTokens, TestERC20, UmaConditionalTokensBinaryAdapter } from "../typechain";
 import { Signers } from "../types";
-import { createQuestionID, deploy, deployMock, getAncillaryData, hardhatIncreaseTime } from "./helpers";
+import {
+    createQuestionID,
+    deploy,
+    deployMock,
+    createAncillaryData,
+    hardhatIncreaseTime,
+    prepareCondition,
+    initializeQuestion,
+} from "./helpers";
 import { DESC, QUESTION_TITLE } from "./constants";
 
 const setup = deployments.createFixture(async () => {
@@ -52,7 +60,7 @@ describe("", function () {
     });
 
     describe("Uma Conditional Token Binary Adapter", function () {
-        describe("contracts are setup correctly", function () {
+        describe("setup", function () {
             let conditionalTokens: Contract;
             let optimisticOracle: MockContract;
             let umaBinaryAdapter: Contract;
@@ -78,21 +86,23 @@ describe("", function () {
 
         describe("Question scenarios", function () {
             let conditionalTokens: Contract;
-            // let optimisticOracle: MockContract;
+            let optimisticOracle: MockContract;
             let testRewardToken: Contract;
             let umaBinaryAdapter: Contract;
 
             before(async function () {
                 const deployment = await setup();
                 conditionalTokens = deployment.conditionalTokens;
-                // optimisticOracle = deployment.optimisticOracle;
+                optimisticOracle = deployment.optimisticOracle;
                 testRewardToken = deployment.testRewardToken;
                 umaBinaryAdapter = deployment.umaBinaryAdapter;
             });
 
             it("correctly prepares a question using the adapter as oracle", async function () {
                 const oracle = umaBinaryAdapter.address;
-                const questionID = createQuestionID(QUESTION_TITLE, DESC);
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = createQuestionID(title, desc);
                 const outcomeSlotCount = 2; // Only YES/NO
                 const conditionID = await conditionalTokens.getConditionId(oracle, questionID, outcomeSlotCount);
 
@@ -102,11 +112,12 @@ describe("", function () {
             });
 
             it("correctly initializes a question", async function () {
-                const questionID = createQuestionID(QUESTION_TITLE, DESC);
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = createQuestionID(title, desc);
                 const resolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
-                const ancillaryData = getAncillaryData(QUESTION_TITLE, DESC);
+                const ancillaryData = createAncillaryData(title, desc);
                 const ancillaryDataHexlified = ethers.utils.hexlify(ancillaryData);
-                expect(questionID).to.eq("0x5e2a133421146a87d09584a2a95ce678a4fba12efb4d27866affca702bf54fca");
 
                 // Verify QuestionInitialized event emitted
                 expect(
@@ -132,9 +143,22 @@ describe("", function () {
             });
 
             it("should revert when trying to reinitialize a question", async function () {
-                const questionID = createQuestionID(QUESTION_TITLE, DESC);
+                // init question
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = createQuestionID(title, desc);
                 const resolutionTime = Math.floor(new Date().getTime() / 1000);
                 const ancillaryData = ethers.utils.randomBytes(10);
+
+                await umaBinaryAdapter.initializeQuestion(
+                    questionID,
+                    ancillaryData,
+                    resolutionTime,
+                    testRewardToken.address,
+                    0,
+                );
+
+                // reinitialize the same questionID
                 await expect(
                     umaBinaryAdapter.initializeQuestion(
                         questionID,
@@ -147,7 +171,10 @@ describe("", function () {
             });
 
             it("should correctly call readyToRequestResolution", async function () {
-                const questionID = createQuestionID(QUESTION_TITLE, DESC);
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(umaBinaryAdapter, title, desc, testRewardToken.address);
+
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(false);
 
                 // 2 hours ahead
@@ -155,25 +182,126 @@ describe("", function () {
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
             });
 
-            it("should correctly call request resolution data from the optimistic oracle", async function () {
-                const questionID = createQuestionID(QUESTION_TITLE, DESC);
-                expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
-                await (await umaBinaryAdapter.requestResolutionData(questionID)).wait();
+            it("should correctly request resolution data from the OO", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(umaBinaryAdapter, title, desc, testRewardToken.address);
+                const identifier = await umaBinaryAdapter.identifier();
                 const questionData = await umaBinaryAdapter.questions(questionID);
-                expect(await questionData.resolutionDataRequested).eq(true);
+
+                await optimisticOracle.mock.hasPrice.returns(true);
+                expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
+
+                expect(await umaBinaryAdapter.requestResolutionData(questionID))
+                    .to.emit(umaBinaryAdapter, "ResolutionDataRequested")
+                    .withArgs(identifier, questionData.resolutionTime, questionID, questionData.ancillaryData);
+
+                const questionDataAfterRequest = await umaBinaryAdapter.questions(questionID);
+
+                expect(await questionDataAfterRequest.resolutionDataRequested).eq(true);
+                expect(await questionDataAfterRequest.resolved).eq(false);
             });
 
-            it("should revert if question is not initialized", async function () {
+            it("requestResolutionData should revert if question is not initialized", async function () {
                 const questionID = HashZero;
                 await expect(umaBinaryAdapter.requestResolutionData(questionID)).to.be.revertedWith(
                     "Adapter::requestResolutionData: Question not ready to be resolved",
                 );
             });
 
-            it("should revert if resolution data previously requested", async function () {
-                const questionID = createQuestionID(QUESTION_TITLE, DESC);
+            it("requestResolutionData should revert if resolution data previously requested", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(umaBinaryAdapter, title, desc, testRewardToken.address);
+
+                // Request resolution data once
+                await umaBinaryAdapter.requestResolutionData(questionID);
+
+                // Re-request resolution data
                 await expect(umaBinaryAdapter.requestResolutionData(questionID)).to.be.revertedWith(
                     "Adapter::requestResolutionData: Question not ready to be resolved",
+                );
+            });
+
+            it("should correctly call readyToReportPayouts if resolutionData is available from the OO", async function () {
+                // Non existent questionID
+                expect(await umaBinaryAdapter.readyToReportPayouts(HashZero)).eq(false);
+
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(umaBinaryAdapter, title, desc, testRewardToken.address);
+
+                // When resolutionData is available - resolutionOO::hasPrice returns true,
+                await hardhatIncreaseTime(3600);
+                await umaBinaryAdapter.requestResolutionData(questionID);
+                await optimisticOracle.mock.hasPrice.returns(true);
+
+                expect(await umaBinaryAdapter.readyToReportPayouts(questionID)).eq(true);
+            });
+        });
+
+        describe("Condition Resolution scenarios", function () {
+            let conditionalTokens: Contract;
+            let optimisticOracle: MockContract;
+            let testRewardToken: Contract;
+            let umaBinaryAdapter: Contract;
+            let questionID: string;
+
+            beforeEach(async function () {
+                const deployment = await setup();
+                conditionalTokens = deployment.conditionalTokens;
+                optimisticOracle = deployment.optimisticOracle;
+                testRewardToken = deployment.testRewardToken;
+                umaBinaryAdapter = deployment.umaBinaryAdapter;
+
+                await optimisticOracle.mock.hasPrice.returns(true);
+
+                questionID = createQuestionID(QUESTION_TITLE, DESC);
+
+                // prepare condition with adapter as oracle
+                await prepareCondition(conditionalTokens, umaBinaryAdapter.address, QUESTION_TITLE, DESC);
+
+                // initialize question
+                await initializeQuestion(umaBinaryAdapter, QUESTION_TITLE, DESC, testRewardToken.address);
+
+                // fast forward hardhat block time
+                await hardhatIncreaseTime(7200);
+
+                // request resolution data
+                await umaBinaryAdapter.requestResolutionData(questionID);
+            });
+
+            it("reportPayouts emits ConditionResolved if resolution data exists", async function () {
+                const conditionID = await conditionalTokens.getConditionId(umaBinaryAdapter.address, questionID, 2); // Mock Optimistic Oracle returns YES
+
+                // Mock Optimistic Oracle returns YES
+                await optimisticOracle.mock.settleAndGetPrice.returns(1);
+
+                expect(await umaBinaryAdapter.reportPayouts(questionID))
+                    .to.emit(conditionalTokens, "ConditionResolution")
+                    .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [1, 0]);
+            });
+
+            it("reportPayouts emits QuestionResolved if resolution data exists", async function () {
+                // Mock Optimistic Oracle returns YES
+                await optimisticOracle.mock.settleAndGetPrice.returns(1);
+
+                expect(await umaBinaryAdapter.reportPayouts(questionID))
+                    .to.emit(umaBinaryAdapter, "QuestionResolved")
+                    .withArgs(questionID, false);
+
+                // Verify resolved flag on the QuestionData struct has been updated
+                const questionData = await umaBinaryAdapter.questions(questionID);
+                expect(await questionData.resolutionDataRequested).eq(true);
+                expect(await questionData.resolved).eq(true);
+            });
+
+            it("reportPayouts reverts if OO returns malformed data", async function () {
+                // Mock Optimistic Oracle returns invalid data
+                await optimisticOracle.mock.settleAndGetPrice.returns(2123);
+
+                await expect(umaBinaryAdapter.reportPayouts(questionID)).to.be.revertedWith(
+                    "Adapter::reportPayouts: Invalid resolution data",
                 );
             });
         });

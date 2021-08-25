@@ -28,7 +28,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
         uint256 reward;
         // @notice - Flag marking whether resolution data has been requested from the Oracle
         bool resolutionDataRequested;
-        // @notice - Flag marking whether a question is resolved
+        // @notice - Flag marking whether a condition is resolved
         bool resolved;
     }
 
@@ -46,7 +46,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
     event QuestionResolved(bytes32 indexed questionId, bool indexed emergencyReport);
 
     event ResolutionDataRequested(
-        address indexed identifier,
+        bytes32 indexed identifier,
         uint256 indexed timestamp,
         bytes32 indexed questionID,
         bytes ancillaryData
@@ -92,6 +92,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
      */
     function readyToRequestResolution(bytes32 questionID) public view returns (bool) {
         QuestionData storage questionData = questions[questionID];
+        // TODO: more documentation on the ready functions
         if (questionData.resolutionTime == 0) {
             return false;
         }
@@ -122,14 +123,21 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
             questionData.reward
         );
         questionData.resolutionDataRequested = true;
+        emit ResolutionDataRequested(identifier, questionData.resolutionTime, questionID, questionData.ancillaryData);
     }
 
     function readyToReportPayouts(bytes32 questionID) public view returns (bool) {
-        if (readyToRequestResolution(questionID) == false) {
+        QuestionData storage questionData = questions[questionID];
+        if (questionData.resolutionTime == 0) {
+            return false;
+        }
+        if (questionData.resolutionDataRequested == false) {
+            return false;
+        }
+        if (questionData.resolved == true) {
             return false;
         }
 
-        QuestionData storage questionData = questions[questionID];
         return
             optimisticOracleContract.hasPrice(
                 address(this),
@@ -140,9 +148,35 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
     }
 
     function reportPayouts(bytes32 questionID) public {
-        // require(readyToReportPayouts(questionID))
-        // calls `optimisticOracle.settleAndGetPrice`
-        // fetches resolution data, constructs outcomeIndex array and calls conditionalTokens.reportPayouts
+        require(readyToReportPayouts(questionID), "Adapter::reportPayouts: questionID not ready to report payouts");
+        QuestionData storage questionData = questions[questionID];
+
+        // fetches resolution data,
+        uint256 resolutionData = uint256(
+            optimisticOracleContract.settleAndGetPrice(
+                identifier,
+                questionData.resolutionTime,
+                questionData.ancillaryData
+            )
+        );
+
+        // Payouts: [YES, NO]
+        uint256[] memory payouts = new uint256[](2);
+        require(resolutionData == 0 || resolutionData == 1, "Adapter::reportPayouts: Invalid resolution data");
+
+        if (resolutionData == 0) {
+            //NO: Set payouts to [0, 1]
+            payouts[0] = 0;
+            payouts[1] = 1;
+        } else {
+            // YES: Set payouts to [1, 0]
+            payouts[0] = 1;
+            payouts[1] = 0;
+        }
+
+        conditionalTokenContract.reportPayouts(questionID, payouts);
+        questionData.resolved = true;
+        emit QuestionResolved(questionID, false);
     }
 
     function emergencyReportPayouts(bytes32 questionId, uint256[] calldata payouts) external onlyOwner {
