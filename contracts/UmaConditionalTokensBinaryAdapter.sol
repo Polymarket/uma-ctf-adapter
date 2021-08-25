@@ -116,7 +116,7 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
      * @notice Called by anyone to request resolution data from the Optimistic Oracle
      * @param questionID - The unique questionID of the condition
      */
-    function requestResolutionData(bytes32 questionID) public returns (uint256) {
+    function requestResolutionData(bytes32 questionID) public {
         require(
             readyToRequestResolution(questionID),
             "Adapter::requestResolutionData: Question not ready to be resolved"
