@@ -26,12 +26,13 @@ const config: HardhatUserConfig = {
     networks: {
         hardhat: {
             chainId: ChainId.hardhat,
-            saveDeployments: true,
+            saveDeployments: false,
         },
         goerli: { accounts, ...getRemoteNetworkConfig("goerli") },
         kovan: { accounts, ...getRemoteNetworkConfig("kovan") },
         rinkeby: { accounts, ...getRemoteNetworkConfig("rinkeby") },
         ropsten: { accounts, ...getRemoteNetworkConfig("ropsten") },
+        // TODO: Mumbai RPCs are down except chainstack's
         mumbai: { accounts, url: "https://matic-mumbai.chainstacklabs.com", chainId: 80001 },
         matic: { accounts, ...getRemoteNetworkConfig("matic") },
         mainnet: { accounts, ...getRemoteNetworkConfig("mainnet") },
