@@ -12,3 +12,5 @@ lib
 artifacts
 typechain
 cache
+coverage
+.vscode
