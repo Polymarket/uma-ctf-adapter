@@ -26,19 +26,19 @@ const config: HardhatUserConfig = {
     networks: {
         hardhat: {
             chainId: ChainId.hardhat,
-            saveDeployments: false,
+            saveDeployments: true,
         },
         goerli: { accounts, ...getRemoteNetworkConfig("goerli") },
         kovan: { accounts, ...getRemoteNetworkConfig("kovan") },
         rinkeby: { accounts, ...getRemoteNetworkConfig("rinkeby") },
         ropsten: { accounts, ...getRemoteNetworkConfig("ropsten") },
-        mumbai: { accounts, ...getRemoteNetworkConfig("mumbai") },
+        mumbai: { accounts, url: "https://matic-mumbai.chainstacklabs.com", chainId: 80001 },
         matic: { accounts, ...getRemoteNetworkConfig("matic") },
         mainnet: { accounts, ...getRemoteNetworkConfig("mainnet") },
     },
     paths: {
-        artifacts: "../../artifacts",
-        deployments: "../../deployments",
+        artifacts: "./artifacts",
+        deployments: "./deployments",
         cache: "./cache",
         sources: "./contracts",
         tests: "./test",

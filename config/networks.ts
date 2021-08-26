@@ -31,6 +31,7 @@ const getInfuraConfig = (network: InfuraChain): { url: string; chainId: number }
 // Matic
 const maticVigilChains = ["matic", "mumbai"] as const;
 type MaticVigilChain = typeof maticVigilChains[number];
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const getMaticVigilConfig = (network: MaticVigilChain): { url: string; chainId: number } => {
     if (!maticVigilApiKey) {
         throw new Error("Please set your MATICVIGIL_API_KEY in a .env file");
@@ -39,6 +40,17 @@ const getMaticVigilConfig = (network: MaticVigilChain): { url: string; chainId: 
     const networkString = network === "matic" ? "mainnet" : "mumbai";
     return {
         url: `https://rpc-${networkString}.maticvigil.com/v1/${maticVigilApiKey}`,
+        chainId: ChainId[network],
+    };
+};
+
+const getPolygonInfuraChain = (network: MaticVigilChain): { url: string; chainId: number } => {
+    if (!process.env.INFURA_API_KEY) {
+        throw new Error("Please set your INFURA_API_KEY in a .env file");
+    }
+    const networkString = network === "matic" ? "mainnet" : "mumbai";
+    return {
+        url: `https://polygon-${networkString}.infura.io/v3/${infuraApiKey}`,
         chainId: ChainId[network],
     };
 };
@@ -56,7 +68,7 @@ const getXDaiConfig = (network: XDaiChain): { url: string; chainId: number } => 
 export type RemoteChain = InfuraChain | MaticVigilChain | XDaiChain;
 export const getRemoteNetworkConfig = (network: RemoteChain): { url: string; chainId: number } => {
     if (infuraChains.includes(network as InfuraChain)) return getInfuraConfig(network as InfuraChain);
-    if (maticVigilChains.includes(network as MaticVigilChain)) return getMaticVigilConfig(network as MaticVigilChain);
+    if (maticVigilChains.includes(network as MaticVigilChain)) return getPolygonInfuraChain(network as MaticVigilChain);
     if (xDaiChains.includes(network as XDaiChain)) return getXDaiConfig(network as XDaiChain);
     throw Error("Unknown network");
 };
