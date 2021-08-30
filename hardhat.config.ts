@@ -32,9 +32,10 @@ const config: HardhatUserConfig = {
         kovan: { accounts, ...getRemoteNetworkConfig("kovan") },
         rinkeby: { accounts, ...getRemoteNetworkConfig("rinkeby") },
         ropsten: { accounts, ...getRemoteNetworkConfig("ropsten") },
-        // TODO: Mumbai RPCs are down except chainstack's
-        mumbai: { accounts, url: "https://matic-mumbai.chainstacklabs.com", chainId: 80001 },
-        matic: { accounts, ...getRemoteNetworkConfig("matic") },
+        // TODO: Hardhat currently has issues infering gas price on polygon.
+        // Causing Invalid sender errors. See: https://github.com/nomiclabs/hardhat/issues/1828
+        mumbai: { accounts, ...getRemoteNetworkConfig("mumbai"), gasPrice: 8000000000 },
+        matic: { accounts, ...getRemoteNetworkConfig("matic"), gasPrice: 8000000000 },
         mainnet: { accounts, ...getRemoteNetworkConfig("mainnet") },
     },
     paths: {
@@ -66,6 +67,9 @@ const config: HardhatUserConfig = {
         currency: "USD",
         gasPrice: 100,
         excludeContracts: ["Mock", "ERC20"],
+    },
+    etherscan: {
+        apiKey: process.env.ETHERSCAN_API_KEY,
     },
 };
 
