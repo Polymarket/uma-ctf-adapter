@@ -43,6 +43,18 @@ const getMaticVigilConfig = (network: MaticVigilChain): { url: string; chainId: 
     };
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const getPolygonInfuraChain = (network: MaticVigilChain): { url: string; chainId: number } => {
+    if (!process.env.INFURA_API_KEY) {
+        throw new Error("Please set your INFURA_API_KEY in a .env file");
+    }
+    const networkString = network === "matic" ? "mainnet" : "mumbai";
+    return {
+        url: `https://polygon-${networkString}.infura.io/v3/${infuraApiKey}`,
+        chainId: ChainId[network],
+    };
+};
+
 // xDai
 const xDaiChains = ["xdai"] as const;
 type XDaiChain = typeof xDaiChains[number];

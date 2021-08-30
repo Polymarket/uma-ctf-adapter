@@ -5,8 +5,8 @@ import { Contract } from "ethers";
 import { expect } from "chai";
 import { MockContract } from "@ethereum-waffle/mock-contract";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signers";
-import { MockConditionalTokens, TestERC20, UmaConditionalTokensBinaryAdapter } from "../typechain";
-import { Signers } from "../types";
+import { MockConditionalTokens, TestERC20, UmaConditionalTokensBinaryAdapter } from "../../typechain";
+import { Signers } from "../../types";
 import {
     createQuestionID,
     deploy,
@@ -17,7 +17,7 @@ import {
     initializeQuestion,
     takeSnapshot,
     revertToSnapshot,
-} from "./helpers";
+} from "../helpers";
 import { DESC, QUESTION_TITLE, thirtyDays } from "./constants";
 
 const setup = deployments.createFixture(async () => {
