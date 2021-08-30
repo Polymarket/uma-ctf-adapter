@@ -2,7 +2,10 @@
     "compilerOptions": {
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
-        "lib": ["es5", "es6"],
+        "lib": [
+            "es5",
+            "es6"
+        ],
         "module": "commonjs",
         "moduleResolution": "node",
         "noImplicitAny": true,
@@ -12,7 +15,9 @@
         "strict": true,
         "target": "ES5"
     },
-    "exclude": ["node_modules", "forks/fx-portal"],
+    "exclude": [
+        "node_modules"
+    ],
     "include": [
         "artifacts/**/*",
         "artifacts/**/*.json",
@@ -22,6 +27,6 @@
         "test/**/*",
         "typechain/**/*",
         "types/**/*",
-        "hardhat.config.ts"
+        "./hardhat.config.ts"
     ]
 }
