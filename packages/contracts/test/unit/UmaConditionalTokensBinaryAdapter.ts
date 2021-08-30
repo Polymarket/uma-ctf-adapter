@@ -75,8 +75,10 @@ describe("", function () {
             });
 
             it("correctly sets up contracts", async function () {
-                const admin = await umaBinaryAdapter.owner();
-                expect(admin).eq(this.signers.admin.address);
+                // check that admin signer has proper role set up
+                const adminRole = ethers.constants.HashZero;
+                expect(await umaBinaryAdapter.hasRole(adminRole, this.signers.admin.address)).eq(true);
+                expect(await umaBinaryAdapter.hasRole(adminRole, ethers.Wallet.createRandom().address)).eq(false);
 
                 const returnedConditionalToken = await umaBinaryAdapter.conditionalTokenContract();
                 expect(conditionalTokens.address).eq(returnedConditionalToken);
