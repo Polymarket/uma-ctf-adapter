@@ -1,8 +1,7 @@
 {
-    "name": "@polymarket/uma-conditional-tokens-adapter",
-    "description": "",
+    "name": "@polymarket/uma-conditional-tokens-adapter-contracts",
+    "description": "Contracts for the UMA Binary Adapter",
     "version": "1.0.0",
-    "repository": "https://github.com/Polymarket/uma-conditional-tokens-adapter/",
     "contributors": [
         {
             "name": "Jonathan Amenechi",
