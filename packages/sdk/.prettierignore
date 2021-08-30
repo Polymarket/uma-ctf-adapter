@@ -2,13 +2,13 @@
 artifacts/
 build/
 cache/
-contracts/
 coverage/
 dist/
 lib/
 node_modules/
 typechain/
 
+forks/fx-portal
+
 # files
-.solcover.js
 coverage.json
