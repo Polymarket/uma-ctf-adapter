@@ -83,7 +83,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
     ) public {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "Adapter::initializeQuestion: sender does not have admin role"
+            "Adapter::initializeQuestion: caller does not have admin role"
         );
         require(!isQuestionInitialized(questionID), "Adapter::initializeQuestion: Question already initialized");
         questions[questionID] = QuestionData({
@@ -206,7 +206,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
     function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "Adapter::initializeQuestion: sender does not have admin role"
+            "Adapter::emergencyReportPayouts: caller does not have admin role"
         );
         require(isQuestionInitialized(questionID), "Adapter::emergencyReportPayouts: questionID is not initialized");
 
