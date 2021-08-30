@@ -7,7 +7,7 @@ on:
         branches: "*"
 
 jobs:
-    test:
+    test-contracts:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
@@ -22,9 +22,11 @@ jobs:
               run: yarn
             - name: Typechain
               run: yarn typechain
+              working-directory: ./packages/contracts
             - name: Test
               run: yarn test
-    lint-typescript:
+              working-directory: ./packages/contracts
+    lint-contracts-typescript:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
@@ -39,9 +41,11 @@ jobs:
               run: yarn
             - name: Typechain
               run: yarn typechain
+              working-directory: ./packages/contracts
             - name: Lint Typescript
               run: yarn lint:ts
-    lint-solidity:
+              working-directory: ./packages/contracts
+    lint-contracts-solidity:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
@@ -56,6 +60,7 @@ jobs:
               run: yarn
             - name: Lint Solidity
               run: yarn lint:sol
+              working-directory: ./packages/contracts
 
 env:
     MNEMONIC: "we need a mnemonic phrase so that continuous integration will not fail"

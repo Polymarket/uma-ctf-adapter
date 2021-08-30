@@ -26,7 +26,7 @@ const config: HardhatUserConfig = {
     networks: {
         hardhat: {
             chainId: ChainId.hardhat,
-            saveDeployments: true,
+            saveDeployments: false,
         },
         goerli: { accounts, ...getRemoteNetworkConfig("goerli") },
         kovan: { accounts, ...getRemoteNetworkConfig("kovan") },
