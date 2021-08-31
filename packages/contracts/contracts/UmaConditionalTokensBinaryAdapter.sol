@@ -1,6 +1,6 @@
 pragma solidity 0.7.5;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
@@ -10,7 +10,7 @@ import { IOptimisticOracle } from "./interfaces/IOptimisticOracle.sol";
  * @title UmaConditionalTokensBinaryAdapter
  * @notice allows a condition on a ConditionalTokens contract to be resolved via UMA's Optimistic Oracle
  */
-contract UmaConditionalTokensBinaryAdapter is Ownable {
+contract UmaConditionalTokensBinaryAdapter is AccessControl {
     IConditionalTokens public immutable conditionalTokenContract;
     IOptimisticOracle public immutable optimisticOracleContract;
 
@@ -59,9 +59,10 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
     // @notice Emitted when a question is resolved
     event QuestionResolved(bytes32 indexed questionId, bool indexed emergencyReport);
 
-    constructor(address conditionalTokenAddress, address optimisticOracleAddress) Ownable() {
+    constructor(address conditionalTokenAddress, address optimisticOracleAddress) {
         conditionalTokenContract = IConditionalTokens(conditionalTokenAddress);
         optimisticOracleContract = IOptimisticOracle(optimisticOracleAddress);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
@@ -79,7 +80,11 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
         uint256 resolutionTime,
         address rewardToken,
         uint256 reward
-    ) public onlyOwner {
+    ) public {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+            "Adapter::initializeQuestion: caller does not have admin role"
+        );
         require(!isQuestionInitialized(questionID), "Adapter::initializeQuestion: Question already initialized");
         questions[questionID] = QuestionData({
             questionID: questionID,
@@ -198,7 +203,11 @@ contract UmaConditionalTokensBinaryAdapter is Ownable {
      * @notice Allows the owner to report payouts in an emergency
      * @param questionID - The unique questionID of the condition
      */
-    function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external onlyOwner {
+    function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+            "Adapter::emergencyReportPayouts: caller does not have admin role"
+        );
         require(isQuestionInitialized(questionID), "Adapter::emergencyReportPayouts: questionID is not initialized");
 
         require(
