@@ -7,8 +7,9 @@ This repo contains Adapter contracts used to resolve Polymarket prediction marke
 ## Usage
 
 ### Dependencies
+- cd into `./packages/contracts/`
 
-Install dependencies with `yarn install`
+- Install dependencies with `yarn install`
 
 
 ### Compile
