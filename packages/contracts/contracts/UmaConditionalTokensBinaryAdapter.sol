@@ -1,23 +1,30 @@
+// SPDX-License-Identifier: MIT
 pragma solidity 0.7.5;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
-import { IOptimisticOracle } from "./interfaces/IOptimisticOracle.sol";
+import { FinderInterface } from "./interfaces/FinderInterface.sol";
+import { OptimisticOracleInterface } from "./interfaces/OptimisticOracleInterface.sol";
 
 /**
  * @title UmaConditionalTokensBinaryAdapter
- * @notice allows a condition on a ConditionalTokens contract to be resolved via UMA's Optimistic Oracle
+ * @notice allows a condition to be resolved via UMA's Optimistic Oracle
  */
 contract UmaConditionalTokensBinaryAdapter is AccessControl {
+    // Conditional Tokens framework
     IConditionalTokens public immutable conditionalTokenContract;
-    IOptimisticOracle public immutable optimisticOracleContract;
+
+    // @notice Finder Interface for the Optimistic Oracle
+    FinderInterface public umaFinder;
 
     // @notice Unique query identifier for the Optimistic Oracle
-    bytes32 public constant identifier = bytes32("YES_OR_NO_QUERY");
+    bytes32 public constant identifier = "YES_OR_NO_QUERY";
 
-    // @notice Time period after which the owner can emergency resolve a condition
+    bytes32 public constant oracle = "OptimisticOracle";
+
+    // @notice Time period after which an admin can emergency resolve a condition
     uint256 public constant emergencySafetyPeriod = 30 days;
 
     struct QuestionData {
@@ -59,9 +66,9 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
     // @notice Emitted when a question is resolved
     event QuestionResolved(bytes32 indexed questionId, bool indexed emergencyReport);
 
-    constructor(address conditionalTokenAddress, address optimisticOracleAddress) {
+    constructor(address conditionalTokenAddress, address umaFinderAddress) {
         conditionalTokenContract = IConditionalTokens(conditionalTokenAddress);
-        optimisticOracleContract = IOptimisticOracle(optimisticOracleAddress);
+        umaFinder = FinderInterface(umaFinderAddress);
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -127,7 +134,9 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
             "Adapter::requestResolutionData: Question not ready to be resolved"
         );
         QuestionData storage questionData = questions[questionID];
-        optimisticOracleContract.requestPrice(
+
+        OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
+        optimisticOracle.requestPrice(
             identifier,
             questionData.resolutionTime,
             questionData.ancillaryData,
@@ -153,9 +162,10 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         if (questionData.resolved == true) {
             return false;
         }
+        OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
 
         return
-            optimisticOracleContract.hasPrice(
+            optimisticOracle.hasPrice(
                 address(this),
                 identifier,
                 questionData.resolutionTime,
@@ -171,13 +181,10 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         require(readyToReportPayouts(questionID), "Adapter::reportPayouts: questionID not ready to report payouts");
         QuestionData storage questionData = questions[questionID];
 
+        OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
         // fetches resolution data from OO
         uint256 resolutionData = uint256(
-            optimisticOracleContract.settleAndGetPrice(
-                identifier,
-                questionData.resolutionTime,
-                questionData.ancillaryData
-            )
+            optimisticOracle.settleAndGetPrice(identifier, questionData.resolutionTime, questionData.ancillaryData)
         );
 
         // Payouts: [YES, NO]
@@ -200,7 +207,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
     }
 
     /**
-     * @notice Allows the owner to report payouts in an emergency
+     * @notice Allows an admin to report payouts in an emergency
      * @param questionID - The unique questionID of the condition
      */
     function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external {
@@ -228,5 +235,9 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
 
     function isQuestionInitialized(bytes32 questionID) internal view returns (bool) {
         return questions[questionID].resolutionTime != 0;
+    }
+
+    function getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
+        return OptimisticOracleInterface(umaFinder.getImplementationAddress(oracle));
     }
 }

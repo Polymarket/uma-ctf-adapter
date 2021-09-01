@@ -1,7 +1,7 @@
 import hre, { deployments, ethers } from "hardhat";
 import { HashZero } from "@ethersproject/constants";
 
-import { Contract } from "ethers";
+import { Contract } from "@ethersproject/contracts";
 import { expect } from "chai";
 import { MockContract } from "@ethereum-waffle/mock-contract";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signers";
@@ -33,19 +33,23 @@ const setup = deployments.createFixture(async () => {
         connect: admin,
     });
 
-    const optimisticOracle = await deployMock("IOptimisticOracle");
+    const optimisticOracle = await deployMock("OptimisticOracleInterface");
     await optimisticOracle.mock.requestPrice.returns(0);
+
+    const finderContract = await deployMock("FinderInterface");
+    await finderContract.mock.getImplementationAddress.returns(optimisticOracle.address);
 
     const umaBinaryAdapter: Contract = await deploy<UmaConditionalTokensBinaryAdapter>(
         "UmaConditionalTokensBinaryAdapter",
         {
-            args: [conditionalTokens.address, optimisticOracle.address],
+            args: [conditionalTokens.address, finderContract.address],
             connect: admin,
         },
     );
 
     return {
         conditionalTokens,
+        finderContract,
         optimisticOracle,
         testRewardToken,
         umaBinaryAdapter,
@@ -65,11 +69,13 @@ describe("", function () {
         describe("setup", function () {
             let conditionalTokens: Contract;
             let optimisticOracle: MockContract;
+            let umaFinder: MockContract;
             let umaBinaryAdapter: Contract;
 
             before(async function () {
                 const deployment = await setup();
                 conditionalTokens = deployment.conditionalTokens;
+                umaFinder = deployment.finderContract;
                 optimisticOracle = deployment.optimisticOracle;
                 umaBinaryAdapter = deployment.umaBinaryAdapter;
             });
@@ -83,8 +89,8 @@ describe("", function () {
                 const returnedConditionalToken = await umaBinaryAdapter.conditionalTokenContract();
                 expect(conditionalTokens.address).eq(returnedConditionalToken);
 
-                const returnedOptimisticOracle = await umaBinaryAdapter.optimisticOracleContract();
-                expect(optimisticOracle.address).eq(returnedOptimisticOracle);
+                const finderAddress = await umaBinaryAdapter.umaFinder();
+                expect(umaFinder.address).eq(finderAddress);
 
                 const returnedIdentifier = await umaBinaryAdapter.identifier();
                 expect(returnedIdentifier).eq("0x5945535f4f525f4e4f5f51554552590000000000000000000000000000000000");

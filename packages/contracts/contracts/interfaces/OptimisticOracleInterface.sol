@@ -2,7 +2,7 @@ pragma solidity 0.7.5;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IOptimisticOracle {
+interface OptimisticOracleInterface {
     /**
      * @notice Requests a new price.
      * @param identifier price identifier being requested.
