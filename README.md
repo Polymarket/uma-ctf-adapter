@@ -1,5 +1,7 @@
 # UMA Conditional Tokens Adapter
 
+![Github Actions](https://github.com/Polymarket/uma-conditional-tokens-adapter/workflows/Tests/badge.svg)
+
 ## Overview
 
 This repo contains Adapter contracts used to resolve Polymarket prediction markets via UMA's [optimistic oracle](https://docs.umaproject.org/oracle/optimistic-oracle-interface).
