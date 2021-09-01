@@ -775,6 +775,7 @@
     fastq "^1.6.0"
 
 "@nomiclabs/hardhat-ethers@npm:hardhat-deploy-ethers", hardhat-deploy-ethers@^0.3.0-beta.6:
+  name "@nomiclabs/hardhat-ethers"
   version "0.3.0-beta.10"
   resolved "https://registry.yarnpkg.com/hardhat-deploy-ethers/-/hardhat-deploy-ethers-0.3.0-beta.10.tgz#bccfcf635d380bbab3638960f6739fe4d396fc5f"
   integrity sha512-TeyriUshRZ7XVHOjMsDtTozIrdwLf3Bw+oZRYNhXdG/eut5HeDhjUFPfRlG7TI1lSLvkcB5dt7OxOtPYKDOxTg==
@@ -5573,6 +5574,11 @@ hardhat-deploy@^0.7.0-beta.28:
     match-all "^1.2.6"
     murmur-128 "^0.2.1"
     qs "^6.9.4"
+
+hardhat-etherscan@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/hardhat-etherscan/-/hardhat-etherscan-1.0.1.tgz#db22142ccd101c4a2c6c6b12232a4daf4657e4a1"
+  integrity sha512-FShbbcrmxLK0n1JJfRO0xq6CfEsbynt0HiNHQYvY9GOQ9UDTHRAtZT4+P20cn/yAqfyQl4bgw3URxvvNN85HXA==
 
 hardhat-gas-reporter@^1.0.4:
   version "1.0.4"
