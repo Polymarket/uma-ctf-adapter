@@ -1,4 +1,4 @@
-# UMA Conditional Tokens Adapter
+# UMA Conditional Tokens Binary Adapter
 
 ![Github Actions](https://github.com/Polymarket/uma-conditional-tokens-adapter/workflows/Tests/badge.svg)
 
