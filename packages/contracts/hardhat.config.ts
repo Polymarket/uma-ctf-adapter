@@ -1,5 +1,5 @@
 import { HardhatUserConfig } from "hardhat/config";
-import { ChainId, getRemoteNetworkConfig, mnemonic } from "./config";
+import { ChainId, getRemoteNetworkConfig, mnemonic, etherscanApiKey } from "./config";
 import "./tasks";
 
 import "hardhat-deploy";
@@ -69,7 +69,7 @@ const config: HardhatUserConfig = {
         excludeContracts: ["Mock", "ERC20"],
     },
     etherscan: {
-        apiKey: process.env.ETHERSCAN_API_KEY,
+        apiKey: etherscanApiKey,
     },
 };
 

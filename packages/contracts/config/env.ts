@@ -11,3 +11,4 @@ if (!process.env.MNEMONIC) {
 export const mnemonic: string = process.env.MNEMONIC;
 export const infuraApiKey = process.env.INFURA_API_KEY;
 export const maticVigilApiKey = process.env.MATICVIGIL_API_KEY;
+export const etherscanApiKey = process.env.ETHERSCAN_API_KEY;

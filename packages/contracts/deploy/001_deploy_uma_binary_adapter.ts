@@ -7,11 +7,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deployer } = await getNamedAccounts();
 
     const conditionalTokens = await deployments.get("ConditionalTokens");
-    const optimisticOracle = await deployments.get("OptimisticOracle");
+    const finder = await deployments.get("Finder");
 
     await deployments.deploy("UmaConditionalTokensBinaryAdapter", {
         from: deployer,
-        args: [conditionalTokens.address, optimisticOracle.address],
+        args: [conditionalTokens.address, finder.address],
     });
 };
 

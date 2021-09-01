@@ -1,4 +1,6 @@
-# UMA Conditional Tokens Adapter
+# UMA Conditional Tokens Binary Adapter
+
+![Github Actions](https://github.com/Polymarket/uma-conditional-tokens-adapter/workflows/Tests/badge.svg)
 
 ## Overview
 
@@ -7,8 +9,9 @@ This repo contains Adapter contracts used to resolve Polymarket prediction marke
 ## Usage
 
 ### Dependencies
+- cd into `./packages/contracts/`
 
-Install dependencies with `yarn install`
+- Install dependencies with `yarn install`
 
 
 ### Compile
