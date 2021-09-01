@@ -68,7 +68,6 @@ describe("", function () {
     describe("Uma Conditional Token Binary Adapter", function () {
         describe("setup", function () {
             let conditionalTokens: Contract;
-            let optimisticOracle: MockContract;
             let umaFinder: MockContract;
             let umaBinaryAdapter: Contract;
 
@@ -76,7 +75,6 @@ describe("", function () {
                 const deployment = await setup();
                 conditionalTokens = deployment.conditionalTokens;
                 umaFinder = deployment.finderContract;
-                optimisticOracle = deployment.optimisticOracle;
                 umaBinaryAdapter = deployment.umaBinaryAdapter;
             });
 
