@@ -5,6 +5,7 @@ import { Contract } from "@ethersproject/contracts";
 import { expect } from "chai";
 import { MockContract } from "@ethereum-waffle/mock-contract";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signers";
+import { BigNumber } from "ethers";
 import { MockConditionalTokens, TestERC20, UmaConditionalTokensBinaryAdapter } from "../../typechain";
 import { Signers } from "../../types";
 import {
@@ -24,22 +25,25 @@ const setup = deployments.createFixture(async () => {
     const signers = await hre.ethers.getSigners();
     const admin: SignerWithAddress = signers[0];
 
-    const conditionalTokens = await deploy<MockConditionalTokens>("MockConditionalTokens", {
+    const conditionalTokens: MockConditionalTokens = await deploy<MockConditionalTokens>("MockConditionalTokens", {
         args: [],
         connect: admin,
     });
-    const testRewardToken = await deploy<TestERC20>("TestERC20", {
+    const testRewardToken: TestERC20 = await deploy<TestERC20>("TestERC20", {
         args: ["TestERC20", "TST"],
         connect: admin,
     });
 
-    const optimisticOracle = await deployMock("OptimisticOracleInterface");
+    // Mint a million TST to admin
+    await (await testRewardToken.mint(admin.address, BigNumber.from(ethers.utils.parseEther("1000000")))).wait();
+
+    const optimisticOracle: MockContract = await deployMock("OptimisticOracleInterface");
     await optimisticOracle.mock.requestPrice.returns(0);
 
     const finderContract = await deployMock("FinderInterface");
     await finderContract.mock.getImplementationAddress.returns(optimisticOracle.address);
 
-    const umaBinaryAdapter: Contract = await deploy<UmaConditionalTokensBinaryAdapter>(
+    const umaBinaryAdapter: UmaConditionalTokensBinaryAdapter = await deploy<UmaConditionalTokensBinaryAdapter>(
         "UmaConditionalTokensBinaryAdapter",
         {
             args: [conditionalTokens.address, finderContract.address],
@@ -69,7 +73,7 @@ describe("", function () {
         describe("setup", function () {
             let conditionalTokens: Contract;
             let umaFinder: MockContract;
-            let umaBinaryAdapter: Contract;
+            let umaBinaryAdapter: UmaConditionalTokensBinaryAdapter;
 
             before(async function () {
                 const deployment = await setup();
@@ -98,8 +102,8 @@ describe("", function () {
         describe("Question scenarios", function () {
             let conditionalTokens: Contract;
             let optimisticOracle: MockContract;
-            let testRewardToken: Contract;
-            let umaBinaryAdapter: Contract;
+            let testRewardToken: TestERC20;
+            let umaBinaryAdapter: UmaConditionalTokensBinaryAdapter;
 
             before(async function () {
                 const deployment = await setup();
@@ -129,6 +133,44 @@ describe("", function () {
                 const resolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
                 const ancillaryData = createAncillaryData(title, desc);
                 const ancillaryDataHexlified = ethers.utils.hexlify(ancillaryData);
+                const reward = 0;
+                // Verify QuestionInitialized event emitted
+                expect(
+                    await umaBinaryAdapter.initializeQuestion(
+                        questionID,
+                        ancillaryData,
+                        resolutionTime,
+                        testRewardToken.address,
+                        reward,
+                    ),
+                )
+                    .to.emit(umaBinaryAdapter, "QuestionInitialized")
+                    .withArgs(questionID, ancillaryDataHexlified, resolutionTime, testRewardToken.address, reward);
+
+                const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
+
+                // Verify question data stored
+                expect(returnedQuestionData.ancillaryData).eq(ancillaryDataHexlified);
+                expect(returnedQuestionData.resolutionTime).eq(resolutionTime);
+                expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
+                expect(returnedQuestionData.reward).eq(reward);
+
+                // Verify rewardToken allowance where adapter is owner and OO is spender
+                const rewardTokenAllowance: BigNumber = await testRewardToken.allowance(
+                    umaBinaryAdapter.address,
+                    optimisticOracle.address,
+                );
+                expect(rewardTokenAllowance).eq(0);
+            });
+
+            it("correctly initializes a question with non-zero rewardToken", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = createQuestionID(title, desc);
+                const resolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
+                const ancillaryData = createAncillaryData(title, desc);
+                const ancillaryDataHexlified = ethers.utils.hexlify(ancillaryData);
+                const reward = ethers.utils.parseEther("10.0");
 
                 // Verify QuestionInitialized event emitted
                 expect(
@@ -137,20 +179,26 @@ describe("", function () {
                         ancillaryData,
                         resolutionTime,
                         testRewardToken.address,
-                        0,
+                        reward,
                     ),
                 )
                     .to.emit(umaBinaryAdapter, "QuestionInitialized")
-                    .withArgs(questionID, ancillaryDataHexlified, resolutionTime, testRewardToken.address, 0);
+                    .withArgs(questionID, ancillaryDataHexlified, resolutionTime, testRewardToken.address, reward);
 
                 const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
 
                 // Verify question data stored
-                expect(returnedQuestionData.questionID).eq(questionID);
                 expect(returnedQuestionData.ancillaryData).eq(ancillaryDataHexlified);
                 expect(returnedQuestionData.resolutionTime).eq(resolutionTime);
                 expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
-                expect(returnedQuestionData.reward).eq(0);
+                expect(returnedQuestionData.reward).eq(reward);
+
+                // Verify rewardToken allowance where adapter is owner and OO is spender
+                const rewardTokenAllowance: BigNumber = await testRewardToken.allowance(
+                    umaBinaryAdapter.address,
+                    optimisticOracle.address,
+                );
+                expect(rewardTokenAllowance).eq(reward);
             });
 
             it("should revert when trying to reinitialize a question", async function () {
@@ -181,10 +229,123 @@ describe("", function () {
                 ).to.be.revertedWith("Adapter::initializeQuestion: Question already initialized");
             });
 
+            it("should correctly update an existing question", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = createQuestionID(title, desc);
+                const resolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
+                const ancillaryData = createAncillaryData(title, desc);
+                const ancillaryDataHexlified = ethers.utils.hexlify(ancillaryData);
+                const reward = ethers.utils.parseEther("10.0");
+
+                // Initialize Question
+                await (
+                    await umaBinaryAdapter.initializeQuestion(
+                        questionID,
+                        ancillaryData,
+                        resolutionTime,
+                        testRewardToken.address,
+                        reward,
+                    )
+                ).wait();
+
+                // Update resolution time and reward
+                const newResolutionTime = resolutionTime + 5000;
+                const newReward = 0;
+                expect(
+                    await umaBinaryAdapter.updateQuestion(
+                        questionID,
+                        ancillaryDataHexlified,
+                        newResolutionTime,
+                        testRewardToken.address,
+                        newReward,
+                    ),
+                )
+                    .to.emit(umaBinaryAdapter, "QuestionUpdated")
+                    .withArgs(
+                        questionID,
+                        ancillaryDataHexlified,
+                        newResolutionTime,
+                        testRewardToken.address,
+                        newReward,
+                    );
+
+                const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
+
+                // Verify question data is updated
+                expect(returnedQuestionData.ancillaryData).eq(ancillaryDataHexlified);
+                expect(returnedQuestionData.resolutionTime).eq(newResolutionTime);
+                expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
+                expect(returnedQuestionData.reward).eq(newReward);
+
+                // resolution flags always get reset after an update
+                expect(returnedQuestionData.resolutionDataRequested).eq(false);
+                expect(returnedQuestionData.resolved).eq(false);
+            });
+
+            it("should revert when a non-admin attempts to update the question", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = createQuestionID(title, desc);
+                const resolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
+                const ancillaryData = createAncillaryData(title, desc);
+                const ancillaryDataHexlified = ethers.utils.hexlify(ancillaryData);
+                const reward = ethers.utils.parseEther("10.0");
+
+                // Initialize Question
+                await (
+                    await umaBinaryAdapter.initializeQuestion(
+                        questionID,
+                        ancillaryData,
+                        resolutionTime,
+                        testRewardToken.address,
+                        reward,
+                    )
+                ).wait();
+
+                await expect(
+                    umaBinaryAdapter
+                        .connect(this.signers.tester)
+                        .updateQuestion(
+                            questionID,
+                            ancillaryDataHexlified,
+                            resolutionTime,
+                            testRewardToken.address,
+                            reward,
+                        ),
+                ).to.be.revertedWith("Adapter::updateQuestion: caller does not have admin role");
+            });
+
+            it("should revert when trying to update a non-existent question", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = createQuestionID(title, desc);
+                const resolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
+                const ancillaryData = createAncillaryData(title, desc);
+                const ancillaryDataHexlified = ethers.utils.hexlify(ancillaryData);
+                const reward = ethers.utils.parseEther("10.0");
+
+                await expect(
+                    umaBinaryAdapter.updateQuestion(
+                        questionID,
+                        ancillaryDataHexlified,
+                        resolutionTime,
+                        testRewardToken.address,
+                        reward,
+                    ),
+                ).to.be.revertedWith("Adapter::updateQuestion: Question is not initialized");
+            });
+
             it("should correctly call readyToRequestResolution", async function () {
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
-                const questionID = await initializeQuestion(umaBinaryAdapter, title, desc, testRewardToken.address);
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                );
 
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(false);
 
@@ -196,7 +357,13 @@ describe("", function () {
             it("should correctly request resolution data from the OO", async function () {
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
-                const questionID = await initializeQuestion(umaBinaryAdapter, title, desc, testRewardToken.address);
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                );
                 const identifier = await umaBinaryAdapter.identifier();
                 const questionData = await umaBinaryAdapter.questions(questionID);
 
@@ -205,7 +372,14 @@ describe("", function () {
 
                 expect(await umaBinaryAdapter.requestResolutionData(questionID))
                     .to.emit(umaBinaryAdapter, "ResolutionDataRequested")
-                    .withArgs(identifier, questionData.resolutionTime, questionID, questionData.ancillaryData);
+                    .withArgs(
+                        identifier,
+                        questionData.resolutionTime,
+                        questionID,
+                        questionData.ancillaryData,
+                        testRewardToken.address,
+                        ethers.constants.Zero,
+                    );
 
                 const questionDataAfterRequest = await umaBinaryAdapter.questions(questionID);
 
@@ -223,7 +397,13 @@ describe("", function () {
             it("requestResolutionData should revert if resolution data previously requested", async function () {
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
-                const questionID = await initializeQuestion(umaBinaryAdapter, title, desc, testRewardToken.address);
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                );
 
                 // Request resolution data once
                 await umaBinaryAdapter.requestResolutionData(questionID);
@@ -240,7 +420,13 @@ describe("", function () {
 
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
-                const questionID = await initializeQuestion(umaBinaryAdapter, title, desc, testRewardToken.address);
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                );
 
                 // When resolutionData is available - resolutionOO::hasPrice returns true,
                 await hardhatIncreaseTime(3600);
@@ -254,8 +440,8 @@ describe("", function () {
         describe("Condition Resolution scenarios", function () {
             let conditionalTokens: Contract;
             let optimisticOracle: MockContract;
-            let testRewardToken: Contract;
-            let umaBinaryAdapter: Contract;
+            let testRewardToken: TestERC20;
+            let umaBinaryAdapter: UmaConditionalTokensBinaryAdapter;
             let questionID: string;
             let snapshot: string;
 
@@ -277,7 +463,13 @@ describe("", function () {
                 await prepareCondition(conditionalTokens, umaBinaryAdapter.address, QUESTION_TITLE, DESC);
 
                 // initialize question
-                await initializeQuestion(umaBinaryAdapter, QUESTION_TITLE, DESC, testRewardToken.address);
+                await initializeQuestion(
+                    umaBinaryAdapter,
+                    QUESTION_TITLE,
+                    DESC,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                );
 
                 // fast forward hardhat block time
                 await hardhatIncreaseTime(7200);

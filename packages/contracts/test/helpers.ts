@@ -1,5 +1,5 @@
 import { MockContract } from "ethereum-waffle";
-import { Contract, Signer } from "ethers";
+import { BigNumber, Contract, Signer } from "ethers";
 import { deployments, ethers, waffle } from "hardhat";
 
 export function createQuestionID(title: string, description: string): string {
@@ -25,6 +25,7 @@ export async function initializeQuestion(
     title: string,
     description: string,
     rewardAddress: string,
+    reward: BigNumber,
     resolutionTime?: number,
 ): Promise<string> {
     const questionID = createQuestionID(title, description);
@@ -33,7 +34,7 @@ export async function initializeQuestion(
     const resTime = resolutionTime != null ? resolutionTime : defaultResolutionTime;
     const ancillaryData = createAncillaryData(title, description);
 
-    await adapter.initializeQuestion(questionID, ancillaryData, resTime, rewardAddress, 0);
+    await adapter.initializeQuestion(questionID, ancillaryData, resTime, rewardAddress, reward);
     return questionID;
 }
 
