@@ -22,14 +22,10 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
     // @notice Unique query identifier for the Optimistic Oracle
     bytes32 public constant identifier = "YES_OR_NO_QUERY";
 
-    bytes32 public constant oracle = "OptimisticOracle";
-
     // @notice Time period after which an admin can emergency resolve a condition
     uint256 public constant emergencySafetyPeriod = 30 days;
 
     struct QuestionData {
-        // @notice Unique ID of a condition
-        bytes32 questionID;
         // @notice Data used to resolve a condition
         bytes ancillaryData;
         // @notice Unix timestamp at which a market can be resolved
@@ -49,7 +45,16 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
     // @notice Emitted when a questionID is initialized
     event QuestionInitialized(
         bytes32 indexed questionID,
-        bytes question,
+        bytes ancillaryData,
+        uint256 resolutionTime,
+        address rewardToken,
+        uint256 reward
+    );
+
+    // @notice Emitted when a questionID is updated by an admin
+    event QuestionUpdated(
+        bytes32 indexed questionID,
+        bytes ancillaryData,
         uint256 resolutionTime,
         address rewardToken,
         uint256 reward
@@ -73,7 +78,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
     }
 
     /**
-     * @notice Initializes a question on the Adapter to report on. Once initialized, the resolution conditions may not be changed.
+     * @notice Initializes a question on the Adapter to report on
      *
      * @param questionID     - The unique questionID of the condition
      * @param ancillaryData  - Holds data used to resolve a question
@@ -94,7 +99,6 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         );
         require(!isQuestionInitialized(questionID), "Adapter::initializeQuestion: Question already initialized");
         questions[questionID] = QuestionData({
-            questionID: questionID,
             ancillaryData: ancillaryData,
             resolutionTime: resolutionTime,
             rewardToken: rewardToken,
@@ -102,7 +106,45 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
             resolutionDataRequested: false,
             resolved: false
         });
+
+        // Approve the OO to transfer the reward token
+        address optimisticOracleAddress = getOptimisticOracleAddress();
+        IERC20(rewardToken).approve(optimisticOracleAddress, reward);
         emit QuestionInitialized(questionID, ancillaryData, resolutionTime, rewardToken, reward);
+    }
+
+    /**
+     * @notice Updates an existing question.
+     *
+     * @param questionID        - The unique questionID of the condition
+     * @param newAncillaryData  - Holds data used to resolve a question
+     * @param newResolutionTime - timestamp at which the Adapter can resolve a question
+     * @param newRewardToken    - ERC20 token address used for payment of rewards and fees
+     * @param newReward         - reward offered to a successful proposer
+     */
+    function updateQuestion(
+        bytes32 questionID,
+        bytes memory newAncillaryData,
+        uint256 newResolutionTime,
+        address newRewardToken,
+        uint256 newReward
+    ) public {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Adapter::updateQuestion: caller does not have admin role");
+        require(isQuestionInitialized(questionID), "Adapter::updateQuestion: Question is not initialized");
+
+        questions[questionID] = QuestionData({
+            ancillaryData: newAncillaryData,
+            resolutionTime: newResolutionTime,
+            rewardToken: newRewardToken,
+            reward: newReward,
+            resolutionDataRequested: false,
+            resolved: false
+        });
+
+        // Approve the OO to transfer the reward token
+        address optimisticOracleAddress = getOptimisticOracleAddress();
+        IERC20(newRewardToken).approve(optimisticOracleAddress, newReward);
+        emit QuestionUpdated(questionID, newAncillaryData, newResolutionTime, newRewardToken, newReward);
     }
 
     /**
@@ -183,8 +225,10 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
 
         OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
         // fetches resolution data from OO
-        uint256 resolutionData = uint256(
-            optimisticOracle.settleAndGetPrice(identifier, questionData.resolutionTime, questionData.ancillaryData)
+        int256 resolutionData = optimisticOracle.settleAndGetPrice(
+            identifier,
+            questionData.resolutionTime,
+            questionData.ancillaryData
         );
 
         // Payouts: [YES, NO]
@@ -237,7 +281,11 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         return questions[questionID].resolutionTime != 0;
     }
 
+    function getOptimisticOracleAddress() internal view returns (address) {
+        return umaFinder.getImplementationAddress("OptimisticOracle");
+    }
+
     function getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
-        return OptimisticOracleInterface(umaFinder.getImplementationAddress(oracle));
+        return OptimisticOracleInterface(getOptimisticOracleAddress());
     }
 }
