@@ -65,7 +65,9 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         bytes32 indexed identifier,
         uint256 indexed timestamp,
         bytes32 indexed questionID,
-        bytes ancillaryData
+        bytes ancillaryData,
+        address rewardToken,
+        uint256 reward
     );
 
     // @notice Emitted when a question is resolved
@@ -186,7 +188,14 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
             questionData.reward
         );
         questionData.resolutionDataRequested = true;
-        emit ResolutionDataRequested(identifier, questionData.resolutionTime, questionID, questionData.ancillaryData);
+        emit ResolutionDataRequested(
+            identifier,
+            questionData.resolutionTime,
+            questionID,
+            questionData.ancillaryData,
+            questionData.rewardToken,
+            questionData.reward
+        );
     }
 
     /**
