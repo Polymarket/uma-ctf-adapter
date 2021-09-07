@@ -14,6 +14,7 @@ export const createQuestionID = (title: string, description: string): string => 
 
 /**
  * Creates the ancillary data used to resolve questions
+ * Automatically appends resolution request information
  * 
  * @param title 
  * @param description 
