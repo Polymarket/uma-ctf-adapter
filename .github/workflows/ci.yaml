@@ -61,6 +61,22 @@ jobs:
             - name: Lint Solidity
               run: yarn lint:sol
               working-directory: ./packages/contracts
+    lint-sdk:
+      runs-on: ubuntu-latest
+      steps:
+          - name: Checkout code
+            uses: actions/checkout@v2
+            with:
+                persist-credentials: false
+          - name: Install node
+            uses: actions/setup-node@v1
+            with:
+                node-version: 16
+          - name: Install dependencies
+            run: yarn
+          - name: Lint Typescript
+            run: yarn lint
+            working-directory: ./packages/sdk
 
 env:
     MNEMONIC: "we need a mnemonic phrase so that continuous integration will not fail"
