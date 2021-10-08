@@ -4,7 +4,7 @@ This SDK is a lightweight wrapper around the `UmaConditionalTokensBinaryAdapter`
 
 ### Usage
 
-`import { UmaBinaryAdapterClient } from "@polymarket/uma-conditional-tokens-adapter-sdk"`
+`import { UmaBinaryAdapterClient } from "@polymarket/uma-binary-adapter-sdk"`
 
 `const adapter = new UmaBinaryAdapterClient(signer, 137);`
 
