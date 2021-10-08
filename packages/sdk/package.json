@@ -1,5 +1,5 @@
 {
-    "name": "@polymarket/uma-conditional-tokens-adapter-sdk",
+    "name": "@polymarket/uma-binary-adapter-sdk",
     "description": "SDK for the UMA Binary Adapter",
     "version": "1.0.0",
     "contributors": [
