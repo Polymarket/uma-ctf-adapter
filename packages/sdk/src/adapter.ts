@@ -3,7 +3,7 @@ import { JsonRpcSigner, TransactionResponse } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
 import adapterAbi from "./abi/adapterAbi";
 import { getAdapterAddress } from "./networks";
-import { createAncillaryData, createQuestionID } from "./questionUtils";
+import { createAncillaryData } from "./questionUtils";
 
 
 export class UmaBinaryAdapterClient {
@@ -26,12 +26,12 @@ export class UmaBinaryAdapterClient {
      * @param rewardToken 
      * @param reward 
      */
-    public async initializeQuestion(title: string, description: string, resolutionTime: number, rewardToken: string, reward: number): Promise<void> {
-        const questionID = createQuestionID(title, description);
+    public async initializeQuestion(questionID: string, title: string, description: string, resolutionTime: number, rewardToken: string, reward: number): Promise<void> {
+        //generate ancillary data with binary resolution data appended
         const ancillaryData = createAncillaryData(title, description);
 
         const txn: TransactionResponse = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward);
-        console.log(`Initializing question with: ${txn.hash}`);
+        console.log(`Initializing questionID: ${questionID} with: ${txn.hash}`);
         await txn.wait();
         console.log(`Question initialized!`)
     }
