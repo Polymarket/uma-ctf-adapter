@@ -82,6 +82,10 @@ export class UmaBinaryAdapterClient {
         return this.contract.readyToReportPayouts(questionID)
     }
 
+    /**
+     * Resolves a question by using the requested resolution data
+     * @param questionID 
+     */
     public async reportPayouts(questionID: string): Promise<void> {
         console.log(`Resolving question...`);
         const txn: TransactionResponse = await this.contract.reportPayouts(questionID);
@@ -89,6 +93,11 @@ export class UmaBinaryAdapterClient {
         console.log(`Question resolved!`);
     }
 
+    /**
+     * Emergency report payouts
+     * @param questionID 
+     * @param payouts 
+     */
     public async emergencyReportPayouts(questionID: string, payouts: number[]): Promise<void> {
         console.log(`Emergency resolving question...`);
         const txn: TransactionResponse = await this.contract.emergencyReportPayouts(questionID, payouts);
