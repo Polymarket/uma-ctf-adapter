@@ -12,6 +12,8 @@
         "outDir": "dist",
         "resolveJsonModule": true,
         "sourceMap": true,
+        "declaration": true,
+        "declarationMap": true,
         "strict": true,
         "target": "ES5"
     },
