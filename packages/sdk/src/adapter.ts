@@ -1,6 +1,7 @@
 import { Contract } from "@ethersproject/contracts";
 import { JsonRpcSigner, TransactionResponse } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
+import { ethers } from "ethers";
 import adapterAbi from "./abi/adapterAbi";
 import { getAdapterAddress } from "./networks";
 import { createAncillaryData } from "./questionUtils";
@@ -26,11 +27,16 @@ export class UmaBinaryAdapterClient {
      * @param rewardToken 
      * @param reward 
      */
-    public async initializeQuestion(questionID: string, title: string, description: string, resolutionTime: number, rewardToken: string, reward: number): Promise<void> {
+    public async initializeQuestion(questionID: string, title: string, description: string, resolutionTime: number, rewardToken: string, reward: number, overrides?: ethers.Overrides): Promise<void> {
         //generate ancillary data with binary resolution data appended
         const ancillaryData = createAncillaryData(title, description);
+        let txn: TransactionResponse;
+        if (overrides != undefined) {
+            txn = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward, overrides);
+        } else {
+            txn = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward);
+        }
 
-        const txn: TransactionResponse = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward);
         console.log(`Initializing questionID: ${questionID} with: ${txn.hash}`);
         await txn.wait();
         console.log(`Question initialized!`)
@@ -45,8 +51,13 @@ export class UmaBinaryAdapterClient {
      * @param rewardToken 
      * @param reward 
      */
-    public async updateQuestion(questionID: string, ancillaryData: Uint8Array, resolutionTime: number, rewardToken: string, reward: number): Promise<void> {
-        const txn: TransactionResponse = await this.contract.updateQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward);
+    public async updateQuestion(questionID: string, ancillaryData: Uint8Array, resolutionTime: number, rewardToken: string, reward: number, overrides?: ethers.Overrides): Promise<void> {
+        let txn: TransactionResponse;
+        if (overrides != undefined) {
+            txn = await this.contract.updateQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward, overrides);
+        } else {
+            txn = await this.contract.updateQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward);
+        }
         console.log(`Updating question! Hash: ${txn.hash}`)
         await txn.wait();
         console.log(`Updated question!`)
@@ -66,9 +77,14 @@ export class UmaBinaryAdapterClient {
      * 
      * @param questionID 
      */
-    public async requestResolutionData(questionID: string): Promise<void> {
+    public async requestResolutionData(questionID: string, overrides?: ethers.Overrides): Promise<void> {
         console.log(`Requesting resolution data from the Optimistic oracle...`);
-        const txn: TransactionResponse = await this.contract.requestResolutionData(questionID);
+        let txn: TransactionResponse;
+        if (overrides != undefined) {
+            txn = await this.contract.requestResolutionData(questionID, overrides);
+        } else {
+            txn = await this.contract.requestResolutionData(questionID);
+        }
         await txn.wait()
         console.log(`Resolution data requested!`);
     }
@@ -86,9 +102,14 @@ export class UmaBinaryAdapterClient {
      * Resolves a question by using the requested resolution data
      * @param questionID 
      */
-    public async reportPayouts(questionID: string): Promise<void> {
+    public async reportPayouts(questionID: string, overrides?: ethers.Overrides): Promise<void> {
         console.log(`Resolving question...`);
-        const txn: TransactionResponse = await this.contract.reportPayouts(questionID);
+        let txn: TransactionResponse;
+        if (overrides != undefined) {
+            txn = await this.contract.reportPayouts(questionID, overrides);
+        } else {
+            txn = await this.contract.reportPayouts(questionID);
+        }
         await txn.wait()
         console.log(`Question resolved!`);
     }
@@ -98,9 +119,15 @@ export class UmaBinaryAdapterClient {
      * @param questionID 
      * @param payouts 
      */
-    public async emergencyReportPayouts(questionID: string, payouts: number[]): Promise<void> {
+    public async emergencyReportPayouts(questionID: string, payouts: number[], overrides?: ethers.Overrides): Promise<void> {
         console.log(`Emergency resolving question...`);
-        const txn: TransactionResponse = await this.contract.emergencyReportPayouts(questionID, payouts);
+        let txn: TransactionResponse;
+        if (overrides != undefined) {
+            txn = await this.contract.emergencyReportPayouts(questionID, payouts, overrides);
+        }
+        else {
+            txn = await this.contract.emergencyReportPayouts(questionID, payouts);
+        }
         await txn.wait()
         console.log(`Question resolved!`);
     }
