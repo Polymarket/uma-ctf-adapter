@@ -27,6 +27,7 @@ export class UmaBinaryAdapterClient {
      * @param reward 
      */
     public async initializeQuestion(questionID: string, title: string, description: string, resolutionTime: number, rewardToken: string, reward: number): Promise<void> {
+        //generate ancillary data with binary resolution data appended
         const ancillaryData = createAncillaryData(title, description);
 
         const txn: TransactionResponse = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward);
