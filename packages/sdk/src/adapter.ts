@@ -52,13 +52,40 @@ export class UmaBinaryAdapterClient {
         console.log(`Updated question!`)
     }
 
+    /**
+     * Checks if a questionID can start the UMA resolution process
+     * @param questionID 
+     * @returns boolean
+     */
+    public async readyToRequestResolution(questionID: string): Promise<boolean> {
+        return this.contract.readyToRequestResolution(questionID);
+    }
+
+    /**
+     * Requests question resolution data from UMA
+     * 
+     * @param questionID 
+     */
     public async requestResolutionData(questionID: string): Promise<void> {
         console.log(`Requesting resolution data from the Optimistic oracle...`);
         const txn: TransactionResponse = await this.contract.requestResolutionData(questionID);
         await txn.wait()
-        console.log(`resolution data requested!`);
+        console.log(`Resolution data requested!`);
     }
 
+    /**
+     * Checks if a questionID is ready to be resolved
+     * @param questionID 
+     * @returns boolean
+     */
+    public async readyToReportPayouts(questionID: string): Promise<boolean> {
+        return this.contract.readyToReportPayouts(questionID)
+    }
+
+    /**
+     * Resolves a question by using the requested resolution data
+     * @param questionID 
+     */
     public async reportPayouts(questionID: string): Promise<void> {
         console.log(`Resolving question...`);
         const txn: TransactionResponse = await this.contract.reportPayouts(questionID);
@@ -66,6 +93,11 @@ export class UmaBinaryAdapterClient {
         console.log(`Question resolved!`);
     }
 
+    /**
+     * Emergency report payouts
+     * @param questionID 
+     * @param payouts 
+     */
     public async emergencyReportPayouts(questionID: string, payouts: number[]): Promise<void> {
         console.log(`Emergency resolving question...`);
         const txn: TransactionResponse = await this.contract.emergencyReportPayouts(questionID, payouts);
