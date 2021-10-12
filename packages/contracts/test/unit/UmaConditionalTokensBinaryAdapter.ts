@@ -327,7 +327,7 @@ describe("", function () {
                 const questionData = await umaBinaryAdapter.questions(questionID);
 
                 await optimisticOracle.mock.hasPrice.returns(true);
-                await optimisticOracle.mock.setBond.returns(ethers.utils.parseEther("10000.0"));
+                await optimisticOracle.mock.setBond.returns(bond);
 
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
 
@@ -372,6 +372,7 @@ describe("", function () {
                 await (await umaBinaryAdapter.requestResolutionData(questionID)).wait();
 
                 // Re-request resolution data
+                // Ensures that setBond on the OO is only called *once*
                 await expect(umaBinaryAdapter.requestResolutionData(questionID)).to.be.revertedWith(
                     "Adapter::requestResolutionData: Question not ready to be resolved",
                 );
