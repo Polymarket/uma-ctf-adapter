@@ -3,6 +3,7 @@ import { JsonRpcSigner, TransactionResponse } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
 import { BigNumber, ethers } from "ethers";
 import adapterAbi from "./abi/adapterAbi";
+import { QuestionData } from "./model";
 import { getAdapterAddress } from "./networks";
 import { createAncillaryData } from "./questionUtils";
 
@@ -41,6 +42,34 @@ export class UmaBinaryAdapterClient {
         console.log(`Initializing questionID: ${questionID} with: ${txn.hash}`);
         await txn.wait();
         console.log(`Question initialized!`)
+    }
+
+    /**
+     * Fetch initialized question data 
+     * @param questionID 
+     * @returns 
+     */
+    public async getQuestionData(questionID: string): Promise<QuestionData> {
+        const data = await this.contract.questions(questionID);
+        const questionData: QuestionData = {
+            ancillaryData: data.ancillaryData,
+            resolutionTime: data.resolutionTime,
+            rewardToken: data.rewardToken,
+            reward: data.reward,
+            proposalBond: data.proposalBond,
+            resolutionDataRequested: data.resolutionDataRequested,
+            resolved: data.resolved
+        }
+        return questionData;
+    }
+
+    /**
+     * Determines whether or not a questionID has been initialized
+     * @param questionID 
+     * @returns boolean
+     */
+    public async isQuestionIDInitialized(questionID: string): Promise<boolean> {
+        return this.contract.isQuestionInitialized(questionID);
     }
 
     /**
