@@ -47,6 +47,12 @@ const adapterAbi = [
                 "internalType": "uint256",
                 "name": "reward",
                 "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "proposalBond",
+                "type": "uint256"
             }
         ],
         "name": "QuestionInitialized",
@@ -69,43 +75,6 @@ const adapterAbi = [
             }
         ],
         "name": "QuestionResolved",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "bytes32",
-                "name": "questionID",
-                "type": "bytes32"
-            },
-            {
-                "indexed": false,
-                "internalType": "bytes",
-                "name": "ancillaryData",
-                "type": "bytes"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "resolutionTime",
-                "type": "uint256"
-            },
-            {
-                "indexed": false,
-                "internalType": "address",
-                "name": "rewardToken",
-                "type": "address"
-            },
-            {
-                "indexed": false,
-                "internalType": "uint256",
-                "name": "reward",
-                "type": "uint256"
-            }
-        ],
-        "name": "QuestionUpdated",
         "type": "event"
     },
     {
@@ -145,6 +114,12 @@ const adapterAbi = [
                 "indexed": false,
                 "internalType": "uint256",
                 "name": "reward",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "proposalBond",
                 "type": "uint256"
             }
         ],
@@ -426,6 +401,11 @@ const adapterAbi = [
                 "internalType": "uint256",
                 "name": "reward",
                 "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "proposalBond",
+                "type": "uint256"
             }
         ],
         "name": "initializeQuestion",
@@ -461,6 +441,11 @@ const adapterAbi = [
             {
                 "internalType": "uint256",
                 "name": "reward",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "proposalBond",
                 "type": "uint256"
             },
             {
@@ -588,39 +573,6 @@ const adapterAbi = [
             }
         ],
         "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "questionID",
-                "type": "bytes32"
-            },
-            {
-                "internalType": "bytes",
-                "name": "newAncillaryData",
-                "type": "bytes"
-            },
-            {
-                "internalType": "uint256",
-                "name": "newResolutionTime",
-                "type": "uint256"
-            },
-            {
-                "internalType": "address",
-                "name": "newRewardToken",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "newReward",
-                "type": "uint256"
-            }
-        ],
-        "name": "updateQuestion",
-        "outputs": [],
-        "stateMutability": "nonpayable",
         "type": "function"
     }
 ];

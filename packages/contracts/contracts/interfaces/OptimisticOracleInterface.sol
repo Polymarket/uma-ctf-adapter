@@ -24,6 +24,22 @@ interface OptimisticOracleInterface {
     ) external virtual returns (uint256 totalBond);
 
     /**
+     * @notice Set the proposal bond associated with a price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param bond custom bond amount to set.
+     * @return totalBond new bond + final fee that the proposer and disputer will be required to pay. This can be
+     * changed again with a subsequent call to setBond().
+     */
+    function setBond(
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        uint256 bond
+    ) external virtual returns (uint256 totalBond);
+
+    /**
      * @notice Retrieves a price that was previously requested by a caller. Reverts if the request is not settled
      * or settleable. Note: this method is not view so that this call may actually settle the price request if it
      * hasn't been settled.

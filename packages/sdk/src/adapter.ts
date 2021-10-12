@@ -1,8 +1,9 @@
 import { Contract } from "@ethersproject/contracts";
 import { JsonRpcSigner, TransactionResponse } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import adapterAbi from "./abi/adapterAbi";
+import { QuestionData } from "./model";
 import { getAdapterAddress } from "./networks";
 import { createAncillaryData } from "./questionUtils";
 
@@ -26,15 +27,16 @@ export class UmaBinaryAdapterClient {
      * @param resolutionTime 
      * @param rewardToken 
      * @param reward 
+     * @param proposalBond
      */
-    public async initializeQuestion(questionID: string, title: string, description: string, resolutionTime: number, rewardToken: string, reward: number, overrides?: ethers.Overrides): Promise<void> {
+    public async initializeQuestion(questionID: string, title: string, description: string, resolutionTime: number, rewardToken: string, reward: BigNumber, proposalBond: BigNumber, overrides?: ethers.Overrides): Promise<void> {
         //generate ancillary data with binary resolution data appended
         const ancillaryData = createAncillaryData(title, description);
         let txn: TransactionResponse;
         if (overrides != undefined) {
-            txn = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward, overrides);
+            txn = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward, proposalBond, overrides);
         } else {
-            txn = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward);
+            txn = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward, proposalBond);
         }
 
         console.log(`Initializing questionID: ${questionID} with: ${txn.hash}`);
@@ -43,24 +45,31 @@ export class UmaBinaryAdapterClient {
     }
 
     /**
-     * Updates an already initialized Question
-     * 
+     * Fetch initialized question data 
      * @param questionID 
-     * @param ancillaryData 
-     * @param resolutionTime 
-     * @param rewardToken 
-     * @param reward 
+     * @returns 
      */
-    public async updateQuestion(questionID: string, ancillaryData: Uint8Array, resolutionTime: number, rewardToken: string, reward: number, overrides?: ethers.Overrides): Promise<void> {
-        let txn: TransactionResponse;
-        if (overrides != undefined) {
-            txn = await this.contract.updateQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward, overrides);
-        } else {
-            txn = await this.contract.updateQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward);
+    public async getQuestionData(questionID: string): Promise<QuestionData> {
+        const data = await this.contract.questions(questionID);
+        const questionData: QuestionData = {
+            ancillaryData: data.ancillaryData,
+            resolutionTime: data.resolutionTime,
+            rewardToken: data.rewardToken,
+            reward: data.reward,
+            proposalBond: data.proposalBond,
+            resolutionDataRequested: data.resolutionDataRequested,
+            resolved: data.resolved
         }
-        console.log(`Updating question! Hash: ${txn.hash}`)
-        await txn.wait();
-        console.log(`Updated question!`)
+        return questionData;
+    }
+
+    /**
+     * Determines whether or not a questionID has been initialized
+     * @param questionID 
+     * @returns boolean
+     */
+    public async isQuestionIDInitialized(questionID: string): Promise<boolean> {
+        return this.contract.isQuestionInitialized(questionID);
     }
 
     /**

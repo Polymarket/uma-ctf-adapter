@@ -1,7 +1,7 @@
 {
     "name": "@polymarket/uma-binary-adapter-sdk",
     "description": "SDK for the UMA Binary Adapter",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "contributors": [
         {
             "name": "Jonathan Amenechi",

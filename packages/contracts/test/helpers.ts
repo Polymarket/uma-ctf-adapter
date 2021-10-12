@@ -26,6 +26,7 @@ export async function initializeQuestion(
     description: string,
     rewardAddress: string,
     reward: BigNumber,
+    proposalBond: BigNumber,
     resolutionTime?: number,
 ): Promise<string> {
     const questionID = createQuestionID(title, description);
@@ -34,7 +35,10 @@ export async function initializeQuestion(
     const resTime = resolutionTime != null ? resolutionTime : defaultResolutionTime;
     const ancillaryData = createAncillaryData(title, description);
 
-    await adapter.initializeQuestion(questionID, ancillaryData, resTime, rewardAddress, reward);
+    await (
+        await adapter.initializeQuestion(questionID, ancillaryData, resTime, rewardAddress, reward, proposalBond)
+    ).wait();
+
     return questionID;
 }
 
