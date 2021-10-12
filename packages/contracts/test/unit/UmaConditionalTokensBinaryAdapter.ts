@@ -146,7 +146,14 @@ describe("", function () {
                     ),
                 )
                     .to.emit(umaBinaryAdapter, "QuestionInitialized")
-                    .withArgs(questionID, ancillaryDataHexlified, resolutionTime, testRewardToken.address, reward, proposalBond);
+                    .withArgs(
+                        questionID,
+                        ancillaryDataHexlified,
+                        resolutionTime,
+                        testRewardToken.address,
+                        reward,
+                        proposalBond,
+                    );
 
                 const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
 
@@ -181,7 +188,7 @@ describe("", function () {
                         resolutionTime,
                         testRewardToken.address,
                         reward,
-                        0
+                        0,
                     ),
                 )
                     .to.emit(umaBinaryAdapter, "QuestionInitialized")
@@ -224,11 +231,18 @@ describe("", function () {
                         resolutionTime,
                         testRewardToken.address,
                         reward,
-                        proposalBond
+                        proposalBond,
                     ),
                 )
                     .to.emit(umaBinaryAdapter, "QuestionInitialized")
-                    .withArgs(questionID, ancillaryDataHexlified, resolutionTime, testRewardToken.address, reward, proposalBond);
+                    .withArgs(
+                        questionID,
+                        ancillaryDataHexlified,
+                        resolutionTime,
+                        testRewardToken.address,
+                        reward,
+                        proposalBond,
+                    );
 
                 const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
 
@@ -355,7 +369,7 @@ describe("", function () {
                 );
 
                 // Request resolution data once
-                await (await (umaBinaryAdapter.requestResolutionData(questionID))).wait();
+                await (await umaBinaryAdapter.requestResolutionData(questionID)).wait();
 
                 // Re-request resolution data
                 await expect(umaBinaryAdapter.requestResolutionData(questionID)).to.be.revertedWith(
@@ -421,7 +435,7 @@ describe("", function () {
                     DESC,
                     testRewardToken.address,
                     ethers.constants.Zero,
-                    bond
+                    bond,
                 );
 
                 // fast forward hardhat block time

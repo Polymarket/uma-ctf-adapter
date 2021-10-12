@@ -36,14 +36,8 @@ export async function initializeQuestion(
     const ancillaryData = createAncillaryData(title, description);
 
     await (
-        await adapter.initializeQuestion(
-            questionID,
-            ancillaryData,
-            resTime,
-            rewardAddress,
-            reward,
-            proposalBond
-        )).wait();
+        await adapter.initializeQuestion(questionID, ancillaryData, resTime, rewardAddress, reward, proposalBond)
+    ).wait();
 
     return questionID;
 }
