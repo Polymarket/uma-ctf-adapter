@@ -265,7 +265,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         emit QuestionResolved(questionID, true);
     }
 
-    function isQuestionInitialized(bytes32 questionID) internal view returns (bool) {
+    function isQuestionInitialized(bytes32 questionID) public view returns (bool) {
         return questions[questionID].resolutionTime != 0;
     }
 
