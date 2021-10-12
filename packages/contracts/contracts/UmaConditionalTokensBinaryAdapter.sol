@@ -93,16 +93,12 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         uint256 proposalBond
     ) public {
         require(!isQuestionInitialized(questionID), "Adapter::initializeQuestion: Question already initialized");
-        uint256 bond = 0;
-        if (proposalBond > 0) {
-            bond = proposalBond;
-        }
         questions[questionID] = QuestionData({
             ancillaryData: ancillaryData,
             resolutionTime: resolutionTime,
             rewardToken: rewardToken,
             reward: reward,
-            proposalBond: bond,
+            proposalBond: proposalBond,
             resolutionDataRequested: false,
             resolved: false
         });
