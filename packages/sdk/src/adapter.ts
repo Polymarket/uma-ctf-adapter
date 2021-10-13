@@ -124,6 +124,41 @@ export class UmaBinaryAdapterClient {
     }
 
     /**
+     * Pauses a question and prevents its resolution in an emergency
+     * @param questionID 
+     * @param overrides 
+     */
+    public async pauseQuestion(questionID: string, overrides?: ethers.Overrides): Promise<void> {
+        console.log(`Pausing questionID: ${questionID}...`);
+        let txn: TransactionResponse;
+        if (overrides != undefined) {
+            txn = await this.contract.pauseQuestion(questionID, overrides);
+        } else {
+            txn = await this.contract.pauseQuestion(questionID);
+        }
+        await txn.wait()
+        console.log(`Question paused!`);
+    }
+
+
+    /**
+     * Unpauses a question and allows it to be resolved
+     * @param questionID 
+     * @param overrides 
+     */
+    public async unpauseQuestion(questionID: string, overrides?: ethers.Overrides): Promise<void> {
+        console.log(`Unpausing questionID: ${questionID}...`);
+        let txn: TransactionResponse;
+        if (overrides != undefined) {
+            txn = await this.contract.unpauseQuestion(questionID, overrides);
+        } else {
+            txn = await this.contract.unpauseQuestion(questionID);
+        }
+        await txn.wait()
+        console.log(`Question unpaused!`);
+    }
+
+    /**
      * Emergency report payouts
      * @param questionID 
      * @param payouts 

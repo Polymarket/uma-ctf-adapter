@@ -38,8 +38,10 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         uint256 proposalBond;
         // @notice Flag marking whether resolution data has been requested from the Oracle
         bool resolutionDataRequested;
-        // @notice Flag marking whether a condition is resolved
+        // @notice Flag marking whether a question is resolved
         bool resolved;
+        // @notice Flag marking whether a question is paused
+        bool paused;
     }
 
     mapping(bytes32 => QuestionData) public questions;
@@ -53,6 +55,12 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         uint256 reward,
         uint256 proposalBond
     );
+
+    // @notice Emitted when a question is paused by the Admin
+    event QuestionPaused(bytes32 questionID);
+
+    // @notice Emitted when a question is unpaused by the Admin
+    event QuestionUnpaused(bytes32 questionID);
 
     // @notice Emitted when resolution data is requested from the Optimistic Oracle
     event ResolutionDataRequested(
@@ -100,7 +108,8 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
             reward: reward,
             proposalBond: proposalBond,
             resolutionDataRequested: false,
-            resolved: false
+            resolved: false,
+            paused: false
         });
 
         // Approve the OO to transfer the reward token
@@ -138,6 +147,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
             "Adapter::requestResolutionData: Question not ready to be resolved"
         );
         QuestionData storage questionData = questions[questionID];
+        require(!questionData.paused, "Adapter::requestResolutionData: Question is paused");
 
         OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
 
@@ -206,6 +216,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
     function reportPayouts(bytes32 questionID) public {
         require(readyToReportPayouts(questionID), "Adapter::reportPayouts: questionID not ready to report payouts");
         QuestionData storage questionData = questions[questionID];
+        require(!questionData.paused, "Adapter::reportPayouts: Question is paused");
 
         OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
         // fetches resolution data from OO
@@ -259,6 +270,32 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         questionData.resolved = true;
         conditionalTokenContract.reportPayouts(questionID, payouts);
         emit QuestionResolved(questionID, true);
+    }
+
+    /**
+     * @notice Allows an admin to pause market resolution in an emergency
+     * @param questionID - The unique questionID of the condition
+     */
+    function pauseQuestion(bytes32 questionID) external {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Adapter::pauseQuestion: caller does not have admin role");
+        require(isQuestionInitialized(questionID), "Adapter::pauseQuestion: questionID is not initialized");
+        QuestionData storage questionData = questions[questionID];
+
+        questionData.paused = true;
+        emit QuestionPaused(questionID);
+    }
+
+    /**
+     * @notice Allows an admin to unpause market resolution in an emergency
+     * @param questionID - The unique questionID of the condition
+     */
+    function unPauseQuestion(bytes32 questionID) external {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Adapter::unPauseQuestion: caller does not have admin role");
+        require(isQuestionInitialized(questionID), "Adapter::unPauseQuestion: questionID is not initialized");
+        QuestionData storage questionData = questions[questionID];
+
+        questionData.paused = false;
+        emit QuestionUnpaused(questionID);
     }
 
     function isQuestionInitialized(bytes32 questionID) public view returns (bool) {

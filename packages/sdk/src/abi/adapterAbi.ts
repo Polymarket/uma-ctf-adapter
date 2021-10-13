@@ -62,6 +62,19 @@ const adapterAbi = [
         "anonymous": false,
         "inputs": [
             {
+                "indexed": false,
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
+        "name": "QuestionPaused",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
                 "indexed": true,
                 "internalType": "bytes32",
                 "name": "questionId",
@@ -75,6 +88,19 @@ const adapterAbi = [
             }
         ],
         "name": "QuestionResolved",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
+        "name": "QuestionUnpaused",
         "type": "event"
     },
     {
@@ -417,6 +443,38 @@ const adapterAbi = [
         "inputs": [
             {
                 "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
+        "name": "isQuestionInitialized",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
+        "name": "pauseQuestion",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
                 "name": "",
                 "type": "bytes32"
             }
@@ -456,6 +514,11 @@ const adapterAbi = [
             {
                 "internalType": "bool",
                 "name": "resolved",
+                "type": "bool"
+            },
+            {
+                "internalType": "bool",
+                "name": "paused",
                 "type": "bool"
             }
         ],
@@ -573,6 +636,19 @@ const adapterAbi = [
             }
         ],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
+        "name": "unPauseQuestion",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
     }
 ];
