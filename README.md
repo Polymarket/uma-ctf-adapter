@@ -18,8 +18,6 @@ Compile the contracts with `yarn compile`
 
 ### SDK
 
-[Adapter SDK README](./packages/sdk/README.md)
-
 ```ts
 import { UmaBinaryAdapterClient } from "@polymarket/uma-binary-adapter-sdk";
 const signer = new Wallet("0x" + process.env.KEY);
