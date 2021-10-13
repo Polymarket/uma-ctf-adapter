@@ -88,10 +88,11 @@ export interface Request {
 }
 
 export function getMockRequest(): Request {
+    const randAddress = ethers.Wallet.createRandom().address;
     return {
-        proposer: ethers.Wallet.createRandom().address,
-        disputer: ethers.Wallet.createRandom().address,
-        currency: ethers.Wallet.createRandom().address,
+        proposer: randAddress,
+        disputer: randAddress,
+        currency: randAddress,
         settled: false,
         refundOnDispute: false,
         proposedPrice: 1,
