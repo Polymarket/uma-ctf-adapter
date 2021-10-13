@@ -29,9 +29,14 @@ export class UmaBinaryAdapterClient {
      * @param reward 
      * @param proposalBond
      */
-    public async initializeQuestion(questionID: string, title: string, description: string, resolutionTime: number, rewardToken: string, reward: BigNumber, proposalBond: BigNumber, overrides?: ethers.Overrides): Promise<void> {
-        //generate ancillary data with binary resolution data appended
-        const ancillaryData = createAncillaryData(title, description);
+    public async initializeQuestion(questionID: string, title: string, description: string, outcomes: string[], resolutionTime: number, rewardToken: string, reward: BigNumber, proposalBond: BigNumber, overrides?: ethers.Overrides): Promise<void> {
+
+        if (outcomes.length != 2) {
+            throw new Error("Invalid outcome length! Must be 2!");
+        }
+        //dynamically generate ancillary data with binary resolution data appended
+        const ancillaryData = createAncillaryData(title, description, outcomes);
+
         let txn: TransactionResponse;
         if (overrides != undefined) {
             txn = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward, proposalBond, overrides);
@@ -130,9 +135,9 @@ export class UmaBinaryAdapterClient {
      * @param questionID 
      * @returns 
      */
-    public async getExpectedPayout(questionID: string): Promise<number[]> {
+    public async getExpectedPayouts(questionID: string): Promise<number[]> {
         console.log(`Fetching expected payout for: ${questionID}...`)
-        const payout: number[] = await this.contract.getExpectedPayout(questionID);
+        const payout: number[] = await this.contract.getExpectedPayouts(questionID);
         return payout;
     }
 

@@ -27,7 +27,8 @@ const adapter = new UmaBinaryAdapterClient(signer, 137);
 await adapter.initializeQuestion(
     questionID, 
     title, 
-    description, 
+    description,
+    outcomes, 
     resolutionTime, 
     rewardToken, 
     reward, 
