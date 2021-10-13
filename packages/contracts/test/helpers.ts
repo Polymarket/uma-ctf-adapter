@@ -102,9 +102,7 @@ export function getMockRequest(): Request {
         finalFee: 1,
         bond: 1,
         customLiveness: 1
-
     }
-
 }
 
 export async function takeSnapshot(): Promise<string> {
