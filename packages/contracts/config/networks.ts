@@ -1,4 +1,4 @@
-import { infuraApiKey, maticVigilApiKey } from "./env";
+import { infuraApiKey } from "./env";
 
 export enum ChainId {
     ganache = 1337,
@@ -32,13 +32,13 @@ const getInfuraConfig = (network: InfuraChain): { url: string; chainId: number }
 const maticVigilChains = ["matic", "mumbai"] as const;
 type MaticVigilChain = typeof maticVigilChains[number];
 const getMaticVigilConfig = (network: MaticVigilChain): { url: string; chainId: number } => {
-    if (!maticVigilApiKey) {
-        throw new Error("Please set your MATICVIGIL_API_KEY in a .env file");
+    if (!process.env.INFURA_API_KEY) {
+        throw new Error("Please set your INFURA_API_KEY in a .env file");
     }
 
     const networkString = network === "matic" ? "mainnet" : "mumbai";
     return {
-        url: `https://rpc-${networkString}.maticvigil.com/v1/${maticVigilApiKey}`,
+        url: `https://polygon-${networkString}.infura.io/v3/${infuraApiKey}`,
         chainId: ChainId[network],
     };
 };

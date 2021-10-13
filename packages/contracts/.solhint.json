@@ -10,7 +10,7 @@
         ],
         "compiler-version": [
             "error",
-            "0.7.5"
+            "0.8.0"
         ],
         "const-name-snakecase": "off",
         "constructor-syntax": "error",

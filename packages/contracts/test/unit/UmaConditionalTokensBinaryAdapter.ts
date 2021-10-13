@@ -5,7 +5,7 @@ import { Contract } from "@ethersproject/contracts";
 import { expect } from "chai";
 import { MockContract } from "@ethereum-waffle/mock-contract";
 import { BigNumber } from "ethers";
-import { MockConditionalTokens, TestERC20, UmaConditionalTokensBinaryAdapter } from "../../typechain";
+import { Griefer, MockConditionalTokens, TestERC20, UmaConditionalTokensBinaryAdapter } from "../../typechain";
 import {
     createQuestionID,
     deploy,
@@ -16,6 +16,7 @@ import {
     initializeQuestion,
     takeSnapshot,
     revertToSnapshot,
+    getMockRequest,
 } from "../helpers";
 import { DESC, QUESTION_TITLE, thirtyDays } from "./constants";
 
@@ -124,6 +125,7 @@ describe("", function () {
                     .withArgs(conditionID, oracle, questionID, outcomeSlotCount);
             });
 
+            // Question initialization tests
             it("correctly initializes a question", async function () {
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
@@ -164,6 +166,7 @@ describe("", function () {
                 expect(returnedQuestionData.reward).eq(reward);
                 // ensure paused defaults to false
                 expect(returnedQuestionData.paused).eq(false);
+                expect(returnedQuestionData.settled).eq(0);
 
                 // Verify rewardToken allowance where adapter is owner and OO is spender
                 const rewardTokenAllowance: BigNumber = await testRewardToken.allowance(
@@ -293,6 +296,7 @@ describe("", function () {
                 ).to.be.revertedWith("Adapter::initializeQuestion: Question already initialized");
             });
 
+            // RequestResolution tests
             it("should correctly call readyToRequestResolution", async function () {
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
@@ -380,9 +384,10 @@ describe("", function () {
                 );
             });
 
-            it("should correctly call readyToReportPayouts if resolutionData is available from the OO", async function () {
+            // Settle tests
+            it("should correctly call readyToSettle if resolutionData is available from the OO", async function () {
                 // Non existent questionID
-                expect(await umaBinaryAdapter.readyToReportPayouts(HashZero)).eq(false);
+                expect(await umaBinaryAdapter.readyToSettle(HashZero)).eq(false);
 
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
@@ -400,9 +405,90 @@ describe("", function () {
                 await umaBinaryAdapter.requestResolutionData(questionID);
                 await optimisticOracle.mock.hasPrice.returns(true);
 
-                expect(await umaBinaryAdapter.readyToReportPayouts(questionID)).eq(true);
+                expect(await umaBinaryAdapter.readyToSettle(questionID)).eq(true);
             });
 
+            it("should correctly settle a question if it's readyToSettle", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero,
+                );
+
+                // Boilerplate/mocks to ensure readyToSettle
+                await hardhatIncreaseTime(3600);
+                await umaBinaryAdapter.requestResolutionData(questionID);
+                await optimisticOracle.mock.hasPrice.returns(true);
+                await optimisticOracle.mock.settle.returns(1);
+
+                // Verify QuestionSettled emitted
+                expect(await umaBinaryAdapter.connect(this.signers.tester).settle(questionID))
+                    .to.emit(umaBinaryAdapter, "QuestionSettled")
+                    .withArgs(questionID);
+
+                // Verify settle block number != 0
+                const questionData = await umaBinaryAdapter.questions(questionID);
+                expect(questionData.settled).to.not.eq(0);
+            });
+
+            it("should revert if not readyToSettle", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+
+                // Settle reverts if:
+                // 1. QuestionID is not initialized
+                const uninitQuestionID = HashZero;
+                await expect(umaBinaryAdapter.connect(this.signers.admin).settle(uninitQuestionID)).to.be.revertedWith(
+                    "Adapter::settle: questionID is not ready to be settled",
+                );
+
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero,
+                );
+
+                // 2. if resolutionData is not requested
+                await expect(umaBinaryAdapter.connect(this.signers.admin).settle(questionID)).to.be.revertedWith(
+                    "Adapter::settle: questionID is not ready to be settled",
+                );
+
+                await hardhatIncreaseTime(3600);
+                await umaBinaryAdapter.requestResolutionData(questionID);
+
+                await optimisticOracle.mock.settle.returns(1);
+                await optimisticOracle.mock.hasPrice.returns(false);
+
+                // 3. If OO doesn't have the price available
+                await expect(umaBinaryAdapter.connect(this.signers.admin).settle(questionID)).to.be.revertedWith(
+                    "Adapter::settle: questionID is not ready to be settled",
+                );
+
+                await optimisticOracle.mock.hasPrice.returns(true);
+
+                // 4. If question is paused
+                await (await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID)).wait();
+                await expect(umaBinaryAdapter.connect(this.signers.admin).settle(questionID)).to.be.revertedWith(
+                    "Adapter::settle: Question is paused",
+                );
+                await (await umaBinaryAdapter.connect(this.signers.admin).unPauseQuestion(questionID)).wait();
+
+                // 5. If question is already settled
+                await (await umaBinaryAdapter.connect(this.signers.admin).settle(questionID)).wait();
+                await expect(umaBinaryAdapter.connect(this.signers.admin).settle(questionID)).to.be.revertedWith(
+                    "Adapter::settle: questionID is not ready to be settled",
+                );
+            });
+
+            // Pause tests
             it("should correctly pause resolution", async function () {
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
@@ -472,9 +558,55 @@ describe("", function () {
                 ).to.be.revertedWith("Adapter::pauseQuestion: caller does not have admin role");
             });
 
+            it("unpause should revert when signer is not admin", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero,
+                );
+
+                await expect(
+                    umaBinaryAdapter.connect(this.signers.tester).unPauseQuestion(questionID),
+                ).to.be.revertedWith("Adapter::unPauseQuestion: caller does not have admin role");
+            });
+
             it("pause should revert if question is not initialized", async function () {
                 await expect(umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(HashZero)).to.be.revertedWith(
                     "Adapter::pauseQuestion: questionID is not initialized",
+                );
+            });
+
+            it("should disallow atomic settling and resolution", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero,
+                    Math.floor(Date.now() / 1000) - 60 * 60 * 24,
+                );
+                await optimisticOracle.mock.hasPrice.returns(true);
+                await optimisticOracle.mock.settle.returns(1);
+
+                const request = getMockRequest();
+                await optimisticOracle.mock.getRequest.returns(request);
+                await umaBinaryAdapter.requestResolutionData(questionID);
+
+                const griefer: Griefer = await deploy<Griefer>("Griefer", {
+                    args: [umaBinaryAdapter.address],
+                    connect: this.signers.admin,
+                });
+
+                await expect(griefer.settleAndReport(questionID)).to.be.revertedWith(
+                    "Adapter::reportPayouts: Attempting to settle and reportPayouts in the same block",
                 );
             });
         });
@@ -523,7 +655,13 @@ describe("", function () {
                 await optimisticOracle.mock.setBond.returns(bond);
 
                 // request resolution data
-                await umaBinaryAdapter.requestResolutionData(questionID);
+                await (await umaBinaryAdapter.requestResolutionData(questionID)).wait();
+
+                // settle
+                await optimisticOracle.mock.settle.returns(1);
+                const request = getMockRequest();
+                await optimisticOracle.mock.getRequest.returns(request);
+                await (await umaBinaryAdapter.settle(questionID)).wait();
             });
 
             afterEach(async function () {
@@ -534,18 +672,12 @@ describe("", function () {
             it("reportPayouts emits ConditionResolved if resolution data exists", async function () {
                 const conditionID = await conditionalTokens.getConditionId(umaBinaryAdapter.address, questionID, 2);
 
-                // Mock Optimistic Oracle returns YES
-                await optimisticOracle.mock.settleAndGetPrice.returns(1);
-
                 expect(await umaBinaryAdapter.reportPayouts(questionID))
                     .to.emit(conditionalTokens, "ConditionResolution")
                     .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [1, 0]);
             });
 
             it("reportPayouts emits QuestionResolved if resolution data exists", async function () {
-                // Mock Optimistic Oracle returns YES
-                await optimisticOracle.mock.settleAndGetPrice.returns(1);
-
                 expect(await umaBinaryAdapter.reportPayouts(questionID))
                     .to.emit(umaBinaryAdapter, "QuestionResolved")
                     .withArgs(questionID, false);
@@ -558,7 +690,9 @@ describe("", function () {
 
             it("reportPayouts reverts if OO returns malformed data", async function () {
                 // Mock Optimistic Oracle returns invalid data
-                await optimisticOracle.mock.settleAndGetPrice.returns(2123);
+                const request = getMockRequest();
+                request.resolvedPrice = 213223;
+                await optimisticOracle.mock.getRequest.returns(request);
 
                 await expect(umaBinaryAdapter.reportPayouts(questionID)).to.be.revertedWith(
                     "Adapter::reportPayouts: Invalid resolution data",
@@ -569,7 +703,7 @@ describe("", function () {
                 await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID);
 
                 await expect(umaBinaryAdapter.reportPayouts(questionID)).to.be.revertedWith(
-                    "Adapter::reportPayouts: Question is paused",
+                    "Adapter::getExpectedPayouts: Question is paused",
                 );
             });
 
