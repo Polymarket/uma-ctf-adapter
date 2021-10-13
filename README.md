@@ -26,7 +26,16 @@ const signer = new Wallet("0x" + process.env.KEY);
 const adapter = new UmaBinaryAdapterClient(signer, 137);
 
 // Initialize question
-await adapter.initializeQuestion(questionID, title, description, resolutionTime, rewardToken, reward, proposalBond, { gasPrice: ethers.utils.parseUnits("100", 9) });
+await adapter.initializeQuestion(
+    questionID, 
+    title, 
+    description, 
+    resolutionTime, 
+    rewardToken, 
+    reward, 
+    proposalBond, 
+    { gasPrice: ethers.utils.parseUnits("100", 9) }
+);
 
 // Request resolution data
 await adapter.requestResolutionData(questionID);
