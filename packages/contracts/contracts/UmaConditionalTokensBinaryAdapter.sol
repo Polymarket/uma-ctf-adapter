@@ -199,10 +199,16 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
             return false;
         }
         QuestionData storage questionData = questions[questionID];
+        // Ensure resolution data has been requested for question
         if (questionData.resolutionDataRequested == false) {
             return false;
         }
+        // Ensure question hasn't been resolved
         if (questionData.resolved == true) {
+            return false;
+        }
+        // Ensure question hasn't been settled
+        if (questionData.settled != 0) {
             return false;
         }
         OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
@@ -235,7 +241,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
      * @notice Can be called by anyone to retrieve the expected payout of a settled question
      * @param questionID - The unique questionID of the question
      */
-    function getExpectedPayouts(bytes32 questionID) public view returns (uint256[] memory payouts) {
+    function getExpectedPayouts(bytes32 questionID) public view returns (uint256[] memory) {
         require(isQuestionInitialized(questionID), "Adapter::getExpectedPayouts: questionID is not initialized");
         QuestionData storage questionData = questions[questionID];
 
@@ -256,6 +262,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
 
         // Payouts: [YES, NO]
         uint256[] memory payouts = new uint256[](2);
+
         require(resolutionData == 0 || resolutionData == 1, "Adapter::reportPayouts: Invalid resolution data");
 
         if (resolutionData == 0) {
