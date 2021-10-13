@@ -425,12 +425,12 @@ describe("", function () {
                 await optimisticOracle.mock.hasPrice.returns(true);
                 await optimisticOracle.mock.settle.returns(1);
 
-                //Verify QuestionSettled emitted
+                // Verify QuestionSettled emitted
                 expect(await umaBinaryAdapter.connect(this.signers.tester).settle(questionID))
                     .to.emit(umaBinaryAdapter, "QuestionSettled")
                     .withArgs(questionID);
 
-                //Verify settle block number != 0
+                // Verify settle block number != 0
                 const questionData = await umaBinaryAdapter.questions(questionID);
                 expect(questionData.settled).to.not.eq(0);
             });
@@ -439,12 +439,12 @@ describe("", function () {
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
 
-                //Settle reverts if: 
-                //1. QuestionID is not initialized
+                // Settle reverts if:
+                // 1. QuestionID is not initialized
                 const uninitQuestionID = HashZero;
-                await expect(
-                    umaBinaryAdapter.connect(this.signers.admin).settle(uninitQuestionID),
-                ).to.be.revertedWith("Adapter::settle: questionID is not ready to be settled");
+                await expect(umaBinaryAdapter.connect(this.signers.admin).settle(uninitQuestionID)).to.be.revertedWith(
+                    "Adapter::settle: questionID is not ready to be settled",
+                );
 
                 const questionID = await initializeQuestion(
                     umaBinaryAdapter,
@@ -456,9 +456,9 @@ describe("", function () {
                 );
 
                 // 2. if resolutionData is not requested
-                await expect(
-                    umaBinaryAdapter.connect(this.signers.admin).settle(questionID),
-                ).to.be.revertedWith("Adapter::settle: questionID is not ready to be settled");
+                await expect(umaBinaryAdapter.connect(this.signers.admin).settle(questionID)).to.be.revertedWith(
+                    "Adapter::settle: questionID is not ready to be settled",
+                );
 
                 await hardhatIncreaseTime(3600);
                 await umaBinaryAdapter.requestResolutionData(questionID);
@@ -467,24 +467,24 @@ describe("", function () {
                 await optimisticOracle.mock.hasPrice.returns(false);
 
                 // 3. If OO doesn't have the price available
-                await expect(
-                    umaBinaryAdapter.connect(this.signers.admin).settle(questionID),
-                ).to.be.revertedWith("Adapter::settle: questionID is not ready to be settled");
+                await expect(umaBinaryAdapter.connect(this.signers.admin).settle(questionID)).to.be.revertedWith(
+                    "Adapter::settle: questionID is not ready to be settled",
+                );
 
                 await optimisticOracle.mock.hasPrice.returns(true);
 
-                //4. If question is paused
+                // 4. If question is paused
                 await (await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID)).wait();
-                await expect(
-                    umaBinaryAdapter.connect(this.signers.admin).settle(questionID),
-                ).to.be.revertedWith("Adapter::settle: Question is paused");
+                await expect(umaBinaryAdapter.connect(this.signers.admin).settle(questionID)).to.be.revertedWith(
+                    "Adapter::settle: Question is paused",
+                );
                 await (await umaBinaryAdapter.connect(this.signers.admin).unPauseQuestion(questionID)).wait();
 
-                //5. If question is already settled
+                // 5. If question is already settled
                 await (await umaBinaryAdapter.connect(this.signers.admin).settle(questionID)).wait();
-                await expect(
-                    umaBinaryAdapter.connect(this.signers.admin).settle(questionID),
-                ).to.be.revertedWith("Adapter::settle: questionID is not ready to be settled");
+                await expect(umaBinaryAdapter.connect(this.signers.admin).settle(questionID)).to.be.revertedWith(
+                    "Adapter::settle: questionID is not ready to be settled",
+                );
             });
 
             // Pause tests
