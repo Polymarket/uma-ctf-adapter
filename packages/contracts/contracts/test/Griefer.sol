@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.0;
 
-import { UmaConditionalTokensBinaryAdapter } from "../UmaConditionalTokensBinaryAdapter.sol";
+interface AdapterInterface {
+    function settle(bytes32 questionID) external;
+
+    function reportPayouts(bytes32 questionID) external;
+}
 
 // Test contract to atomically settle and resolve a market
 contract Griefer {
-    UmaConditionalTokensBinaryAdapter public immutable target;
+    AdapterInterface public immutable target;
 
     constructor(address adapterAddress) {
-        target = UmaConditionalTokensBinaryAdapter(adapterAddress);
+        target = AdapterInterface(adapterAddress);
     }
 
     function settleAndReport(bytes32 questionID) external {
