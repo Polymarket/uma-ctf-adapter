@@ -72,6 +72,40 @@ export async function deployMock(contractName: string, connect?: Signer): Promis
     return waffle.deployMockContract(connect ?? deployer, artifact.abi);
 }
 
+export interface Request {
+    proposer: string;
+    disputer: string
+    currency: string;
+    settled: boolean;
+    refundOnDispute: boolean;
+    proposedPrice: number;
+    resolvedPrice: number;
+    expirationTime: number;
+    reward: number;
+    finalFee: number;
+    bond: number;
+    customLiveness: number;
+}
+
+export function getMockRequest(): Request {
+    return {
+        proposer: ethers.Wallet.createRandom().address,
+        disputer: ethers.Wallet.createRandom().address,
+        currency: ethers.Wallet.createRandom().address,
+        settled: false,
+        refundOnDispute: false,
+        proposedPrice: 1,
+        resolvedPrice: 1,
+        expirationTime: 1,
+        reward: 0,
+        finalFee: 1,
+        bond: 1,
+        customLiveness: 1
+
+    }
+
+}
+
 export async function takeSnapshot(): Promise<string> {
     return ethers.provider.send("evm_snapshot", []);
 }

@@ -16,6 +16,7 @@ import {
     initializeQuestion,
     takeSnapshot,
     revertToSnapshot,
+    getMockRequest,
 } from "../helpers";
 import { DESC, QUESTION_TITLE, thirtyDays } from "./constants";
 
@@ -625,7 +626,13 @@ describe("", function () {
                 await optimisticOracle.mock.setBond.returns(bond);
 
                 // request resolution data
-                await umaBinaryAdapter.requestResolutionData(questionID);
+                await (await umaBinaryAdapter.requestResolutionData(questionID)).wait();
+
+                // settle
+                await optimisticOracle.mock.settle.returns(1);
+                const request = getMockRequest();
+                await optimisticOracle.mock.getRequest.returns(request);
+                await (await umaBinaryAdapter.settle(questionID)).wait();
             });
 
             afterEach(async function () {
@@ -636,18 +643,12 @@ describe("", function () {
             it("reportPayouts emits ConditionResolved if resolution data exists", async function () {
                 const conditionID = await conditionalTokens.getConditionId(umaBinaryAdapter.address, questionID, 2);
 
-                // Mock Optimistic Oracle returns YES
-                await optimisticOracle.mock.settleAndGetPrice.returns(1);
-
                 expect(await umaBinaryAdapter.reportPayouts(questionID))
                     .to.emit(conditionalTokens, "ConditionResolution")
                     .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [1, 0]);
             });
 
             it("reportPayouts emits QuestionResolved if resolution data exists", async function () {
-                // Mock Optimistic Oracle returns YES
-                await optimisticOracle.mock.settleAndGetPrice.returns(1);
-
                 expect(await umaBinaryAdapter.reportPayouts(questionID))
                     .to.emit(umaBinaryAdapter, "QuestionResolved")
                     .withArgs(questionID, false);
@@ -660,7 +661,9 @@ describe("", function () {
 
             it("reportPayouts reverts if OO returns malformed data", async function () {
                 // Mock Optimistic Oracle returns invalid data
-                await optimisticOracle.mock.settleAndGetPrice.returns(2123);
+                const request = getMockRequest();
+                request.resolvedPrice = 213223;
+                await optimisticOracle.mock.getRequest.returns(request);
 
                 await expect(umaBinaryAdapter.reportPayouts(questionID)).to.be.revertedWith(
                     "Adapter::reportPayouts: Invalid resolution data",
@@ -671,7 +674,7 @@ describe("", function () {
                 await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID);
 
                 await expect(umaBinaryAdapter.reportPayouts(questionID)).to.be.revertedWith(
-                    "Adapter::reportPayouts: Question is paused",
+                    "Adapter::getExpectedPayouts: Question is paused",
                 );
             });
 
