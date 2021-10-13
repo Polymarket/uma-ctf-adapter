@@ -413,26 +413,23 @@ describe("", function () {
                     testRewardToken.address,
                     ethers.constants.Zero,
                     ethers.constants.Zero,
-                    // set resolutionTime in the past so readyToRequestResolution returns true 
-                    Math.floor(Date.now() / 1000) - (60 * 60 * 24)
+                    // set resolutionTime in the past so readyToRequestResolution returns true
+                    Math.floor(Date.now() / 1000) - 60 * 60 * 24,
                 );
 
-                expect(await umaBinaryAdapter
-                    .connect(this.signers.admin)
-                    .pauseQuestion(questionID))
+                expect(await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID))
                     .to.emit(umaBinaryAdapter, "QuestionPaused")
                     .withArgs(questionID);
 
                 const questionData = await umaBinaryAdapter.questions(questionID);
 
-                //Verify paused
+                // Verify paused
                 expect(questionData.paused).to.eq(true);
 
                 // Verify requestResolutionData reverts if paused
-                await expect(umaBinaryAdapter
-                    .connect(this.signers.admin)
-                    .requestResolutionData(questionID))
-                    .to.be.revertedWith("Adapter::requestResolutionData: Question is paused");
+                await expect(
+                    umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID),
+                ).to.be.revertedWith("Adapter::requestResolutionData: Question is paused");
             });
 
             it("should correctly unpause resolution", async function () {
@@ -445,18 +442,16 @@ describe("", function () {
                     testRewardToken.address,
                     ethers.constants.Zero,
                     ethers.constants.Zero,
-                    Math.floor(Date.now() / 1000) - (60 * 60 * 24),
+                    Math.floor(Date.now() / 1000) - 60 * 60 * 24,
                 );
 
-                expect(await umaBinaryAdapter
-                    .connect(this.signers.admin)
-                    .unPauseQuestion(questionID))
+                expect(await umaBinaryAdapter.connect(this.signers.admin).unPauseQuestion(questionID))
                     .to.emit(umaBinaryAdapter, "QuestionUnpaused")
                     .withArgs(questionID);
 
                 const questionData = await umaBinaryAdapter.questions(questionID);
 
-                //Verify unpaused
+                // Verify unpaused
                 expect(questionData.paused).to.eq(false);
             });
 
@@ -472,19 +467,16 @@ describe("", function () {
                     ethers.constants.Zero,
                 );
 
-                await expect(umaBinaryAdapter
-                    .connect(this.signers.tester)
-                    .pauseQuestion(questionID))
-                    .to.be.revertedWith("Adapter::pauseQuestion: caller does not have admin role");
+                await expect(
+                    umaBinaryAdapter.connect(this.signers.tester).pauseQuestion(questionID),
+                ).to.be.revertedWith("Adapter::pauseQuestion: caller does not have admin role");
             });
 
             it("pause should revert if question is not initialized", async function () {
-                await expect(umaBinaryAdapter
-                    .connect(this.signers.admin)
-                    .pauseQuestion(HashZero))
-                    .to.be.revertedWith("Adapter::pauseQuestion: questionID is not initialized");
+                await expect(umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(HashZero)).to.be.revertedWith(
+                    "Adapter::pauseQuestion: questionID is not initialized",
+                );
             });
-
         });
 
         describe("Condition Resolution scenarios", function () {
