@@ -1,4 +1,4 @@
-import { infuraApiKey, maticVigilApiKey } from "./env";
+import { infuraApiKey } from "./env";
 
 export enum ChainId {
     ganache = 1337,
