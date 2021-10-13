@@ -162,6 +162,8 @@ describe("", function () {
                 expect(returnedQuestionData.resolutionTime).eq(resolutionTime);
                 expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
                 expect(returnedQuestionData.reward).eq(reward);
+                // ensure paused defaults to false
+                expect(returnedQuestionData.paused).eq(false);
 
                 // Verify rewardToken allowance where adapter is owner and OO is spender
                 const rewardTokenAllowance: BigNumber = await testRewardToken.allowance(
@@ -400,6 +402,89 @@ describe("", function () {
 
                 expect(await umaBinaryAdapter.readyToReportPayouts(questionID)).eq(true);
             });
+
+            it("should correctly pause resolution", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero,
+                    // set resolutionTime in the past so readyToRequestResolution returns true 
+                    Math.floor(Date.now() / 1000) - (60 * 60 * 24)
+                );
+
+                expect(await umaBinaryAdapter
+                    .connect(this.signers.admin)
+                    .pauseQuestion(questionID))
+                    .to.emit(umaBinaryAdapter, "QuestionPaused")
+                    .withArgs(questionID);
+
+                const questionData = await umaBinaryAdapter.questions(questionID);
+
+                //Verify paused
+                expect(questionData.paused).to.eq(true);
+
+                // Verify requestResolutionData reverts if paused
+                await expect(umaBinaryAdapter
+                    .connect(this.signers.admin)
+                    .requestResolutionData(questionID))
+                    .to.be.revertedWith("Adapter::requestResolutionData: Question is paused");
+            });
+
+            it("should correctly unpause resolution", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero,
+                    Math.floor(Date.now() / 1000) - (60 * 60 * 24),
+                );
+
+                expect(await umaBinaryAdapter
+                    .connect(this.signers.admin)
+                    .unPauseQuestion(questionID))
+                    .to.emit(umaBinaryAdapter, "QuestionUnpaused")
+                    .withArgs(questionID);
+
+                const questionData = await umaBinaryAdapter.questions(questionID);
+
+                //Verify unpaused
+                expect(questionData.paused).to.eq(false);
+            });
+
+            it("pause should revert when signer is not admin", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero,
+                );
+
+                await expect(umaBinaryAdapter
+                    .connect(this.signers.tester)
+                    .pauseQuestion(questionID))
+                    .to.be.revertedWith("Adapter::pauseQuestion: caller does not have admin role");
+            });
+
+            it("pause should revert if question is not initialized", async function () {
+                await expect(umaBinaryAdapter
+                    .connect(this.signers.admin)
+                    .pauseQuestion(HashZero))
+                    .to.be.revertedWith("Adapter::pauseQuestion: questionID is not initialized");
+            });
+
         });
 
         describe("Condition Resolution scenarios", function () {
@@ -488,7 +573,33 @@ describe("", function () {
                 );
             });
 
-            it("should allow emergency reporting by the owner", async function () {
+            it("reportPayouts reverts if question is paused", async function () {
+                await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID);
+
+                await expect(umaBinaryAdapter.reportPayouts(questionID)).to.be.revertedWith(
+                    "Adapter::reportPayouts: Question is paused",
+                );
+            });
+
+            it("should allow emergency reporting by the admin", async function () {
+                // fast forward the chain to after the emergencySafetyPeriod
+                await hardhatIncreaseTime(thirtyDays + 1000);
+
+                // YES conditional payout
+                const payouts = [1, 0];
+                expect(await umaBinaryAdapter.emergencyReportPayouts(questionID, payouts))
+                    .to.emit(umaBinaryAdapter, "QuestionResolved")
+                    .withArgs(questionID, true);
+
+                // Verify resolved flag on the QuestionData struct has been updated
+                const questionData = await umaBinaryAdapter.questions(questionID);
+                expect(await questionData.resolved).eq(true);
+            });
+
+            it("should allow emergency reporting even if the question is paused", async function () {
+                // Pause question
+                await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID);
+
                 // fast forward the chain to after the emergencySafetyPeriod
                 await hardhatIncreaseTime(thirtyDays + 1000);
 
