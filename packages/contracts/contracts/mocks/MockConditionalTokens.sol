@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.7.5;
+pragma solidity 0.8.0;
 
-import { SafeMath } from "@openzeppelin/contracts/math/SafeMath.sol";
+import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import { CTHelpers } from "../libraries/CTHelpers.sol";
 
 contract MockConditionalTokens {

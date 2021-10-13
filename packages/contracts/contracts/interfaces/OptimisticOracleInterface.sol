@@ -1,8 +1,24 @@
-pragma solidity 0.7.5;
+pragma solidity 0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface OptimisticOracleInterface {
+    // Struct representing a price request.
+    struct Request {
+        address proposer; // Address of the proposer.
+        address disputer; // Address of the disputer.
+        IERC20 currency; // ERC20 token used to pay rewards and fees.
+        bool settled; // True if the request is settled.
+        bool refundOnDispute; // True if the requester should be refunded their reward on dispute.
+        int256 proposedPrice; // Price that the proposer submitted.
+        int256 resolvedPrice; // Price resolved once the request is settled.
+        uint256 expirationTime; // Time at which the request auto-settles without a dispute.
+        uint256 reward; // Amount of the currency to pay to the proposer on settlement.
+        uint256 finalFee; // Final fee to pay to the Store upon request to the DVM.
+        uint256 bond; // Bond that the proposer and disputer must pay on top of the final fee.
+        uint256 customLiveness; // Custom liveness value set by the requester.
+    }
+
     /**
      * @notice Requests a new price.
      * @param identifier price identifier being requested.
@@ -38,6 +54,37 @@ interface OptimisticOracleInterface {
         bytes memory ancillaryData,
         uint256 bond
     ) external virtual returns (uint256 totalBond);
+
+    /**
+     * @notice Gets the current data structure containing all information about a price request.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @return the Request data structure.
+     */
+    function getRequest(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData
+    ) external view virtual returns (Request memory);
+
+    /**
+     * @notice Attempts to settle an outstanding price request. Will revert if it isn't settleable.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @return payout the amount that the "winner" (proposer or disputer) receives on settlement. This amount includes
+     * the returned bonds as well as additional rewards.
+     */
+    function settle(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData
+    ) external virtual returns (uint256 payout);
 
     /**
      * @notice Retrieves a price that was previously requested by a caller. Reverts if the request is not settled
