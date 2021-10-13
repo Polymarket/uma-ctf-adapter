@@ -600,13 +600,10 @@ describe("", function () {
                 await optimisticOracle.mock.getRequest.returns(request);
                 await umaBinaryAdapter.requestResolutionData(questionID);
 
-                const griefer: Griefer = await deploy<Griefer>(
-                    "Griefer",
-                    {
-                        args: [umaBinaryAdapter.address],
-                        connect: this.signers.admin,
-                    },
-                );
+                const griefer: Griefer = await deploy<Griefer>("Griefer", {
+                    args: [umaBinaryAdapter.address],
+                    connect: this.signers.admin,
+                });
 
                 await expect(griefer.settleAndReport(questionID)).to.be.revertedWith(
                     "Adapter::reportPayouts: Attempting to settle and reportPayouts in the same block",

@@ -74,7 +74,7 @@ export async function deployMock(contractName: string, connect?: Signer): Promis
 
 export interface Request {
     proposer: string;
-    disputer: string
+    disputer: string;
     currency: string;
     settled: boolean;
     refundOnDispute: boolean;
@@ -101,8 +101,8 @@ export function getMockRequest(): Request {
         reward: 0,
         finalFee: 1,
         bond: 1,
-        customLiveness: 1
-    }
+        customLiveness: 1,
+    };
 }
 
 export async function takeSnapshot(): Promise<string> {
