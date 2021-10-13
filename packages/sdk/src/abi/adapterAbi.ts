@@ -77,7 +77,7 @@ const adapterAbi = [
             {
                 "indexed": true,
                 "internalType": "bytes32",
-                "name": "questionId",
+                "name": "questionID",
                 "type": "bytes32"
             },
             {
@@ -88,6 +88,19 @@ const adapterAbi = [
             }
         ],
         "name": "QuestionResolved",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
+        "name": "QuestionSettled",
         "type": "event"
     },
     {
@@ -288,6 +301,25 @@ const adapterAbi = [
         "inputs": [
             {
                 "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
+        "name": "getExpectedPayouts",
+        "outputs": [
+            {
+                "internalType": "uint256[]",
+                "name": "",
+                "type": "uint256[]"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
                 "name": "role",
                 "type": "bytes32"
             }
@@ -298,49 +330,6 @@ const adapterAbi = [
                 "internalType": "bytes32",
                 "name": "",
                 "type": "bytes32"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "role",
-                "type": "bytes32"
-            },
-            {
-                "internalType": "uint256",
-                "name": "index",
-                "type": "uint256"
-            }
-        ],
-        "name": "getRoleMember",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "role",
-                "type": "bytes32"
-            }
-        ],
-        "name": "getRoleMemberCount",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -520,6 +509,11 @@ const adapterAbi = [
                 "internalType": "bool",
                 "name": "paused",
                 "type": "bool"
+            },
+            {
+                "internalType": "uint256",
+                "name": "settled",
+                "type": "uint256"
             }
         ],
         "stateMutability": "view",
@@ -533,7 +527,7 @@ const adapterAbi = [
                 "type": "bytes32"
             }
         ],
-        "name": "readyToReportPayouts",
+        "name": "readyToRequestResolution",
         "outputs": [
             {
                 "internalType": "bool",
@@ -552,7 +546,7 @@ const adapterAbi = [
                 "type": "bytes32"
             }
         ],
-        "name": "readyToRequestResolution",
+        "name": "readyToSettle",
         "outputs": [
             {
                 "internalType": "bool",
@@ -623,6 +617,38 @@ const adapterAbi = [
         "name": "revokeRole",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
+        "name": "settle",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes4",
+                "name": "interfaceId",
+                "type": "bytes4"
+            }
+        ],
+        "name": "supportsInterface",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     },
     {

@@ -58,7 +58,9 @@ export class UmaBinaryAdapterClient {
             reward: data.reward,
             proposalBond: data.proposalBond,
             resolutionDataRequested: data.resolutionDataRequested,
-            resolved: data.resolved
+            resolved: data.resolved,
+            paused: data.paused,
+            settled: data.settled,
         }
         return questionData;
     }
@@ -99,12 +101,39 @@ export class UmaBinaryAdapterClient {
     }
 
     /**
-     * Checks if a questionID is ready to be resolved
+     * Checks if a questionID is ready to be settled
      * @param questionID 
      * @returns boolean
      */
-    public async readyToReportPayouts(questionID: string): Promise<boolean> {
-        return this.contract.readyToReportPayouts(questionID)
+    public async readyToSettle(questionID: string): Promise<boolean> {
+        return this.contract.readyToSettle(questionID)
+    }
+
+    /**
+     * Settles/finalizes the OO price for a question
+     * @param questionID 
+     */
+    public async settle(questionID: string, overrides?: ethers.Overrides): Promise<void> {
+        console.log(`Settling the OO price for questionID: ${questionID}...`);
+        let txn: TransactionResponse;
+        if (overrides != undefined) {
+            txn = await this.contract.settle(questionID, overrides);
+        } else {
+            txn = await this.contract.settle(questionID);
+        }
+        await txn.wait()
+        console.log(`Question settled!`);
+    }
+
+    /**
+     * Returns the expected payout value for a settled questionID
+     * @param questionID 
+     * @returns 
+     */
+    public async getExpectedPayout(questionID: string): Promise<number[]> {
+        console.log(`Fetching expected payout for: ${questionID}...`)
+        const payout: number[] = await this.contract.getExpectedPayout(questionID);
+        return payout;
     }
 
     /**
@@ -139,7 +168,6 @@ export class UmaBinaryAdapterClient {
         await txn.wait()
         console.log(`Question paused!`);
     }
-
 
     /**
      * Unpauses a question and allows it to be resolved
