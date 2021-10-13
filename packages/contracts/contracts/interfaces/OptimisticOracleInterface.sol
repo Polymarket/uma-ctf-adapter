@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -37,7 +38,7 @@ interface OptimisticOracleInterface {
         bytes memory ancillaryData,
         IERC20 currency,
         uint256 reward
-    ) external virtual returns (uint256 totalBond);
+    ) external returns (uint256 totalBond);
 
     /**
      * @notice Set the proposal bond associated with a price request.
@@ -53,7 +54,7 @@ interface OptimisticOracleInterface {
         uint256 timestamp,
         bytes memory ancillaryData,
         uint256 bond
-    ) external virtual returns (uint256 totalBond);
+    ) external returns (uint256 totalBond);
 
     /**
      * @notice Gets the current data structure containing all information about a price request.
@@ -68,7 +69,7 @@ interface OptimisticOracleInterface {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) external view virtual returns (Request memory);
+    ) external view returns (Request memory);
 
     /**
      * @notice Attempts to settle an outstanding price request. Will revert if it isn't settleable.
@@ -84,7 +85,7 @@ interface OptimisticOracleInterface {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) external virtual returns (uint256 payout);
+    ) external returns (uint256 payout);
 
     /**
      * @notice Retrieves a price that was previously requested by a caller. Reverts if the request is not settled
@@ -99,7 +100,7 @@ interface OptimisticOracleInterface {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) external virtual returns (int256);
+    ) external returns (int256);
 
     /**
      * @notice Checks if a given request has resolved or been settled (i.e the optimistic oracle has a price).
@@ -114,5 +115,5 @@ interface OptimisticOracleInterface {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) external view virtual returns (bool);
+    ) external view returns (bool);
 }

@@ -5,7 +5,7 @@ import { Contract } from "@ethersproject/contracts";
 import { expect } from "chai";
 import { MockContract } from "@ethereum-waffle/mock-contract";
 import { BigNumber } from "ethers";
-import { MockConditionalTokens, TestERC20, UmaConditionalTokensBinaryAdapter } from "../../typechain";
+import { Griefer, MockConditionalTokens, TestERC20, UmaConditionalTokensBinaryAdapter } from "../../typechain";
 import {
     createQuestionID,
     deploy,
@@ -578,6 +578,38 @@ describe("", function () {
             it("pause should revert if question is not initialized", async function () {
                 await expect(umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(HashZero)).to.be.revertedWith(
                     "Adapter::pauseQuestion: questionID is not initialized",
+                );
+            });
+
+            it("should disallow atomic settling and resolution", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero,
+                    Math.floor(Date.now() / 1000) - 60 * 60 * 24,
+                );
+                await optimisticOracle.mock.hasPrice.returns(true);
+                await optimisticOracle.mock.settle.returns(1);
+
+                const request = getMockRequest();
+                await optimisticOracle.mock.getRequest.returns(request);
+                await umaBinaryAdapter.requestResolutionData(questionID);
+
+                const griefer: Griefer = await deploy<Griefer>(
+                    "Griefer",
+                    {
+                        args: [umaBinaryAdapter.address],
+                        connect: this.signers.admin,
+                    },
+                );
+
+                await expect(griefer.settleAndReport(questionID)).to.be.revertedWith(
+                    "Adapter::reportPayouts: Attempting to settle and reportPayouts in the same block",
                 );
             });
         });
