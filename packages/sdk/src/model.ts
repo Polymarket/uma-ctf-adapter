@@ -8,4 +8,6 @@ export interface QuestionData {
     proposalBond: BigNumber;
     resolutionDataRequested: boolean;
     resolved: boolean;
+    paused: boolean;
+    settled: number;
 }

@@ -27,7 +27,8 @@ const adapter = new UmaBinaryAdapterClient(signer, 137);
 await adapter.initializeQuestion(
     questionID, 
     title, 
-    description, 
+    description,
+    outcomes, 
     resolutionTime, 
     rewardToken, 
     reward, 
@@ -38,7 +39,13 @@ await adapter.initializeQuestion(
 // Request resolution data
 await adapter.requestResolutionData(questionID);
 
-// Report payouts
+// Settle
+await adapter.settle(questionID);
+
+// View expected payout vector
+await adapter.getExpectedPayouts(questionID);
+
+//Report payouts
 await adapter.reportPayouts(questionID);
 
 ```

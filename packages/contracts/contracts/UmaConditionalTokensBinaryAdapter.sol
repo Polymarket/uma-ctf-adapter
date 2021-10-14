@@ -266,11 +266,11 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         require(resolutionData == 0 || resolutionData == 1, "Adapter::reportPayouts: Invalid resolution data");
 
         if (resolutionData == 0) {
-            //NO: Set payouts to [0, 1]
+            //NO: Report [Yes, No] as [0, 1]
             payouts[0] = 0;
             payouts[1] = 1;
         } else {
-            // YES: Set payouts to [1, 0]
+            // YES: Report [Yes, No] as [1, 0]
             payouts[0] = 1;
             payouts[1] = 0;
         }

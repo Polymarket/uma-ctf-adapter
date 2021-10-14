@@ -8,4 +8,4 @@ This SDK is a lightweight wrapper around the `UmaConditionalTokensBinaryAdapter`
 
 `const adapter = new UmaBinaryAdapterClient(signer, 137);`
 
-`await adapter.initializeQuestion(title, description, resolutionTime, rewardToken, reward, proposalBond)`
+`await adapter.initializeQuestion(title, description, ["YES", "NO"], resolutionTime, rewardToken, reward, proposalBond)`
