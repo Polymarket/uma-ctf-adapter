@@ -1,7 +1,7 @@
 {
     "name": "@polymarket/uma-binary-adapter-sdk",
     "description": "SDK for the UMA Binary Adapter",
-    "version": "1.0.9",
+    "version": "1.1.0",
     "contributors": [
         {
             "name": "Jonathan Amenechi",
@@ -51,6 +51,7 @@
     "license": "MIT",
     "scripts": {
         "build": "tsc",
+        "deploy": "yarn build && npm publish",
         "lint": "eslint --config ./.eslintrc.js --ignore-path ./.eslintignore src"
     },
     "dependencies": {
