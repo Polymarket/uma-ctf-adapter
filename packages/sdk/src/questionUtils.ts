@@ -8,7 +8,7 @@ import { ethers } from "ethers";
  * @returns 
  */
 export const buildResolutionData = (outcomes: string[]): string => {
-    return `p1: 0, p2: 1. Where p2 corresponds to ${outcomes[0]}, p1 to a ${outcomes[1]}`;
+    return `p1: 0, p2: 1, p3: 0.5. Where p2 corresponds to ${outcomes[0]}, p1 to a ${outcomes[1]}, p3 to unknown`;
 }
 
 
@@ -22,6 +22,5 @@ export const buildResolutionData = (outcomes: string[]): string => {
  * @returns 
  */
 export const createAncillaryData = (title: string, description: string, outcomes: string[]): Uint8Array => {
-    const resData = buildResolutionData(outcomes);
-    return ethers.utils.toUtf8Bytes(`title: ${title} description: ${description} uma_resolution_data: ${resData}`);
+    return ethers.utils.toUtf8Bytes(`q: title: ${title}, description: ${description} res_data: ${buildResolutionData(outcomes)}`);
 }
