@@ -669,6 +669,37 @@ describe("", function () {
                 await revertToSnapshot(snapshot);
             });
 
+            it("should correctly report [1,0] when YES", async function () {
+                const conditionID = await conditionalTokens.getConditionId(umaBinaryAdapter.address, questionID, 2);
+
+                expect(await umaBinaryAdapter.reportPayouts(questionID))
+                    .to.emit(conditionalTokens, "ConditionResolution")
+                    .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [1, 0]);
+            });
+
+            it("should correctly report [0,1] when NO", async function () {
+                const conditionID = await conditionalTokens.getConditionId(umaBinaryAdapter.address, questionID, 2);
+                const request = getMockRequest();
+                request.resolvedPrice = ethers.constants.Zero;
+                await optimisticOracle.mock.getRequest.returns(request);
+
+                expect(await umaBinaryAdapter.reportPayouts(questionID))
+                    .to.emit(conditionalTokens, "ConditionResolution")
+                    .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [0, 1]);
+            });
+
+            it("should correctly report [1,1] when UNKNOWN", async function () {
+                const conditionID = await conditionalTokens.getConditionId(umaBinaryAdapter.address, questionID, 2);
+
+                const request = getMockRequest();
+                request.resolvedPrice = ethers.utils.parseEther("0.5");
+                await optimisticOracle.mock.getRequest.returns(request);
+
+                expect(await umaBinaryAdapter.reportPayouts(questionID))
+                    .to.emit(conditionalTokens, "ConditionResolution")
+                    .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [1, 1]);
+            });
+
             it("reportPayouts emits ConditionResolved if resolution data exists", async function () {
                 const conditionID = await conditionalTokens.getConditionId(umaBinaryAdapter.address, questionID, 2);
 
@@ -691,7 +722,7 @@ describe("", function () {
             it("reportPayouts reverts if OO returns malformed data", async function () {
                 // Mock Optimistic Oracle returns invalid data
                 const request = getMockRequest();
-                request.resolvedPrice = 213223;
+                request.resolvedPrice = BigNumber.from(21233);
                 await optimisticOracle.mock.getRequest.returns(request);
 
                 await expect(umaBinaryAdapter.reportPayouts(questionID)).to.be.revertedWith(

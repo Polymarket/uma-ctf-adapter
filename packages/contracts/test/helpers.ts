@@ -79,7 +79,7 @@ export interface Request {
     settled: boolean;
     refundOnDispute: boolean;
     proposedPrice: number;
-    resolvedPrice: number;
+    resolvedPrice: BigNumber;
     expirationTime: number;
     reward: number;
     finalFee: number;
@@ -96,7 +96,8 @@ export function getMockRequest(): Request {
         settled: false,
         refundOnDispute: false,
         proposedPrice: 1,
-        resolvedPrice: 1,
+        // resolved prices must be scaled by 1e18
+        resolvedPrice: ethers.utils.parseEther("1"),
         expirationTime: 1,
         reward: 0,
         finalFee: 1,

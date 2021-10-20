@@ -263,11 +263,19 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         // Payouts: [YES, NO]
         uint256[] memory payouts = new uint256[](2);
 
-        require(resolutionData == 0 || resolutionData == 1, "Adapter::reportPayouts: Invalid resolution data");
+        // Valid prices are 0, 0.5 and 1
+        require(
+            resolutionData == 0 || resolutionData == 0.5 ether || resolutionData == 1 ether,
+            "Adapter::reportPayouts: Invalid resolution data"
+        );
 
         if (resolutionData == 0) {
             //NO: Report [Yes, No] as [0, 1]
             payouts[0] = 0;
+            payouts[1] = 1;
+        } else if (resolutionData == 0.5 ether) {
+            //UNKNOWN: Report [Yes, No] as [1, 1], 50/50
+            payouts[0] = 1;
             payouts[1] = 1;
         } else {
             // YES: Report [Yes, No] as [1, 0]
