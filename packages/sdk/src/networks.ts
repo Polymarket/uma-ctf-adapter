@@ -1,9 +1,9 @@
 export const getAdapterAddress = (chainID: number): string => {
     switch (chainID) {
         case 137:
-            return "0xbBfc55F7E092BC48C1aff0aa09186D94EDBD9f9A";
+            return "0x021dE777cf8C1a9d97bD93F4a587d7Fb7C982800";
         case 80001:
-            return "0x3549A6e441f1EC5740d8A5941e5Afe111a40238A";
+            return "0xf46A49FF838f19DCA55D547b7ED793a03989aF7b";
         default:
             throw new Error(`Unsupported chainID: ${chainID}`);
     }
