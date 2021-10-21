@@ -424,7 +424,7 @@ describe("", function () {
                 await hardhatIncreaseTime(3600);
                 await umaBinaryAdapter.requestResolutionData(questionID);
                 await optimisticOracle.mock.hasPrice.returns(true);
-                await optimisticOracle.mock.settle.returns(1);
+                await optimisticOracle.mock.settleAndGetPrice.returns(1);
 
                 // Verify QuestionSettled emitted
                 expect(await umaBinaryAdapter.connect(this.signers.tester).settle(questionID))
@@ -464,7 +464,7 @@ describe("", function () {
                 await hardhatIncreaseTime(3600);
                 await umaBinaryAdapter.requestResolutionData(questionID);
 
-                await optimisticOracle.mock.settle.returns(1);
+                await optimisticOracle.mock.settleAndGetPrice.returns(1);
                 await optimisticOracle.mock.hasPrice.returns(false);
 
                 // 3. If OO doesn't have the price available
@@ -594,7 +594,7 @@ describe("", function () {
                     Math.floor(Date.now() / 1000) - 60 * 60 * 24,
                 );
                 await optimisticOracle.mock.hasPrice.returns(true);
-                await optimisticOracle.mock.settle.returns(1);
+                await optimisticOracle.mock.settleAndGetPrice.returns(1);
 
                 const request = getMockRequest();
                 await optimisticOracle.mock.getRequest.returns(request);
@@ -658,7 +658,7 @@ describe("", function () {
                 await (await umaBinaryAdapter.requestResolutionData(questionID)).wait();
 
                 // settle
-                await optimisticOracle.mock.settle.returns(1);
+                await optimisticOracle.mock.settleAndGetPrice.returns(1);
                 const request = getMockRequest();
                 await optimisticOracle.mock.getRequest.returns(request);
                 await (await umaBinaryAdapter.settle(questionID)).wait();

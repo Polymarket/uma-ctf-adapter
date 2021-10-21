@@ -233,7 +233,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
 
         OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
         questionData.settled = block.number;
-        optimisticOracle.settle(address(this), identifier, questionData.resolutionTime, questionData.ancillaryData);
+        optimisticOracle.settleAndGetPrice(identifier, questionData.resolutionTime, questionData.ancillaryData);
         emit QuestionSettled(questionID);
     }
 
