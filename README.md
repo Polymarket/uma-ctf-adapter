@@ -1,6 +1,7 @@
 # UMA Conditional Tokens Binary Adapter
 
 ![Github Actions](https://github.com/Polymarket/uma-conditional-tokens-adapter/workflows/Tests/badge.svg)
+![Github Actions](https://github.com/Polymarket/uma-conditional-tokens-adapter/workflows/Lint/badge.svg)
 
 ## Overview
 
