@@ -14,5 +14,5 @@ typechain
 cache
 coverage
 .vscode
-scratch
+scratch.ts
 dist
