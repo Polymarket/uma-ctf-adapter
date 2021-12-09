@@ -1,0 +1,33 @@
+name: Tests
+
+on:
+    push:
+        branches: main
+    pull_request:
+        branches: "*"
+
+jobs:
+    test-contracts:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v2
+              with:
+                  persist-credentials: false
+            - name: Install node
+              uses: actions/setup-node@v1
+              with:
+                  node-version: 16
+            - name: Install dependencies
+              run: yarn
+            - name: Typechain
+              run: yarn typechain
+              working-directory: ./packages/contracts
+            - name: Test
+              run: yarn test
+              working-directory: ./packages/contracts
+    
+env:
+    MNEMONIC: "test test test test test test test test test test test test"
+    INFURA_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+    MATICVIGIL_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzz"
