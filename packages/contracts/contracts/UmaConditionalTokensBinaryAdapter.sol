@@ -8,16 +8,14 @@ import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { FinderInterface } from "./interfaces/FinderInterface.sol";
 import { OptimisticOracleInterface } from "./interfaces/OptimisticOracleInterface.sol";
 
-///
 /// @title UmaConditionalTokensBinaryAdapter
-/// @notice allows a condition to be resolved via UMA's Optimistic Oracle
-///
+/// @notice Adapter contract that enables conditional token resolution via UMA's Optimistic Oracle
 contract UmaConditionalTokensBinaryAdapter is AccessControl {
     /// @notice Conditional Tokens framework
     IConditionalTokens public immutable conditionalTokenContract;
 
-    /// @notice Finder Interface for the Optimistic Oracle
-    FinderInterface public umaFinder;
+    /// @notice UMA Finder address
+    address public umaFinder;
 
     /// @notice Unique query identifier for the Optimistic Oracle
     bytes32 public constant identifier = "YES_OR_NO_QUERY";
@@ -26,30 +24,34 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
     uint256 public constant emergencySafetyPeriod = 30 days;
 
     struct QuestionData {
-        // @notice Data used to resolve a condition
-        bytes ancillaryData;
         // @notice Unix timestamp(in seconds) at which a market can be resolved
         uint256 resolutionTime;
-        // @notice ERC20 token address used for payment of rewards and fees
-        address rewardToken;
         // @notice Reward offered to a successful proposer
         uint256 reward;
         // @notice Additional bond required by Optimistic oracle proposers and disputers
         uint256 proposalBond;
+        // @notice Flag marking the block number when a question was settled
+        uint256 settled;
         // @notice Flag marking whether resolution data has been requested from the Oracle
         bool resolutionDataRequested;
         // @notice Flag marking whether a question is resolved
         bool resolved;
         // @notice Flag marking whether a question is paused
         bool paused;
-        // @notice Flag marking the block number when a question was settled
-        uint256 settled;
+        // @notice ERC20 token address used for payment of rewards and fees
+        address rewardToken;
+        // @notice Data used to resolve a condition
+        bytes ancillaryData;
     }
 
     /// @notice Mapping of questionID to QuestionData
     mapping(bytes32 => QuestionData) public questions;
 
     // Events
+
+    /// @notice Emitted when the UMA finder is changed
+    event NewFinderAddress(address oldFinder, address newFinder);
+
     /// @notice Emitted when a questionID is initialized
     event QuestionInitialized(
         bytes32 indexed questionID,
@@ -69,7 +71,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
     /// @notice Emitted when resolution data is requested from the Optimistic Oracle
     event ResolutionDataRequested(
         bytes32 indexed identifier,
-        uint256 indexed timestamp,
+        uint256 indexed resolutionTimestamp,
         bytes32 indexed questionID,
         bytes ancillaryData,
         address rewardToken,
@@ -83,20 +85,27 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
     /// @notice Emitted when a question is resolved
     event QuestionResolved(bytes32 indexed questionID, bool indexed emergencyReport);
 
+    /// @notice - Modifier that checks that the caller is an admin
+    modifier onlyAdmin() {
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert("Adapter::caller does not have admin role");
+        }
+        _;
+    }
+
     constructor(address conditionalTokenAddress, address umaFinderAddress) {
         conditionalTokenContract = IConditionalTokens(conditionalTokenAddress);
-        umaFinder = FinderInterface(umaFinderAddress);
+        umaFinder = umaFinderAddress;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    ///
     /// @notice Initializes a question on the Adapter to report on
     /// @param questionID     - The unique questionID of the question
     /// @param ancillaryData  - Holds data used to resolve a question
     /// @param resolutionTime - Timestamp at which the Adapter can resolve a question
     /// @param rewardToken    - ERC20 token address used for payment of rewards and fees
     /// @param reward         - Reward offered to a successful proposer
-    /// @param proposalBond   - Additional bond required to be posted by a price proposer and disputer
+    /// @param proposalBond   - Bond required to be posted by a price proposer and disputer
     function initializeQuestion(
         bytes32 questionID,
         bytes memory ancillaryData,
@@ -141,7 +150,6 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         return block.timestamp > questionData.resolutionTime;
     }
 
-    ///
     /// @notice Called by anyone to request resolution data from the Optimistic Oracle
     /// @param questionID - The unique questionID of the question
     function requestResolutionData(bytes32 questionID) public {
@@ -296,11 +304,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
 
     /// @notice Allows an admin to report payouts in an emergency
     /// @param questionID - The unique questionID of the question
-    function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external {
-        require(
-            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "Adapter::emergencyReportPayouts: caller does not have admin role"
-        );
+    function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external onlyAdmin {
         require(isQuestionInitialized(questionID), "Adapter::emergencyReportPayouts: questionID is not initialized");
 
         require(
@@ -321,8 +325,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
 
     /// @notice Allows an admin to pause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
-    function pauseQuestion(bytes32 questionID) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Adapter::pauseQuestion: caller does not have admin role");
+    function pauseQuestion(bytes32 questionID) external onlyAdmin {
         require(isQuestionInitialized(questionID), "Adapter::pauseQuestion: questionID is not initialized");
         QuestionData storage questionData = questions[questionID];
 
@@ -332,8 +335,7 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
 
     /// @notice Allows an admin to unpause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
-    function unPauseQuestion(bytes32 questionID) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Adapter::unPauseQuestion: caller does not have admin role");
+    function unPauseQuestion(bytes32 questionID) external onlyAdmin {
         require(isQuestionInitialized(questionID), "Adapter::unPauseQuestion: questionID is not initialized");
         QuestionData storage questionData = questions[questionID];
 
@@ -341,12 +343,17 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         emit QuestionUnpaused(questionID);
     }
 
+    function setFinderAddress(address newFinderAddress) external onlyAdmin {
+        emit NewFinderAddress(umaFinder, newFinderAddress);
+        umaFinder = newFinderAddress;
+    }
+
     function isQuestionInitialized(bytes32 questionID) public view returns (bool) {
         return questions[questionID].resolutionTime != 0;
     }
 
     function getOptimisticOracleAddress() internal view returns (address) {
-        return umaFinder.getImplementationAddress("OptimisticOracle");
+        return FinderInterface(umaFinder).getImplementationAddress("OptimisticOracle");
     }
 
     function getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
