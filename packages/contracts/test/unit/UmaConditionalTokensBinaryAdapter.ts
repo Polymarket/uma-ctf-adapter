@@ -614,18 +614,17 @@ describe("", function () {
                 const finderAddress = await umaBinaryAdapter.umaFinder();
                 const newFinderAddress = ethers.Wallet.createRandom();
                 expect(await umaBinaryAdapter.setFinderAddress(newFinderAddress.address))
-                    .to.emit(
-                        umaBinaryAdapter, "NewFinderAddress"
-                    ).withArgs(finderAddress, newFinderAddress.address);
+                    .to.emit(umaBinaryAdapter, "NewFinderAddress")
+                    .withArgs(finderAddress, newFinderAddress.address);
             });
 
             it("should revert if finder address updater is not the admin", async function () {
                 await expect(
-                    umaBinaryAdapter.connect(this.signers.tester)
+                    umaBinaryAdapter
+                        .connect(this.signers.tester)
                         .setFinderAddress(ethers.Wallet.createRandom().address),
                 ).to.be.revertedWith("Adapter::caller does not have admin role");
             });
-
         });
 
         describe("Condition Resolution scenarios", function () {
