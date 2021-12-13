@@ -19,6 +19,25 @@ const adapterAbi = [
         "anonymous": false,
         "inputs": [
             {
+                "indexed": false,
+                "internalType": "address",
+                "name": "oldFinder",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newFinder",
+                "type": "address"
+            }
+        ],
+        "name": "NewFinderAddress",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
                 "indexed": true,
                 "internalType": "bytes32",
                 "name": "questionID",
@@ -128,7 +147,7 @@ const adapterAbi = [
             {
                 "indexed": true,
                 "internalType": "uint256",
-                "name": "timestamp",
+                "name": "resolutionTimestamp",
                 "type": "uint256"
             },
             {
@@ -471,19 +490,9 @@ const adapterAbi = [
         "name": "questions",
         "outputs": [
             {
-                "internalType": "bytes",
-                "name": "ancillaryData",
-                "type": "bytes"
-            },
-            {
                 "internalType": "uint256",
                 "name": "resolutionTime",
                 "type": "uint256"
-            },
-            {
-                "internalType": "address",
-                "name": "rewardToken",
-                "type": "address"
             },
             {
                 "internalType": "uint256",
@@ -493,6 +502,11 @@ const adapterAbi = [
             {
                 "internalType": "uint256",
                 "name": "proposalBond",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "settled",
                 "type": "uint256"
             },
             {
@@ -511,9 +525,14 @@ const adapterAbi = [
                 "type": "bool"
             },
             {
-                "internalType": "uint256",
-                "name": "settled",
-                "type": "uint256"
+                "internalType": "address",
+                "name": "rewardToken",
+                "type": "address"
+            },
+            {
+                "internalType": "bytes",
+                "name": "ancillaryData",
+                "type": "bytes"
             }
         ],
         "stateMutability": "view",
@@ -622,6 +641,19 @@ const adapterAbi = [
     {
         "inputs": [
             {
+                "internalType": "address",
+                "name": "newFinderAddress",
+                "type": "address"
+            }
+        ],
+        "name": "setFinderAddress",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "internalType": "bytes32",
                 "name": "questionID",
                 "type": "bytes32"
@@ -656,7 +688,7 @@ const adapterAbi = [
         "name": "umaFinder",
         "outputs": [
             {
-                "internalType": "contract FinderInterface",
+                "internalType": "address",
                 "name": "",
                 "type": "address"
             }
