@@ -32,8 +32,6 @@ const config: HardhatUserConfig = {
         kovan: { accounts, ...getRemoteNetworkConfig("kovan") },
         rinkeby: { accounts, ...getRemoteNetworkConfig("rinkeby") },
         ropsten: { accounts, ...getRemoteNetworkConfig("ropsten") },
-        // TODO: Hardhat currently has issues infering gas price on polygon.
-        // Causing Invalid sender errors. See: https://github.com/nomiclabs/hardhat/issues/1828
         mumbai: { accounts, ...getRemoteNetworkConfig("mumbai"), gasPrice: 8000000000 },
         matic: { accounts, ...getRemoteNetworkConfig("matic"), gasPrice: 100000000000 },
         mainnet: { accounts, ...getRemoteNetworkConfig("mainnet") },

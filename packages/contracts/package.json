@@ -1,6 +1,6 @@
 {
-    "name": "@polymarket/uma-conditional-tokens-adapter-contracts",
-    "description": "Contracts for the UMA Binary Adapter",
+    "name": "@polymarket/uma-binary-adapter-contracts",
+    "description": "Contracts to resolve Polymarket prediction markets via UMA",
     "version": "1.0.0",
     "contributors": [
         {
@@ -65,7 +65,6 @@
     "license": "MIT",
     "scripts": {
         "clean": "hardhat clean",
-        "commit": "git-cz",
         "compile": "hardhat compile",
         "coverage": "hardhat coverage --solcoverjs ./.solcover.js --temp artifacts --testfiles \"./test/**/*.ts\"",
         "lint": "yarn run lint:sol && yarn run lint:ts && yarn run prettier:list-different",
