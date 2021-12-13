@@ -20,13 +20,14 @@ const accounts = {
 const config: HardhatUserConfig = {
     defaultNetwork: "hardhat",
     namedAccounts: {
-        deployer: 0, // Do not use this account for testing
+        deployer: 0,
         admin: 1,
     },
     networks: {
         hardhat: {
             chainId: ChainId.hardhat,
             saveDeployments: false,
+            initialBaseFeePerGas: 0,
         },
         goerli: { accounts, ...getRemoteNetworkConfig("goerli") },
         kovan: { accounts, ...getRemoteNetworkConfig("kovan") },
