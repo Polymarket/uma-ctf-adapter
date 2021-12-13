@@ -12,7 +12,7 @@ lib
 artifacts
 typechain
 cache
-coverage
+coverage*
 .vscode
 scratch.ts
 dist

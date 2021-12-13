@@ -5,48 +5,18 @@
 
 ## Overview
 
-This repo contains code used to resolve Polymarket prediction markets via UMA's [optimistic oracle](https://docs.umaproject.org/oracle/optimistic-oracle-interface).
+This repo contains code used to resolve [Polymarket](https://polymarket.com/) prediction markets via UMA's [optimistic oracle](https://docs.umaproject.org/oracle/optimistic-oracle-interface).
 
 
 ### Dependencies
-- cd into `./packages/contracts/`
 
-- Install dependencies with `yarn install`
+Install dependencies with `yarn install`
 
 ### Compile
 
 Compile the contracts with `yarn compile`
 
-### SDK
 
-```ts
-import { UmaBinaryAdapterClient } from "@polymarket/uma-binary-adapter-sdk";
-const signer = new Wallet("0x" + process.env.KEY);
-const adapter = new UmaBinaryAdapterClient(signer, 137);
+### Testing
 
-// Initialize question
-await adapter.initializeQuestion(
-    questionID, 
-    title, 
-    description,
-    outcomes, 
-    resolutionTime, 
-    rewardToken, 
-    reward, 
-    proposalBond, 
-    { gasPrice: ethers.utils.parseUnits("100", 9) }
-);
-
-// Request resolution data
-await adapter.requestResolutionData(questionID);
-
-// Settle
-await adapter.settle(questionID);
-
-// View expected payout vector
-await adapter.getExpectedPayouts(questionID);
-
-//Report payouts
-await adapter.reportPayouts(questionID);
-
-```
+Test the contracts with `yarn test` in the `contracts` package

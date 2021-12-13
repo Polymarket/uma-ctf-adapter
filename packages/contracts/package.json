@@ -1,6 +1,6 @@
 {
-    "name": "@polymarket/uma-conditional-tokens-adapter-contracts",
-    "description": "Contracts for the UMA Binary Adapter",
+    "name": "@polymarket/uma-binary-adapter-contracts",
+    "description": "Contracts to resolve Polymarket prediction markets via UMA",
     "version": "1.0.0",
     "contributors": [
         {
@@ -31,7 +31,7 @@
         "eslint-config-airbnb-base-typescript-prettier": "^4.1.0",
         "eslint-config-prettier": "^6.12.0",
         "eslint-plugin-import": "^2.22.1",
-        "ethereum-waffle": "^3.2.2",
+        "ethereum-waffle": "^3.4.0",
         "fs-extra": "^9.0.1",
         "hardhat": "^2.0.3",
         "hardhat-deploy": "^0.7.0-beta.28",
@@ -46,7 +46,7 @@
         "shelljs": "^0.8.4",
         "solhint": "^3.3.4",
         "solhint-plugin-prettier": "^0.0.5",
-        "solidity-coverage": "^0.7.16",
+        "solidity-coverage": "^0.8.0-beta.0",
         "ts-generator": "^0.1.1",
         "ts-node": "^9.1.1",
         "typechain": "^4.0.2",
@@ -65,11 +65,9 @@
     "license": "MIT",
     "scripts": {
         "clean": "hardhat clean",
-        "commit": "git-cz",
         "compile": "hardhat compile",
         "coverage": "hardhat coverage --solcoverjs ./.solcover.js --temp artifacts --testfiles \"./test/**/*.ts\"",
         "lint": "yarn run lint:sol && yarn run lint:ts && yarn run prettier:list-different",
-        "prettier:list-different": "prettier --list-different .",
         "lint:sol": "solhint --config ./.solhint.json --max-warnings 0 \"contracts/**/*.sol\"",
         "lint:ts": "eslint --config ./.eslintrc.yaml --ignore-path ./.eslintignore .",
         "test": "hardhat test",

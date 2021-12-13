@@ -1,6 +1,5 @@
 import hre, { deployments, ethers } from "hardhat";
 import { HashZero } from "@ethersproject/constants";
-
 import { Contract } from "@ethersproject/contracts";
 import { expect } from "chai";
 import { MockContract } from "@ethereum-waffle/mock-contract";
@@ -555,7 +554,7 @@ describe("", function () {
 
                 await expect(
                     umaBinaryAdapter.connect(this.signers.tester).pauseQuestion(questionID),
-                ).to.be.revertedWith("Adapter::pauseQuestion: caller does not have admin role");
+                ).to.be.revertedWith("Adapter::caller does not have admin role");
             });
 
             it("unpause should revert when signer is not admin", async function () {
@@ -572,7 +571,7 @@ describe("", function () {
 
                 await expect(
                     umaBinaryAdapter.connect(this.signers.tester).unPauseQuestion(questionID),
-                ).to.be.revertedWith("Adapter::unPauseQuestion: caller does not have admin role");
+                ).to.be.revertedWith("Adapter::caller does not have admin role");
             });
 
             it("pause should revert if question is not initialized", async function () {
@@ -608,6 +607,23 @@ describe("", function () {
                 await expect(griefer.settleAndReport(questionID)).to.be.revertedWith(
                     "Adapter::reportPayouts: Attempting to settle and reportPayouts in the same block",
                 );
+            });
+
+            // Finder address tests
+            it("should update the finder address", async function () {
+                const finderAddress = await umaBinaryAdapter.umaFinder();
+                const newFinderAddress = ethers.Wallet.createRandom();
+                expect(await umaBinaryAdapter.setFinderAddress(newFinderAddress.address))
+                    .to.emit(umaBinaryAdapter, "NewFinderAddress")
+                    .withArgs(finderAddress, newFinderAddress.address);
+            });
+
+            it("should revert if finder address updater is not the admin", async function () {
+                await expect(
+                    umaBinaryAdapter
+                        .connect(this.signers.tester)
+                        .setFinderAddress(ethers.Wallet.createRandom().address),
+                ).to.be.revertedWith("Adapter::caller does not have admin role");
             });
         });
 
@@ -771,7 +787,7 @@ describe("", function () {
                 expect(await questionData.resolved).eq(true);
             });
 
-            it("should reverts if emergencyReport is called before the safety period", async function () {
+            it("should revert if emergencyReport is called before the safety period", async function () {
                 // YES conditional payout
                 const payouts = [1, 0];
                 await expect(umaBinaryAdapter.emergencyReportPayouts(questionID, payouts)).to.be.revertedWith(
@@ -779,7 +795,7 @@ describe("", function () {
                 );
             });
 
-            it("should reverts if emergencyReport is called with invalid payout", async function () {
+            it("should revert if emergencyReport is called with invalid payout", async function () {
                 // fast forward the chain to after the emergencySafetyPeriod
                 await hardhatIncreaseTime(thirtyDays + 1000);
 
@@ -794,6 +810,12 @@ describe("", function () {
                 await expect(
                     umaBinaryAdapter.emergencyReportPayouts(questionID, nonBinaryPayoutVector),
                 ).to.be.revertedWith("Adapter::emergencyReportPayouts: payouts must be binary");
+            });
+
+            it("should revert if emergencyReport is called from a non-admin", async function () {
+                await expect(
+                    umaBinaryAdapter.connect(this.signers.tester).emergencyReportPayouts(questionID, [1, 0]),
+                ).to.be.revertedWith("Adapter::caller does not have admin role");
             });
         });
     });

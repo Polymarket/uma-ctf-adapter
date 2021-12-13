@@ -3,53 +3,55 @@ pragma solidity 0.8.0;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { FinderInterface } from "./interfaces/FinderInterface.sol";
 import { OptimisticOracleInterface } from "./interfaces/OptimisticOracleInterface.sol";
 
-/**
- * @title UmaConditionalTokensBinaryAdapter
- * @notice allows a condition to be resolved via UMA's Optimistic Oracle
- */
+/// @title UmaConditionalTokensBinaryAdapter
+/// @notice Adapter contract that enables conditional token resolution via UMA's Optimistic Oracle
 contract UmaConditionalTokensBinaryAdapter is AccessControl {
-    // Conditional Tokens framework
+    /// @notice Conditional Tokens framework
     IConditionalTokens public immutable conditionalTokenContract;
 
-    // @notice Finder Interface for the Optimistic Oracle
-    FinderInterface public umaFinder;
+    /// @notice UMA Finder address
+    address public umaFinder;
 
-    // @notice Unique query identifier for the Optimistic Oracle
+    /// @notice Unique query identifier for the Optimistic Oracle
     bytes32 public constant identifier = "YES_OR_NO_QUERY";
 
-    // @notice Time period after which an admin can emergency resolve a condition
+    /// @notice Time period after which an admin can emergency resolve a condition
     uint256 public constant emergencySafetyPeriod = 30 days;
 
     struct QuestionData {
-        // @notice Data used to resolve a condition
-        bytes ancillaryData;
-        // @notice Unix timestamp(in seconds) at which a market can be resolved
+        // Unix timestamp(in seconds) at which a market can be resolved
         uint256 resolutionTime;
-        // @notice ERC20 token address used for payment of rewards and fees
-        address rewardToken;
-        // @notice Reward offered to a successful proposer
+        // Reward offered to a successful proposer
         uint256 reward;
-        // @notice Additional bond required by Optimistic oracle proposers and disputers
+        // Additional bond required by Optimistic oracle proposers and disputers
         uint256 proposalBond;
-        // @notice Flag marking whether resolution data has been requested from the Oracle
-        bool resolutionDataRequested;
-        // @notice Flag marking whether a question is resolved
-        bool resolved;
-        // @notice Flag marking whether a question is paused
-        bool paused;
-        // @notice Flag marking the block number when a question was settled
+        // Flag marking the block number when a question was settled
         uint256 settled;
+        // Flag marking whether resolution data has been requested from the Oracle
+        bool resolutionDataRequested;
+        // Flag marking whether a question is resolved
+        bool resolved;
+        // Flag marking whether a question is paused
+        bool paused;
+        // ERC20 token address used for payment of rewards and fees
+        address rewardToken;
+        // Data used to resolve a condition
+        bytes ancillaryData;
     }
 
+    /// @notice Mapping of questionID to QuestionData
     mapping(bytes32 => QuestionData) public questions;
 
     // Events
-    // @notice Emitted when a questionID is initialized
+
+    /// @notice Emitted when the UMA finder is changed
+    event NewFinderAddress(address oldFinder, address newFinder);
+
+    /// @notice Emitted when a questionID is initialized
     event QuestionInitialized(
         bytes32 indexed questionID,
         bytes ancillaryData,
@@ -59,16 +61,16 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         uint256 proposalBond
     );
 
-    // @notice Emitted when a question is paused by the Admin
+    /// @notice Emitted when a question is paused by the Admin
     event QuestionPaused(bytes32 questionID);
 
-    // @notice Emitted when a question is unpaused by the Admin
+    /// @notice Emitted when a question is unpaused by the Admin
     event QuestionUnpaused(bytes32 questionID);
 
-    // @notice Emitted when resolution data is requested from the Optimistic Oracle
+    /// @notice Emitted when resolution data is requested from the Optimistic Oracle
     event ResolutionDataRequested(
         bytes32 indexed identifier,
-        uint256 indexed timestamp,
+        uint256 indexed resolutionTimestamp,
         bytes32 indexed questionID,
         bytes ancillaryData,
         address rewardToken,
@@ -76,28 +78,33 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         uint256 proposalBond
     );
 
-    // @notice Emitted when a question is settled
+    /// @notice Emitted when a question is settled
     event QuestionSettled(bytes32 indexed questionID);
 
-    // @notice Emitted when a question is resolved
+    /// @notice Emitted when a question is resolved
     event QuestionResolved(bytes32 indexed questionID, bool indexed emergencyReport);
+
+    /// @notice - Modifier that checks that the caller is an admin
+    modifier onlyAdmin() {
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert("Adapter::caller does not have admin role");
+        }
+        _;
+    }
 
     constructor(address conditionalTokenAddress, address umaFinderAddress) {
         conditionalTokenContract = IConditionalTokens(conditionalTokenAddress);
-        umaFinder = FinderInterface(umaFinderAddress);
+        umaFinder = umaFinderAddress;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    /**
-     * @notice Initializes a question on the Adapter to report on
-     *
-     * @param questionID     - The unique questionID of the question
-     * @param ancillaryData  - Holds data used to resolve a question
-     * @param resolutionTime - Timestamp at which the Adapter can resolve a question
-     * @param rewardToken    - ERC20 token address used for payment of rewards and fees
-     * @param reward         - Reward offered to a successful proposer
-     * @param proposalBond   - Additional bond required to be posted by a price proposer and disputer
-     */
+    /// @notice Initializes a question on the Adapter to report on
+    /// @param questionID     - The unique questionID of the question
+    /// @param ancillaryData  - Holds data used to resolve a question
+    /// @param resolutionTime - Timestamp at which the Adapter can resolve a question
+    /// @param rewardToken    - ERC20 token address used for payment of rewards and fees
+    /// @param reward         - Reward offered to a successful proposer
+    /// @param proposalBond   - Bond required to be posted by a price proposer and disputer
     function initializeQuestion(
         bytes32 questionID,
         bytes memory ancillaryData,
@@ -125,10 +132,8 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         emit QuestionInitialized(questionID, ancillaryData, resolutionTime, rewardToken, reward, proposalBond);
     }
 
-    /**
-     * @notice - Checks whether or not a question can start the resolution process
-     * @param questionID - The unique questionID of the question
-     */
+    /// @notice - Checks whether or not a question can start the resolution process
+    /// @param questionID - The unique questionID of the question
     function readyToRequestResolution(bytes32 questionID) public view returns (bool) {
         if (!isQuestionInitialized(questionID)) {
             return false;
@@ -144,10 +149,8 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         return block.timestamp > questionData.resolutionTime;
     }
 
-    /**
-     * @notice Called by anyone to request resolution data from the Optimistic Oracle
-     * @param questionID - The unique questionID of the question
-     */
+    /// @notice Called by anyone to request resolution data from the Optimistic Oracle
+    /// @param questionID - The unique questionID of the question
     function requestResolutionData(bytes32 questionID) public {
         require(
             readyToRequestResolution(questionID),
@@ -190,10 +193,8 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         }
     }
 
-    /**
-     * @notice Checks whether a questionID is ready to be settled
-     * @param questionID - The unique questionID of the question
-     */
+    /// @notice Checks whether a questionID is ready to be settled
+    /// @param questionID - The unique questionID of the question
     function readyToSettle(bytes32 questionID) public view returns (bool) {
         if (!isQuestionInitialized(questionID)) {
             return false;
@@ -222,10 +223,8 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
             );
     }
 
-    /**
-     * @notice Can be called by anyone to settle/finalize the price of a question
-     * @param questionID - The unique questionID of the question
-     */
+    /// @notice Can be called by anyone to settle/finalize the price of a question
+    /// @param questionID - The unique questionID of the question
     function settle(bytes32 questionID) public {
         require(readyToSettle(questionID), "Adapter::settle: questionID is not ready to be settled");
         QuestionData storage questionData = questions[questionID];
@@ -237,10 +236,8 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         emit QuestionSettled(questionID);
     }
 
-    /**
-     * @notice Can be called by anyone to retrieve the expected payout of a settled question
-     * @param questionID - The unique questionID of the question
-     */
+    /// @notice Can be called by anyone to retrieve the expected payout of a settled question
+    /// @param questionID - The unique questionID of the question
     function getExpectedPayouts(bytes32 questionID) public view returns (uint256[] memory) {
         require(isQuestionInitialized(questionID), "Adapter::getExpectedPayouts: questionID is not initialized");
         QuestionData storage questionData = questions[questionID];
@@ -285,10 +282,8 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         return payouts;
     }
 
-    /**
-     * @notice Can be called by anyone to resolve a question
-     * @param questionID - The unique questionID of the question
-     */
+    /// @notice Can be called by anyone to resolve a question
+    /// @param questionID - The unique questionID of the question
     function reportPayouts(bytes32 questionID) public {
         QuestionData storage questionData = questions[questionID];
 
@@ -306,15 +301,9 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         emit QuestionResolved(questionID, false);
     }
 
-    /**
-     * @notice Allows an admin to report payouts in an emergency
-     * @param questionID - The unique questionID of the question
-     */
-    function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external {
-        require(
-            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "Adapter::emergencyReportPayouts: caller does not have admin role"
-        );
+    /// @notice Allows an admin to report payouts in an emergency
+    /// @param questionID - The unique questionID of the question
+    function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external onlyAdmin {
         require(isQuestionInitialized(questionID), "Adapter::emergencyReportPayouts: questionID is not initialized");
 
         require(
@@ -333,12 +322,9 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         emit QuestionResolved(questionID, true);
     }
 
-    /**
-     * @notice Allows an admin to pause market resolution in an emergency
-     * @param questionID - The unique questionID of the question
-     */
-    function pauseQuestion(bytes32 questionID) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Adapter::pauseQuestion: caller does not have admin role");
+    /// @notice Allows an admin to pause market resolution in an emergency
+    /// @param questionID - The unique questionID of the question
+    function pauseQuestion(bytes32 questionID) external onlyAdmin {
         require(isQuestionInitialized(questionID), "Adapter::pauseQuestion: questionID is not initialized");
         QuestionData storage questionData = questions[questionID];
 
@@ -346,12 +332,9 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         emit QuestionPaused(questionID);
     }
 
-    /**
-     * @notice Allows an admin to unpause market resolution in an emergency
-     * @param questionID - The unique questionID of the question
-     */
-    function unPauseQuestion(bytes32 questionID) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Adapter::unPauseQuestion: caller does not have admin role");
+    /// @notice Allows an admin to unpause market resolution in an emergency
+    /// @param questionID - The unique questionID of the question
+    function unPauseQuestion(bytes32 questionID) external onlyAdmin {
         require(isQuestionInitialized(questionID), "Adapter::unPauseQuestion: questionID is not initialized");
         QuestionData storage questionData = questions[questionID];
 
@@ -359,12 +342,17 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
         emit QuestionUnpaused(questionID);
     }
 
+    function setFinderAddress(address newFinderAddress) external onlyAdmin {
+        emit NewFinderAddress(umaFinder, newFinderAddress);
+        umaFinder = newFinderAddress;
+    }
+
     function isQuestionInitialized(bytes32 questionID) public view returns (bool) {
         return questions[questionID].resolutionTime != 0;
     }
 
     function getOptimisticOracleAddress() internal view returns (address) {
-        return umaFinder.getImplementationAddress("OptimisticOracle");
+        return FinderInterface(umaFinder).getImplementationAddress("OptimisticOracle");
     }
 
     function getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
