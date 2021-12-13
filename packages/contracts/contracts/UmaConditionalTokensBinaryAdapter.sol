@@ -23,23 +23,23 @@ contract UmaConditionalTokensBinaryAdapter is AccessControl {
     uint256 public constant emergencySafetyPeriod = 30 days;
 
     struct QuestionData {
-        // @notice Unix timestamp(in seconds) at which a market can be resolved
+        // Unix timestamp(in seconds) at which a market can be resolved
         uint256 resolutionTime;
-        // @notice Reward offered to a successful proposer
+        // Reward offered to a successful proposer
         uint256 reward;
-        // @notice Additional bond required by Optimistic oracle proposers and disputers
+        // Additional bond required by Optimistic oracle proposers and disputers
         uint256 proposalBond;
-        // @notice Flag marking the block number when a question was settled
+        // Flag marking the block number when a question was settled
         uint256 settled;
-        // @notice Flag marking whether resolution data has been requested from the Oracle
+        // Flag marking whether resolution data has been requested from the Oracle
         bool resolutionDataRequested;
-        // @notice Flag marking whether a question is resolved
+        // Flag marking whether a question is resolved
         bool resolved;
-        // @notice Flag marking whether a question is paused
+        // Flag marking whether a question is paused
         bool paused;
-        // @notice ERC20 token address used for payment of rewards and fees
+        // ERC20 token address used for payment of rewards and fees
         address rewardToken;
-        // @notice Data used to resolve a condition
+        // Data used to resolve a condition
         bytes ancillaryData;
     }
 
