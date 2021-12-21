@@ -215,10 +215,13 @@ contract UmaConditionalTokensBinaryAdapter is Auth {
     /// @param questionID   - The unique questionID of the question
     /// @param questionData - The questionData of the question
     function _earlyExpiryRequest(bytes32 questionID, QuestionData storage questionData) internal {
+        // solhint-disable-next-line not-rely-on-time
+        uint256 earlyExpiryTs = block.timestamp;
+
         // Request a price
         _requestPrice(
             identifier,
-            block.timestamp,
+            earlyExpiryTs,
             questionData.ancillaryData,
             questionData.rewardToken,
             questionData.reward,
@@ -226,7 +229,7 @@ contract UmaConditionalTokensBinaryAdapter is Auth {
         );
 
         // Update early expiry timestamp and resolution data requested flag
-        questionData.earlyExpiryTimestamp = block.timestamp;
+        questionData.earlyExpiryTimestamp = earlyExpiryTs;
         questionData.resolutionDataRequested = true;
 
         emit ResolutionDataRequested(
@@ -484,6 +487,7 @@ contract UmaConditionalTokensBinaryAdapter is Auth {
 
     function isEarlyExpiry(bytes32 questionID) public view returns (bool) {
         QuestionData storage questionData = questions[questionID];
+        // solhint-disable-next-line not-rely-on-time
         return questionData.earlyExpiryEnabled && block.timestamp < questionData.resolutionTime;
     }
 

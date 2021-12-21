@@ -95,10 +95,10 @@ describe("", function () {
                     .withArgs(this.signers.tester.address);
 
                 // Attempt to authorize without being authorized
-                await expect(umaBinaryAdapter.connect(this.signers.tester).rely(this.signers.tester.address)).to.be.revertedWith(
-                    "Auth/not-authorized",
-                );
-            })
+                await expect(
+                    umaBinaryAdapter.connect(this.signers.tester).rely(this.signers.tester.address),
+                ).to.be.revertedWith("Auth/not-authorized");
+            });
 
             it("correctly sets up contracts", async function () {
                 const returnedConditionalToken = await umaBinaryAdapter.conditionalTokenContract();
@@ -159,7 +159,7 @@ describe("", function () {
                         testRewardToken.address,
                         reward,
                         proposalBond,
-                        false
+                        false,
                     ),
                 )
                     .to.emit(umaBinaryAdapter, "QuestionInitialized")
@@ -170,7 +170,7 @@ describe("", function () {
                         testRewardToken.address,
                         reward,
                         proposalBond,
-                        false
+                        false,
                     );
 
                 const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
@@ -210,11 +210,19 @@ describe("", function () {
                         testRewardToken.address,
                         reward,
                         0,
-                        false
+                        false,
                     ),
                 )
                     .to.emit(umaBinaryAdapter, "QuestionInitialized")
-                    .withArgs(questionID, ancillaryDataHexlified, resolutionTime, testRewardToken.address, reward, 0, false);
+                    .withArgs(
+                        questionID,
+                        ancillaryDataHexlified,
+                        resolutionTime,
+                        testRewardToken.address,
+                        reward,
+                        0,
+                        false,
+                    );
 
                 const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
 
@@ -254,7 +262,7 @@ describe("", function () {
                         testRewardToken.address,
                         reward,
                         proposalBond,
-                        false
+                        false,
                     ),
                 )
                     .to.emit(umaBinaryAdapter, "QuestionInitialized")
@@ -265,7 +273,7 @@ describe("", function () {
                         testRewardToken.address,
                         reward,
                         proposalBond,
-                        false
+                        false,
                     );
 
                 const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
@@ -300,7 +308,7 @@ describe("", function () {
                     testRewardToken.address,
                     0,
                     0,
-                    false
+                    false,
                 );
 
                 // reinitialize the same questionID
@@ -312,7 +320,7 @@ describe("", function () {
                         testRewardToken.address,
                         0,
                         0,
-                        false
+                        false,
                     ),
                 ).to.be.revertedWith("Adapter::initializeQuestion: Question already initialized");
             });
@@ -368,7 +376,7 @@ describe("", function () {
                         testRewardToken.address,
                         ethers.constants.Zero,
                         bond,
-                        false
+                        false,
                     );
 
                 const questionDataAfterRequest = await umaBinaryAdapter.questions(questionID);
