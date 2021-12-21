@@ -999,6 +999,51 @@ describe("", function () {
                 expect(await questionData.resolutionDataRequested).eq(true);
                 expect(await questionData.resolved).eq(true);
             });
+
+            it("should fallback to standard resolution if past the resolution time", async function () {
+                // Initialize a new question 
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero,
+                    undefined,
+                    true
+                );
+                // Fast forward time
+                await hardhatIncreaseTime(7200);
+
+                // Verify that isEarlyExpiry is false
+                expect(await umaBinaryAdapter.isEarlyExpiry(questionID)).to.eq(false)
+
+                // request resolution data
+                await (await umaBinaryAdapter.requestResolutionData(questionID)).wait();
+
+                // Verify that early expiry timestamp is not set
+                const questionData = await umaBinaryAdapter.questions(questionID);
+                expect(questionData.earlyExpiryEnabled).to.eq(true);
+                expect(questionData.earlyExpiryTimestamp).to.eq(0);
+
+                // Settle using standard resolution
+                // mocks for settlement and resolution
+                await optimisticOracle.mock.hasPrice.returns(true);
+                await optimisticOracle.mock.getRequest.returns(getMockRequest());
+                await optimisticOracle.mock.settleAndGetPrice.returns(1);
+                await prepareCondition(conditionalTokens, umaBinaryAdapter.address, title, desc);
+
+                expect(await umaBinaryAdapter.connect(this.signers.tester).settle(questionID))
+                    .to.emit(umaBinaryAdapter, "QuestionSettled")
+                    .withArgs(questionID, false); //Note QuestionSettled emitted with earlyExpiry == false
+
+                //Report payouts
+                expect(await umaBinaryAdapter.reportPayouts(questionID))
+                    .to.emit(umaBinaryAdapter, "QuestionResolved")
+                    .withArgs(questionID, false);
+            });
         });
     });
 });
