@@ -905,9 +905,6 @@ describe("", function () {
             });
 
             it("should request resolution data early", async function () {
-                // await optimisticOracle.mock.hasPrice.returns(true);
-                // await optimisticOracle.mock.setBond.returns(0);
-
                 // Verify that ready to request resolution returns true since it's an early expiry
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).to.eq(true);
 
