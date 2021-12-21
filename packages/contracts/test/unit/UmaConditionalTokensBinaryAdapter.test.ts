@@ -17,7 +17,7 @@ import {
     revertToSnapshot,
     getMockRequest,
 } from "../helpers";
-import { DESC, QUESTION_TITLE, thirtyDays } from "./constants";
+import { DESC, IGNORE_PRICE, QUESTION_TITLE, thirtyDays } from "./constants";
 
 const setup = deployments.createFixture(async () => {
     const signers = await hre.ethers.getSigners();
@@ -855,6 +855,9 @@ describe("", function () {
             let optimisticOracle: MockContract;
             let testRewardToken: TestERC20;
             let umaBinaryAdapter: UmaConditionalTokensBinaryAdapter;
+            let resolutionTime: number;
+            let questionID: string;
+            let ancillaryData: Uint8Array;
 
             before(async function () {
                 const deployment = await setup();
@@ -862,44 +865,137 @@ describe("", function () {
                 optimisticOracle = deployment.optimisticOracle;
                 testRewardToken = deployment.testRewardToken;
                 umaBinaryAdapter = deployment.umaBinaryAdapter;
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                questionID = createQuestionID(title, desc);
+                ancillaryData = createAncillaryData(title, desc);
+                resolutionTime = Math.floor(new Date().getTime() / 1000) + 2000;
+
+                await prepareCondition(conditionalTokens, umaBinaryAdapter.address, title, desc);
             });
 
             it("should correctly initialize an early expiry question", async function () {
-                //TODO
-                // 
+                // Verify QuestionInitialized event emitted
+                expect(
+                    await umaBinaryAdapter.initializeQuestion(
+                        questionID,
+                        ancillaryData,
+                        resolutionTime,
+                        testRewardToken.address,
+                        0,
+                        0,
+                        true,
+                    ),
+                )
+                    .to.emit(umaBinaryAdapter, "QuestionInitialized")
+                    .withArgs(
+                        questionID,
+                        ethers.utils.hexlify(ancillaryData),
+                        resolutionTime,
+                        testRewardToken.address,
+                        0,
+                        0,
+                        true,
+                    );
+
+                const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
+
+                // Verify early expiry enabled flag on the questionData
+                expect(returnedQuestionData.earlyExpiryEnabled).eq(true);
             });
 
             it("should request resolution data early", async function () {
-                //TODO
-                // 
+                // await optimisticOracle.mock.hasPrice.returns(true);
+                // await optimisticOracle.mock.setBond.returns(0);
+
+                // Verify that ready to request resolution returns true since it's an early expiry
+                expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).to.eq(true);
+
+                // Request resolution data
+                expect(await umaBinaryAdapter.requestResolutionData(questionID))
+                    .to.emit(umaBinaryAdapter, "ResolutionDataRequested");
+
+                const questionData = await umaBinaryAdapter.questions(questionID);
+                const earlyExpiryTimestamp = questionData.earlyExpiryTimestamp;
+
+                // Verify that the earlyExpiryTimestamp is set and is less than resolution time
+                expect(earlyExpiryTimestamp).to.be.gt(0);
+                expect(earlyExpiryTimestamp).to.be.lt(questionData.resolutionTime);
             });
 
             it("should revert if res data is requested twice", async function () {
-                //TODO
-                // 
+                // Attempt to request data again for the same questionID
+                await expect(
+                    umaBinaryAdapter.requestResolutionData(questionID),
+                ).to.be.revertedWith("Adapter::requestResolutionData: Question not ready to be resolved");
             });
 
-            it("should allow new res data requests if the OO sent the ignore price", async function () {
-                //TODO
-                // 
+            it("should allow new res data requests if OO sent ignore price", async function () {
+                await optimisticOracle.mock.hasPrice.returns(true);
+
+                // Optimistic Oracle sends the IGNORE_PRICE to the Adapter
+                const request = await getMockRequest();
+                request.resolvedPrice = ethers.constants.Zero;
+                request.proposedPrice = IGNORE_PRICE;
+                await optimisticOracle.mock.getRequest.returns(request);
+
+                // Verfiy that ready to settle suceeds
+                expect(await umaBinaryAdapter.readyToSettle(questionID)).to.eq(true);
+
+                // Attempt to settle the early expiry question
+                await umaBinaryAdapter.settle(questionID);
+
+                // Since the OO sent the IGNORE_PRICE, the Adapter will NOT settle the question
+                // But instead will allow new price requests by setting resolutionDataRequested to false
+                const questionData = await umaBinaryAdapter.questions(questionID);
+                expect(questionData.resolutionDataRequested).to.eq(false);
+                expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).to.eq(true);
+            });
+
+            it("should request new resolution data", async function () {
+                expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).to.eq(true);
+
+                // Request resolution data
+                expect(await umaBinaryAdapter.requestResolutionData(questionID))
+                    .to.emit(umaBinaryAdapter, "ResolutionDataRequested");
+                const questionData = await umaBinaryAdapter.questions(questionID);
+
+                // Verify that the earlyExpiryTimestamp is set and is less than resolution time
+                expect(questionData.earlyExpiryTimestamp).to.be.gt(0);
+                expect(questionData.earlyExpiryTimestamp).to.be.lt(questionData.resolutionTime);
             });
 
             it("should settle the question correctly", async function () {
-                //TODO
-                // 
+                await optimisticOracle.mock.hasPrice.returns(true);
+                await optimisticOracle.mock.getRequest.returns(getMockRequest());
+                await optimisticOracle.mock.settleAndGetPrice.returns(1);
+
+                // Settle the Question
+                expect(await umaBinaryAdapter.connect(this.signers.tester).settle(questionID))
+                    .to.emit(umaBinaryAdapter, "QuestionSettled")
+                    .withArgs(questionID, true);
+
+                // Verify settled block number != 0
+                const questionData = await umaBinaryAdapter.questions(questionID);
+                expect(questionData.settled).to.not.eq(0);
             });
 
             it("should return expected payouts", async function () {
-                //TODO
-                // 
+                const expectedPayouts = await (await umaBinaryAdapter.getExpectedPayouts(questionID)).map((el) => el.toString());
+                expect(expectedPayouts.length).to.eq(2);
+                expect(expectedPayouts[0]).to.eq("1");
+                expect(expectedPayouts[1]).to.eq("0");
             });
 
             it("should report payouts correctly", async function () {
-                //TODO
-                // 
+                expect(await umaBinaryAdapter.reportPayouts(questionID))
+                    .to.emit(umaBinaryAdapter, "QuestionResolved")
+                    .withArgs(questionID, false);
+
+                const questionData = await umaBinaryAdapter.questions(questionID);
+                expect(await questionData.resolutionDataRequested).eq(true);
+                expect(await questionData.resolved).eq(true);
             });
-
-
         });
     });
 });

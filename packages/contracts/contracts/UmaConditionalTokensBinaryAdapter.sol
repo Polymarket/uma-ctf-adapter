@@ -348,6 +348,9 @@ contract UmaConditionalTokensBinaryAdapter is Auth {
             return;
         }
 
+        // Set the settled block number
+        questionData.settled = block.number;
+
         // Settle the price
         optimisticOracle.settleAndGetPrice(identifier, questionData.earlyExpiryTimestamp, questionData.ancillaryData);
         emit QuestionSettled(questionID, true);

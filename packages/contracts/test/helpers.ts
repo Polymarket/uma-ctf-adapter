@@ -87,7 +87,7 @@ export interface Request {
     currency: string;
     settled: boolean;
     refundOnDispute: boolean;
-    proposedPrice: number;
+    proposedPrice: number | BigNumber;
     resolvedPrice: BigNumber;
     expirationTime: number;
     reward: number;
