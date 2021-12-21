@@ -850,7 +850,7 @@ describe("", function () {
             });
         });
 
-        describe("Early expiry scenarios", function () {
+        describe("Early Resolution scenarios", function () {
             let conditionalTokens: Contract;
             let optimisticOracle: MockContract;
             let testRewardToken: TestERC20;
@@ -874,7 +874,7 @@ describe("", function () {
                 await prepareCondition(conditionalTokens, umaBinaryAdapter.address, title, desc);
             });
 
-            it("should correctly initialize an early expiry question", async function () {
+            it("should correctly initialize an early resolution question", async function () {
                 // Verify QuestionInitialized event emitted
                 expect(
                     await umaBinaryAdapter.initializeQuestion(
@@ -900,12 +900,12 @@ describe("", function () {
 
                 const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
 
-                // Verify early expiry enabled flag on the questionData
-                expect(returnedQuestionData.earlyExpiryEnabled).eq(true);
+                // Verify early resolution enabled flag on the questionData
+                expect(returnedQuestionData.earlyResolutionEnabled).eq(true);
             });
 
             it("should request resolution data early", async function () {
-                // Verify that ready to request resolution returns true since it's an early expiry
+                // Verify that ready to request resolution returns true since it's an early resolution
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).to.eq(true);
 
                 // Request resolution data
@@ -915,11 +915,11 @@ describe("", function () {
                 );
 
                 const questionData = await umaBinaryAdapter.questions(questionID);
-                const earlyExpiryTimestamp = questionData.earlyExpiryTimestamp;
+                const earlyResolutionTimestamp = questionData.earlyResolutionTimestamp;
 
-                // Verify that the earlyExpiryTimestamp is set and is less than resolution time
-                expect(earlyExpiryTimestamp).to.be.gt(0);
-                expect(earlyExpiryTimestamp).to.be.lt(questionData.resolutionTime);
+                // Verify that the earlyResolutionTimestamp is set and is less than resolution time
+                expect(earlyResolutionTimestamp).to.be.gt(0);
+                expect(earlyResolutionTimestamp).to.be.lt(questionData.resolutionTime);
             });
 
             it("should revert if res data is requested twice", async function () {
@@ -941,7 +941,7 @@ describe("", function () {
                 // Verfiy that ready to settle suceeds
                 expect(await umaBinaryAdapter.readyToSettle(questionID)).to.eq(true);
 
-                // Attempt to settle the early expiry question
+                // Attempt to settle the early resolution question
                 await umaBinaryAdapter.settle(questionID);
 
                 // Since the OO sent the IGNORE_PRICE, the Adapter will NOT settle the question
@@ -961,9 +961,9 @@ describe("", function () {
                 );
                 const questionData = await umaBinaryAdapter.questions(questionID);
 
-                // Verify that the earlyExpiryTimestamp is set and is less than resolution time
-                expect(questionData.earlyExpiryTimestamp).to.be.gt(0);
-                expect(questionData.earlyExpiryTimestamp).to.be.lt(questionData.resolutionTime);
+                // Verify that the earlyResolutionTimestamp is set and is less than resolution time
+                expect(questionData.earlyResolutionTimestamp).to.be.gt(0);
+                expect(questionData.earlyResolutionTimestamp).to.be.lt(questionData.resolutionTime);
             });
 
             it("should settle the question correctly", async function () {
@@ -1017,16 +1017,16 @@ describe("", function () {
                 // Fast forward time
                 await hardhatIncreaseTime(7200);
 
-                // Verify that isEarlyExpiry is false
-                expect(await umaBinaryAdapter.isEarlyExpiry(qID)).to.eq(false);
+                // Verify that isEarlyResolution is false
+                expect(await umaBinaryAdapter.isEarlyResolution(qID)).to.eq(false);
 
                 // request resolution data
                 await (await umaBinaryAdapter.requestResolutionData(qID)).wait();
 
-                // Verify that early expiry timestamp is not set
+                // Verify that early resolution timestamp is not set
                 const questionData = await umaBinaryAdapter.questions(qID);
-                expect(questionData.earlyExpiryEnabled).to.eq(true);
-                expect(questionData.earlyExpiryTimestamp).to.eq(0);
+                expect(questionData.earlyResolutionEnabled).to.eq(true);
+                expect(questionData.earlyResolutionTimestamp).to.eq(0);
 
                 // Settle using standard resolution
                 // mocks for settlement and resolution
@@ -1037,7 +1037,7 @@ describe("", function () {
 
                 expect(await umaBinaryAdapter.connect(this.signers.tester).settle(qID))
                     .to.emit(umaBinaryAdapter, "QuestionSettled")
-                    .withArgs(qID, false); // Note QuestionSettled emitted with earlyExpiry == false
+                    .withArgs(qID, false); // Note QuestionSettled emitted with earlyResolution == false
 
                 // Report payouts
                 expect(await umaBinaryAdapter.reportPayouts(qID))

@@ -55,10 +55,10 @@ contract UmaConditionalTokensBinaryAdapter {
         uint256 proposalBond;
         // Flag marking the block number when a question was settled
         uint256 settled;
-        // Early expiry timestamp, set when an early expiry data request is sent
-        uint256 earlyExpiryTimestamp;
+        // Early Resolution timestamp, set when an early resolution data request is sent
+        uint256 earlyResolutionTimestamp;
         // Flag marking whether a question can be resolved early
-        bool earlyExpiryEnabled;
+        bool earlyResolutionEnabled;
         // Flag marking whether resolution data has been requested from the Oracle
         bool resolutionDataRequested;
         // Flag marking whether a question is resolved
@@ -87,7 +87,7 @@ contract UmaConditionalTokensBinaryAdapter {
         address rewardToken,
         uint256 reward,
         uint256 proposalBond,
-        bool earlyExpiryEnabled
+        bool earlyResolutionEnabled
     );
 
     /// @notice Emitted when a question is paused by the Admin
@@ -105,11 +105,11 @@ contract UmaConditionalTokensBinaryAdapter {
         address rewardToken,
         uint256 reward,
         uint256 proposalBond,
-        bool earlyExpiry
+        bool earlyResolution
     );
 
     /// @notice Emitted when a question is settled
-    event QuestionSettled(bytes32 indexed questionID, bool indexed earlyExpiry);
+    event QuestionSettled(bytes32 indexed questionID, bool indexed earlyResolution);
 
     /// @notice Emitted when a question is resolved
     event QuestionResolved(bytes32 indexed questionID, bool indexed emergencyReport);
@@ -123,12 +123,12 @@ contract UmaConditionalTokensBinaryAdapter {
 
     /// @notice Initializes a question on the Adapter to report on
     /// @param questionID           - The unique questionID of the question
-    /// @param ancillaryData        - Holds data used to resolve a question
-    /// @param resolutionTime       - Timestamp at which the Adapter can resolve a question
+    /// @param ancillaryData        - Data used to resolve a question
+    /// @param resolutionTime       - Timestamp after which the Adapter can resolve a question
     /// @param rewardToken          - ERC20 token address used for payment of rewards and fees
     /// @param reward               - Reward offered to a successful proposer
     /// @param proposalBond         - Bond required to be posted by a price proposer and disputer
-    /// @param earlyExpiryEnabled   - Param that determines whether a question can be expired early
+    /// @param earlyResolutionEnabled   - Determines whether a question can be resolved early
     function initializeQuestion(
         bytes32 questionID,
         bytes memory ancillaryData,
@@ -136,7 +136,7 @@ contract UmaConditionalTokensBinaryAdapter {
         address rewardToken,
         uint256 reward,
         uint256 proposalBond,
-        bool earlyExpiryEnabled
+        bool earlyResolutionEnabled
     ) public {
         require(!isQuestionInitialized(questionID), "Adapter::initializeQuestion: Question already initialized");
         questions[questionID] = QuestionData({
@@ -145,12 +145,12 @@ contract UmaConditionalTokensBinaryAdapter {
             rewardToken: rewardToken,
             reward: reward,
             proposalBond: proposalBond,
-            earlyExpiryEnabled: earlyExpiryEnabled,
+            earlyResolutionEnabled: earlyResolutionEnabled,
             resolutionDataRequested: false,
             resolved: false,
             paused: false,
             settled: 0,
-            earlyExpiryTimestamp: 0
+            earlyResolutionTimestamp: 0
         });
 
         // Approve the OO to transfer the reward token
@@ -163,7 +163,7 @@ contract UmaConditionalTokensBinaryAdapter {
             rewardToken,
             reward,
             proposalBond,
-            earlyExpiryEnabled
+            earlyResolutionEnabled
         );
     }
 
@@ -180,7 +180,7 @@ contract UmaConditionalTokensBinaryAdapter {
         if (questionData.resolved) {
             return false;
         }
-        if (questionData.earlyExpiryEnabled) {
+        if (questionData.earlyResolutionEnabled) {
             return true;
         }
         // solhint-disable-next-line not-rely-on-time
@@ -197,9 +197,9 @@ contract UmaConditionalTokensBinaryAdapter {
         QuestionData storage questionData = questions[questionID];
         require(!questionData.paused, "Adapter::requestResolutionData: Question is paused");
 
-        // Determine if a request for resolution data is an early expiry or the standard settlement flow
-        if (isEarlyExpiry(questionID)) {
-            return _earlyExpiryRequest(questionID, questionData);
+        // Determine if a request for resolution data is an early resolution or the standard resolution flow
+        if (isEarlyResolution(questionID)) {
+            return _earlyResolutionRequest(questionID, questionData);
         }
         return _standardRequest(questionID, questionData);
     }
@@ -233,30 +233,30 @@ contract UmaConditionalTokensBinaryAdapter {
         );
     }
 
-    /// @notice Requests data from the Optimistic Oracle using early expiry
+    /// @notice Requests data from the Optimistic Oracle using early resolution
     /// @param questionID   - The unique questionID of the question
     /// @param questionData - The questionData of the question
-    function _earlyExpiryRequest(bytes32 questionID, QuestionData storage questionData) internal {
+    function _earlyResolutionRequest(bytes32 questionID, QuestionData storage questionData) internal {
         // solhint-disable-next-line not-rely-on-time
-        uint256 earlyExpiryTs = block.timestamp;
+        uint256 earlyResTs = block.timestamp;
 
         // Request a price
         _requestPrice(
             identifier,
-            earlyExpiryTs,
+            earlyResTs,
             questionData.ancillaryData,
             questionData.rewardToken,
             questionData.reward,
             questionData.proposalBond
         );
 
-        // Update early expiry timestamp and resolution data requested flag
-        questionData.earlyExpiryTimestamp = earlyExpiryTs;
+        // Update early resolution timestamp and resolution data requested flag
+        questionData.earlyResolutionTimestamp = earlyResTs;
         questionData.resolutionDataRequested = true;
 
         emit ResolutionDataRequested(
             identifier,
-            questionData.earlyExpiryTimestamp,
+            questionData.earlyResolutionTimestamp,
             questionID,
             questionData.ancillaryData,
             questionData.rewardToken,
@@ -309,12 +309,12 @@ contract UmaConditionalTokensBinaryAdapter {
 
         OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
 
-        if (isEarlyExpiry(questionID)) {
+        if (isEarlyResolution(questionID)) {
             return
                 optimisticOracle.hasPrice(
                     address(this),
                     identifier,
-                    questionData.earlyExpiryTimestamp,
+                    questionData.earlyResolutionTimestamp,
                     questionData.ancillaryData
                 );
         }
@@ -329,7 +329,7 @@ contract UmaConditionalTokensBinaryAdapter {
     }
 
     /// @notice Settle/finalize the resolution data of a question
-    /// @notice If early expiry is enabled and the OO returned the ignore price,
+    /// @notice If early resolution is enabled and the OO returned the ignore price,
     ///         this method "refreshes" the question, allowing new price requests
     /// @param questionID - The unique questionID of the question
     function settle(bytes32 questionID) public {
@@ -337,7 +337,7 @@ contract UmaConditionalTokensBinaryAdapter {
         QuestionData storage questionData = questions[questionID];
         require(!questionData.paused, "Adapter::settle: Question is paused");
 
-        if (isEarlyExpiry(questionID)) {
+        if (isEarlyResolution(questionID)) {
             return _earlySettle(questionID, questionData);
         }
         return _standardSettle(questionID, questionData);
@@ -359,13 +359,13 @@ contract UmaConditionalTokensBinaryAdapter {
 
         // Fetch the current proposed price from the OO
         int256 proposedPrice = optimisticOracle
-            .getRequest(address(this), identifier, questionData.earlyExpiryTimestamp, questionData.ancillaryData)
+            .getRequest(address(this), identifier, questionData.earlyResolutionTimestamp, questionData.ancillaryData)
             .proposedPrice;
 
         // If the proposed price is the ignore price:
         // 1) Do not settle the price
         // 2) Set the resolution data requested flag to false, allowing a new price request to be sent for this question
-        if (proposedPrice == earlyExpiryIgnorePrice()) {
+        if (proposedPrice == ignorePrice()) {
             questionData.resolutionDataRequested = false;
             return;
         }
@@ -374,7 +374,11 @@ contract UmaConditionalTokensBinaryAdapter {
         questionData.settled = block.number;
 
         // Settle the price
-        optimisticOracle.settleAndGetPrice(identifier, questionData.earlyExpiryTimestamp, questionData.ancillaryData);
+        optimisticOracle.settleAndGetPrice(
+            identifier,
+            questionData.earlyResolutionTimestamp,
+            questionData.ancillaryData
+        );
         emit QuestionSettled(questionID, true);
     }
 
@@ -425,13 +429,13 @@ contract UmaConditionalTokensBinaryAdapter {
         view
         returns (int256)
     {
-        if (isEarlyExpiry(questionID)) {
+        if (isEarlyResolution(questionID)) {
             return
                 getOptimisticOracle()
                     .getRequest(
                         address(this),
                         identifier,
-                        questionData.earlyExpiryTimestamp,
+                        questionData.earlyResolutionTimestamp,
                         questionData.ancillaryData
                     )
                     .resolvedPrice;
@@ -510,14 +514,14 @@ contract UmaConditionalTokensBinaryAdapter {
         return questions[questionID].resolutionTime != 0;
     }
 
-    function isEarlyExpiry(bytes32 questionID) public view returns (bool) {
+    function isEarlyResolution(bytes32 questionID) public view returns (bool) {
         QuestionData storage questionData = questions[questionID];
         // solhint-disable-next-line not-rely-on-time
-        return questionData.earlyExpiryEnabled && block.timestamp < questionData.resolutionTime;
+        return questionData.earlyResolutionEnabled && block.timestamp < questionData.resolutionTime;
     }
 
-    /// @notice Special price that indicates early expiration is not ready yet
-    function earlyExpiryIgnorePrice() public pure returns (int256) {
+    /// @notice Special price that indicates early resolution is not ready yet
+    function ignorePrice() public pure returns (int256) {
         return type(int256).min;
     }
 
