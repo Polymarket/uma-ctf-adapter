@@ -912,8 +912,10 @@ describe("", function () {
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).to.eq(true);
 
                 // Request resolution data
-                expect(await umaBinaryAdapter.requestResolutionData(questionID))
-                    .to.emit(umaBinaryAdapter, "ResolutionDataRequested");
+                expect(await umaBinaryAdapter.requestResolutionData(questionID)).to.emit(
+                    umaBinaryAdapter,
+                    "ResolutionDataRequested",
+                );
 
                 const questionData = await umaBinaryAdapter.questions(questionID);
                 const earlyExpiryTimestamp = questionData.earlyExpiryTimestamp;
@@ -925,9 +927,9 @@ describe("", function () {
 
             it("should revert if res data is requested twice", async function () {
                 // Attempt to request data again for the same questionID
-                await expect(
-                    umaBinaryAdapter.requestResolutionData(questionID),
-                ).to.be.revertedWith("Adapter::requestResolutionData: Question not ready to be resolved");
+                await expect(umaBinaryAdapter.requestResolutionData(questionID)).to.be.revertedWith(
+                    "Adapter::requestResolutionData: Question not ready to be resolved",
+                );
             });
 
             it("should allow new res data requests if OO sent ignore price", async function () {
@@ -956,8 +958,10 @@ describe("", function () {
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).to.eq(true);
 
                 // Request resolution data
-                expect(await umaBinaryAdapter.requestResolutionData(questionID))
-                    .to.emit(umaBinaryAdapter, "ResolutionDataRequested");
+                expect(await umaBinaryAdapter.requestResolutionData(questionID)).to.emit(
+                    umaBinaryAdapter,
+                    "ResolutionDataRequested",
+                );
                 const questionData = await umaBinaryAdapter.questions(questionID);
 
                 // Verify that the earlyExpiryTimestamp is set and is less than resolution time
@@ -981,7 +985,9 @@ describe("", function () {
             });
 
             it("should return expected payouts", async function () {
-                const expectedPayouts = await (await umaBinaryAdapter.getExpectedPayouts(questionID)).map((el) => el.toString());
+                const expectedPayouts = await (
+                    await umaBinaryAdapter.getExpectedPayouts(questionID)
+                ).map(el => el.toString());
                 expect(expectedPayouts.length).to.eq(2);
                 expect(expectedPayouts[0]).to.eq("1");
                 expect(expectedPayouts[1]).to.eq("0");
