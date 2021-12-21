@@ -3,16 +3,38 @@ pragma solidity 0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { Auth } from "./libraries/Auth.sol";
-
 import { FinderInterface } from "./interfaces/FinderInterface.sol";
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { OptimisticOracleInterface } from "./interfaces/OptimisticOracleInterface.sol";
 
 /// @title UmaConditionalTokensBinaryAdapter
 /// @notice Adapter contract that enables conditional token resolution via UMA's Optimistic Oracle
-contract UmaConditionalTokensBinaryAdapter is Auth {
-    /// @notice Conditional Tokens framework
+contract UmaConditionalTokensBinaryAdapter {
+    /// @notice Auth
+    mapping(address => uint256) public wards;
+
+    /// @notice Authorizes a user
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit AuthorizedUser(usr);
+    }
+
+    /// @notice Deauthorizes a user
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit DeauthorizedUser(usr);
+    }
+
+    event AuthorizedUser(address indexed usr);
+    event DeauthorizedUser(address indexed usr);
+
+    /// @notice - Authorization modifier
+    modifier auth() {
+        require(wards[msg.sender] == 1, "Adapter/not-authorized");
+        _;
+    }
+
+    /// @notice Conditional Tokens
     IConditionalTokens public immutable conditionalTokenContract;
 
     /// @notice UMA Finder address

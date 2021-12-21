@@ -97,7 +97,7 @@ describe("", function () {
                 // Attempt to authorize without being authorized
                 await expect(
                     umaBinaryAdapter.connect(this.signers.tester).rely(this.signers.tester.address),
-                ).to.be.revertedWith("Auth/not-authorized");
+                ).to.be.revertedWith("Adapter/not-authorized");
             });
 
             it("correctly sets up contracts", async function () {
@@ -585,7 +585,7 @@ describe("", function () {
 
                 await expect(
                     umaBinaryAdapter.connect(this.signers.tester).pauseQuestion(questionID),
-                ).to.be.revertedWith("Auth/not-authorized");
+                ).to.be.revertedWith("Adapter/not-authorized");
             });
 
             it("unpause should revert when signer is not admin", async function () {
@@ -602,7 +602,7 @@ describe("", function () {
 
                 await expect(
                     umaBinaryAdapter.connect(this.signers.tester).unPauseQuestion(questionID),
-                ).to.be.revertedWith("Auth/not-authorized");
+                ).to.be.revertedWith("Adapter/not-authorized");
             });
 
             it("pause should revert if question is not initialized", async function () {
@@ -654,7 +654,7 @@ describe("", function () {
                     umaBinaryAdapter
                         .connect(this.signers.tester)
                         .setFinderAddress(ethers.Wallet.createRandom().address),
-                ).to.be.revertedWith("Auth/not-authorized");
+                ).to.be.revertedWith("Adapter/not-authorized");
             });
         });
 
@@ -846,7 +846,7 @@ describe("", function () {
             it("should revert if emergencyReport is called from a non-admin", async function () {
                 await expect(
                     umaBinaryAdapter.connect(this.signers.tester).emergencyReportPayouts(questionID, [1, 0]),
-                ).to.be.revertedWith("Auth/not-authorized");
+                ).to.be.revertedWith("Adapter/not-authorized");
             });
         });
 
@@ -935,7 +935,7 @@ describe("", function () {
                 // Optimistic Oracle sends the IGNORE_PRICE to the Adapter
                 const request = await getMockRequest();
                 request.resolvedPrice = ethers.constants.Zero;
-                request.proposedPrice = IGNORE_PRICE;
+                request.proposedPrice = BigNumber.from(IGNORE_PRICE);
                 await optimisticOracle.mock.getRequest.returns(request);
 
                 // Verfiy that ready to settle suceeds
