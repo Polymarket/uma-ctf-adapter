@@ -122,12 +122,12 @@ contract UmaConditionalTokensBinaryAdapter {
     }
 
     /// @notice Initializes a question on the Adapter to report on
-    /// @param questionID           - The unique questionID of the question
-    /// @param ancillaryData        - Data used to resolve a question
-    /// @param resolutionTime       - Timestamp after which the Adapter can resolve a question
-    /// @param rewardToken          - ERC20 token address used for payment of rewards and fees
-    /// @param reward               - Reward offered to a successful proposer
-    /// @param proposalBond         - Bond required to be posted by a price proposer and disputer
+    /// @param questionID               - The unique questionID of the question
+    /// @param ancillaryData            - Data used to resolve a question
+    /// @param resolutionTime           - Timestamp after which the Adapter can resolve a question
+    /// @param rewardToken              - ERC20 token address used for payment of rewards and fees
+    /// @param reward                   - Reward offered to a successful proposer
+    /// @param proposalBond             - Bond required to be posted by a price proposer and disputer
     /// @param earlyResolutionEnabled   - Determines whether a question can be resolved early
     function initializeQuestion(
         bytes32 questionID,
