@@ -520,7 +520,7 @@ contract UmaConditionalTokensBinaryAdapter {
         return questionData.earlyResolutionEnabled && block.timestamp < questionData.resolutionTime;
     }
 
-    /// @notice Special price that indicates early resolution is not ready yet
+    /// @notice Price that indicates that the OO does not have a valid price yet
     function ignorePrice() public pure returns (int256) {
         return type(int256).min;
     }
