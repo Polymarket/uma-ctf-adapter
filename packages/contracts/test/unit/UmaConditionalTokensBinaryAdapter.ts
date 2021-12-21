@@ -80,12 +80,27 @@ describe("", function () {
                 umaBinaryAdapter = deployment.umaBinaryAdapter;
             });
 
-            it("correctly sets up contracts", async function () {
-                // check that admin signer has proper role set up
-                const adminRole = ethers.constants.HashZero;
-                expect(await umaBinaryAdapter.hasRole(adminRole, this.signers.admin.address)).eq(true);
-                expect(await umaBinaryAdapter.hasRole(adminRole, ethers.Wallet.createRandom().address)).eq(false);
+            it("correctly authorizes users", async function () {
+                expect(await umaBinaryAdapter.wards(this.signers.admin.address)).eq(1);
+                expect(await umaBinaryAdapter.wards(this.signers.tester.address)).eq(0);
 
+                // Authorize the user
+                expect(await umaBinaryAdapter.rely(this.signers.tester.address))
+                    .to.emit(umaBinaryAdapter, "AuthorizedUser")
+                    .withArgs(this.signers.tester.address);
+
+                // Deauthorize the user
+                expect(await umaBinaryAdapter.deny(this.signers.tester.address))
+                    .to.emit(umaBinaryAdapter, "DeauthorizedUser")
+                    .withArgs(this.signers.tester.address);
+
+                // Attempt to authorize without being authorized
+                await expect(umaBinaryAdapter.connect(this.signers.tester).rely(this.signers.tester.address)).to.be.revertedWith(
+                    "Auth/not-authorized",
+                );
+            })
+
+            it("correctly sets up contracts", async function () {
                 const returnedConditionalToken = await umaBinaryAdapter.conditionalTokenContract();
                 expect(conditionalTokens.address).eq(returnedConditionalToken);
 
@@ -144,6 +159,7 @@ describe("", function () {
                         testRewardToken.address,
                         reward,
                         proposalBond,
+                        false
                     ),
                 )
                     .to.emit(umaBinaryAdapter, "QuestionInitialized")
@@ -154,6 +170,7 @@ describe("", function () {
                         testRewardToken.address,
                         reward,
                         proposalBond,
+                        false
                     );
 
                 const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
@@ -193,10 +210,11 @@ describe("", function () {
                         testRewardToken.address,
                         reward,
                         0,
+                        false
                     ),
                 )
                     .to.emit(umaBinaryAdapter, "QuestionInitialized")
-                    .withArgs(questionID, ancillaryDataHexlified, resolutionTime, testRewardToken.address, reward, 0);
+                    .withArgs(questionID, ancillaryDataHexlified, resolutionTime, testRewardToken.address, reward, 0, false);
 
                 const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
 
@@ -236,6 +254,7 @@ describe("", function () {
                         testRewardToken.address,
                         reward,
                         proposalBond,
+                        false
                     ),
                 )
                     .to.emit(umaBinaryAdapter, "QuestionInitialized")
@@ -246,6 +265,7 @@ describe("", function () {
                         testRewardToken.address,
                         reward,
                         proposalBond,
+                        false
                     );
 
                 const returnedQuestionData = await umaBinaryAdapter.questions(questionID);
@@ -280,6 +300,7 @@ describe("", function () {
                     testRewardToken.address,
                     0,
                     0,
+                    false
                 );
 
                 // reinitialize the same questionID
@@ -291,6 +312,7 @@ describe("", function () {
                         testRewardToken.address,
                         0,
                         0,
+                        false
                     ),
                 ).to.be.revertedWith("Adapter::initializeQuestion: Question already initialized");
             });
@@ -346,6 +368,7 @@ describe("", function () {
                         testRewardToken.address,
                         ethers.constants.Zero,
                         bond,
+                        false
                     );
 
                 const questionDataAfterRequest = await umaBinaryAdapter.questions(questionID);
@@ -428,7 +451,7 @@ describe("", function () {
                 // Verify QuestionSettled emitted
                 expect(await umaBinaryAdapter.connect(this.signers.tester).settle(questionID))
                     .to.emit(umaBinaryAdapter, "QuestionSettled")
-                    .withArgs(questionID);
+                    .withArgs(questionID, false);
 
                 // Verify settle block number != 0
                 const questionData = await umaBinaryAdapter.questions(questionID);
@@ -554,7 +577,7 @@ describe("", function () {
 
                 await expect(
                     umaBinaryAdapter.connect(this.signers.tester).pauseQuestion(questionID),
-                ).to.be.revertedWith("Adapter::caller does not have admin role");
+                ).to.be.revertedWith("Auth/not-authorized");
             });
 
             it("unpause should revert when signer is not admin", async function () {
@@ -571,7 +594,7 @@ describe("", function () {
 
                 await expect(
                     umaBinaryAdapter.connect(this.signers.tester).unPauseQuestion(questionID),
-                ).to.be.revertedWith("Adapter::caller does not have admin role");
+                ).to.be.revertedWith("Auth/not-authorized");
             });
 
             it("pause should revert if question is not initialized", async function () {
@@ -623,7 +646,7 @@ describe("", function () {
                     umaBinaryAdapter
                         .connect(this.signers.tester)
                         .setFinderAddress(ethers.Wallet.createRandom().address),
-                ).to.be.revertedWith("Adapter::caller does not have admin role");
+                ).to.be.revertedWith("Auth/not-authorized");
             });
         });
 
@@ -815,7 +838,7 @@ describe("", function () {
             it("should revert if emergencyReport is called from a non-admin", async function () {
                 await expect(
                     umaBinaryAdapter.connect(this.signers.tester).emergencyReportPayouts(questionID, [1, 0]),
-                ).to.be.revertedWith("Adapter::caller does not have admin role");
+                ).to.be.revertedWith("Auth/not-authorized");
             });
         });
     });

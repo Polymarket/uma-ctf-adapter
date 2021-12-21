@@ -28,15 +28,16 @@ export async function initializeQuestion(
     reward: BigNumber,
     proposalBond: BigNumber,
     resolutionTime?: number,
+    earlyExpiryEnabled?: boolean
 ): Promise<string> {
     const questionID = createQuestionID(title, description);
     const defaultResolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
 
     const resTime = resolutionTime != null ? resolutionTime : defaultResolutionTime;
     const ancillaryData = createAncillaryData(title, description);
-
+    const earlyExpiry = earlyExpiryEnabled == undefined ? false : earlyExpiryEnabled;
     await (
-        await adapter.initializeQuestion(questionID, ancillaryData, resTime, rewardAddress, reward, proposalBond)
+        await adapter.initializeQuestion(questionID, ancillaryData, resTime, rewardAddress, reward, proposalBond, earlyExpiry)
     ).wait();
 
     return questionID;
