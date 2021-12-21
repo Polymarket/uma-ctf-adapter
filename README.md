@@ -16,7 +16,6 @@ Install dependencies with `yarn install`
 
 Compile the contracts with `yarn compile`
 
-
 ### Testing
 
-Test the contracts with `yarn test` in the `contracts` package
+Test the contracts with `yarn test`
