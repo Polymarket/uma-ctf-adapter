@@ -849,5 +849,57 @@ describe("", function () {
                 ).to.be.revertedWith("Auth/not-authorized");
             });
         });
+
+        describe("Early expiry scenarios", function () {
+            let conditionalTokens: Contract;
+            let optimisticOracle: MockContract;
+            let testRewardToken: TestERC20;
+            let umaBinaryAdapter: UmaConditionalTokensBinaryAdapter;
+
+            before(async function () {
+                const deployment = await setup();
+                conditionalTokens = deployment.conditionalTokens;
+                optimisticOracle = deployment.optimisticOracle;
+                testRewardToken = deployment.testRewardToken;
+                umaBinaryAdapter = deployment.umaBinaryAdapter;
+            });
+
+            it("should correctly initialize an early expiry question", async function () {
+                //TODO
+                // 
+            });
+
+            it("should request resolution data early", async function () {
+                //TODO
+                // 
+            });
+
+            it("should revert if res data is requested twice", async function () {
+                //TODO
+                // 
+            });
+
+            it("should allow new res data requests if the OO sent the ignore price", async function () {
+                //TODO
+                // 
+            });
+
+            it("should settle the question correctly", async function () {
+                //TODO
+                // 
+            });
+
+            it("should return expected payouts", async function () {
+                //TODO
+                // 
+            });
+
+            it("should report payouts correctly", async function () {
+                //TODO
+                // 
+            });
+
+
+        });
     });
 });
