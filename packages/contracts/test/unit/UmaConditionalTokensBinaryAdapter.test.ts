@@ -1073,10 +1073,10 @@ describe("", function () {
                 await optimisticOracle.mock.hasPrice.returns(true);
                 await optimisticOracle.mock.settleAndGetPrice.returns(1);
 
-                // Revert 
-                await expect(umaBinaryAdapter.settle(qID))
-                    .to.be.revertedWith("Adapter: Ignore price received during standard settle");
-
+                // Revert
+                await expect(umaBinaryAdapter.settle(qID)).to.be.revertedWith(
+                    "Adapter: Ignore price received during standard settle",
+                );
             });
         });
     });
