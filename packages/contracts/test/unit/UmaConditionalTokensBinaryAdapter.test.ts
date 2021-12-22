@@ -454,12 +454,13 @@ describe("", function () {
                 await hardhatIncreaseTime(3600);
                 await umaBinaryAdapter.requestResolutionData(questionID);
                 await optimisticOracle.mock.hasPrice.returns(true);
+                await optimisticOracle.mock.getRequest.returns(getMockRequest());
                 await optimisticOracle.mock.settleAndGetPrice.returns(1);
 
                 // Verify QuestionSettled emitted
                 expect(await umaBinaryAdapter.connect(this.signers.tester).settle(questionID))
                     .to.emit(umaBinaryAdapter, "QuestionSettled")
-                    .withArgs(questionID, false);
+                    .withArgs(questionID, 1, false);
 
                 // Verify settle block number != 0
                 const questionData = await umaBinaryAdapter.questions(questionID);
@@ -495,6 +496,7 @@ describe("", function () {
                 await umaBinaryAdapter.requestResolutionData(questionID);
 
                 await optimisticOracle.mock.settleAndGetPrice.returns(1);
+                await optimisticOracle.mock.getRequest.returns(getMockRequest());
                 await optimisticOracle.mock.hasPrice.returns(false);
 
                 // 3. If OO doesn't have the price available
@@ -974,7 +976,7 @@ describe("", function () {
                 // Settle the Question
                 expect(await umaBinaryAdapter.connect(this.signers.tester).settle(questionID))
                     .to.emit(umaBinaryAdapter, "QuestionSettled")
-                    .withArgs(questionID, true);
+                    .withArgs(questionID, 1, true);
 
                 // Verify settled block number != 0
                 const questionData = await umaBinaryAdapter.questions(questionID);
@@ -1037,12 +1039,44 @@ describe("", function () {
 
                 expect(await umaBinaryAdapter.connect(this.signers.tester).settle(qID))
                     .to.emit(umaBinaryAdapter, "QuestionSettled")
-                    .withArgs(qID, false); // Note QuestionSettled emitted with earlyResolution == false
+                    .withArgs(qID, 1, false); // Note QuestionSettled emitted with earlyResolution == false
 
                 // Report payouts
                 expect(await umaBinaryAdapter.reportPayouts(qID))
                     .to.emit(umaBinaryAdapter, "QuestionResolved")
                     .withArgs(qID, false);
+            });
+
+            it.only("should revert if OO returns Ignore price during standard settlement", async function () {
+                // Initialize a new question
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const qID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero,
+                    undefined,
+                    true,
+                );
+                // Fast forward time
+                await hardhatIncreaseTime(7200);
+
+                await (await umaBinaryAdapter.requestResolutionData(qID)).wait();
+
+                // Settle using standard resolution, with the OO returning the IGNORE_PRICE
+                const request = await getMockRequest();
+                request.proposedPrice = BigNumber.from(IGNORE_PRICE);
+                await optimisticOracle.mock.getRequest.returns(request);
+                await optimisticOracle.mock.hasPrice.returns(true);
+                await optimisticOracle.mock.settleAndGetPrice.returns(1);
+
+                // Revert 
+                await expect(umaBinaryAdapter.settle(qID))
+                    .to.be.revertedWith("Adapter: Ignore price received during standard settle");
+
             });
         });
     });

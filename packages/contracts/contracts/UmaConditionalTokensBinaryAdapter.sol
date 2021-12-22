@@ -109,7 +109,7 @@ contract UmaConditionalTokensBinaryAdapter {
     );
 
     /// @notice Emitted when a question is settled
-    event QuestionSettled(bytes32 indexed questionID, bool indexed earlyResolution);
+    event QuestionSettled(bytes32 indexed questionID, int256 indexed price, bool indexed earlyResolution);
 
     /// @notice Emitted when a question is resolved
     event QuestionResolved(bytes32 indexed questionID, bool indexed emergencyReport);
@@ -346,12 +346,23 @@ contract UmaConditionalTokensBinaryAdapter {
     function _standardSettle(bytes32 questionID, QuestionData storage questionData) internal {
         OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
 
+        int256 proposedPrice = optimisticOracle
+            .getRequest(address(this), identifier, questionData.resolutionTime, questionData.ancillaryData)
+            .proposedPrice;
+
+        // If the OO returns the Ignore price, revert since it is an invalid value during standard settlement
+        require(proposedPrice != ignorePrice(), "Adapter: Ignore price received during standard settle");
+
         // Set the settled block number
         questionData.settled = block.number;
 
         // Settle the price
-        optimisticOracle.settleAndGetPrice(identifier, questionData.resolutionTime, questionData.ancillaryData);
-        emit QuestionSettled(questionID, false);
+        int256 settledPrice = optimisticOracle.settleAndGetPrice(
+            identifier,
+            questionData.resolutionTime,
+            questionData.ancillaryData
+        );
+        emit QuestionSettled(questionID, settledPrice, false);
     }
 
     function _earlySettle(bytes32 questionID, QuestionData storage questionData) internal {
@@ -366,6 +377,7 @@ contract UmaConditionalTokensBinaryAdapter {
         // 1) Do not settle the price
         // 2) Set the resolution data requested flag to false, allowing a new price request to be sent for this question
         if (proposedPrice == ignorePrice()) {
+            questionData.earlyResolutionTimestamp = 0;
             questionData.resolutionDataRequested = false;
             return;
         }
@@ -374,12 +386,12 @@ contract UmaConditionalTokensBinaryAdapter {
         questionData.settled = block.number;
 
         // Settle the price
-        optimisticOracle.settleAndGetPrice(
+        int256 settledPrice = optimisticOracle.settleAndGetPrice(
             identifier,
             questionData.earlyResolutionTimestamp,
             questionData.ancillaryData
         );
-        emit QuestionSettled(questionID, true);
+        emit QuestionSettled(questionID, settledPrice, true);
     }
 
     /// @notice Can be called by anyone to retrieve the expected payout of a settled question
