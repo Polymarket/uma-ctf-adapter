@@ -25,6 +25,7 @@ const config: HardhatUserConfig = {
     },
     networks: {
         hardhat: {
+            initialBaseFeePerGas: 0, // Needed for solidity-coverage
             chainId: ChainId.hardhat,
             saveDeployments: false,
         },

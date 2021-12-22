@@ -465,6 +465,10 @@ describe("", function () {
                 // Verify settle block number != 0
                 const questionData = await umaBinaryAdapter.questions(questionID);
                 expect(questionData.settled).to.not.eq(0);
+
+                // Ready to settle should be false, after settling
+                const readyToSettle = await umaBinaryAdapter.readyToSettle(questionID);
+                expect(readyToSettle).to.eq(false);
             });
 
             it("should revert if not readyToSettle", async function () {
@@ -1047,7 +1051,7 @@ describe("", function () {
                     .withArgs(qID, false);
             });
 
-            it.only("should revert if OO returns Ignore price during standard settlement", async function () {
+            it("should revert if OO returns Ignore price during standard settlement", async function () {
                 // Initialize a new question
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
