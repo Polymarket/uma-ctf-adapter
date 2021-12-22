@@ -109,7 +109,7 @@ contract UmaConditionalTokensBinaryAdapter {
     );
 
     /// @notice Emitted when a question is settled
-    event QuestionSettled(bytes32 indexed questionID, int256 indexed price, bool indexed earlyResolution);
+    event QuestionSettled(bytes32 indexed questionID, int256 indexed settledPrice, bool indexed earlyResolution);
 
     /// @notice Emitted when a question is resolved
     event QuestionResolved(bytes32 indexed questionID, bool indexed emergencyReport);
