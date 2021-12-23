@@ -30,6 +30,6 @@ Compile the contracts with `yarn compile`
 
 Test the contracts with `yarn test`
 
-### Covergage
+### Coverage
 
 Generate coverage reports with `yarn coverage`
