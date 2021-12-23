@@ -20,10 +20,16 @@ This repo contains code used to resolve [Polymarket](https://polymarket.com/) pr
 
 Install dependencies with `yarn install`
 
+
 ### Compile
 
 Compile the contracts with `yarn compile`
 
+
 ### Testing
 
 Test the contracts with `yarn test`
+
+### Covergage
+
+Generate coverage reports with `yarn coverage`
