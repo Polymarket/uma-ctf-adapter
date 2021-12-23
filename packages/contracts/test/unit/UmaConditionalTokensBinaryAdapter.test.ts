@@ -43,13 +43,13 @@ const setup = deployments.createFixture(async () => {
 
     const finderContract: MockContract = await deployMock("FinderInterface");
 
-    await finderContract.mock.getImplementationAddress.withArgs(
-        ethers.utils.formatBytes32String("OptimisticOracle")
-    ).returns(optimisticOracle.address);
+    await finderContract.mock.getImplementationAddress
+        .withArgs(ethers.utils.formatBytes32String("OptimisticOracle"))
+        .returns(optimisticOracle.address);
 
-    await finderContract.mock.getImplementationAddress.withArgs(
-        ethers.utils.formatBytes32String("CollateralWhitelist")
-    ).returns(whitelist.address);
+    await finderContract.mock.getImplementationAddress
+        .withArgs(ethers.utils.formatBytes32String("CollateralWhitelist"))
+        .returns(whitelist.address);
 
     const umaBinaryAdapter: UmaConditionalTokensBinaryAdapter = await deploy<UmaConditionalTokensBinaryAdapter>(
         "UmaConditionalTokensBinaryAdapter",
