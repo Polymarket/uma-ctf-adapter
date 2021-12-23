@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { FinderInterface } from "./interfaces/FinderInterface.sol";
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { OptimisticOracleInterface } from "./interfaces/OptimisticOracleInterface.sol";
+import { AddressWhitelistInterface } from "./interfaces/AddressWhitelistInterface.sol";
 
 /// @title UmaConditionalTokensBinaryAdapter
 /// @notice Adapter contract that enables conditional token resolution via UMA's Optimistic Oracle
@@ -139,6 +140,8 @@ contract UmaConditionalTokensBinaryAdapter {
         bool earlyResolutionEnabled
     ) public {
         require(!isQuestionInitialized(questionID), "Adapter::initializeQuestion: Question already initialized");
+        require(supportedToken(rewardToken), "Adapter::unsupported currency");
+
         questions[questionID] = QuestionData({
             ancillaryData: ancillaryData,
             resolutionTime: resolutionTime,
@@ -543,5 +546,13 @@ contract UmaConditionalTokensBinaryAdapter {
 
     function getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
         return OptimisticOracleInterface(getOptimisticOracleAddress());
+    }
+
+    function getCollateralWhitelistAddress() internal view returns (address) {
+        return FinderInterface(umaFinder).getImplementationAddress("CollateralWhitelist");
+    }
+
+    function supportedToken(address token) internal view returns (bool) {
+        return AddressWhitelistInterface(getCollateralWhitelistAddress()).isOnWhitelist(token);
     }
 }

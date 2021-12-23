@@ -38,8 +38,18 @@ const setup = deployments.createFixture(async () => {
     const optimisticOracle: MockContract = await deployMock("OptimisticOracleInterface");
     await optimisticOracle.mock.requestPrice.returns(0);
 
-    const finderContract = await deployMock("FinderInterface");
-    await finderContract.mock.getImplementationAddress.returns(optimisticOracle.address);
+    const whitelist: MockContract = await deployMock("AddressWhitelistInterface");
+    await whitelist.mock.isOnWhitelist.returns(true);
+
+    const finderContract: MockContract = await deployMock("FinderInterface");
+
+    await finderContract.mock.getImplementationAddress.withArgs(
+        ethers.utils.formatBytes32String("OptimisticOracle")
+    ).returns(optimisticOracle.address);
+
+    await finderContract.mock.getImplementationAddress.withArgs(
+        ethers.utils.formatBytes32String("CollateralWhitelist")
+    ).returns(whitelist.address);
 
     const umaBinaryAdapter: UmaConditionalTokensBinaryAdapter = await deploy<UmaConditionalTokensBinaryAdapter>(
         "UmaConditionalTokensBinaryAdapter",
@@ -53,6 +63,7 @@ const setup = deployments.createFixture(async () => {
         conditionalTokens,
         finderContract,
         optimisticOracle,
+        whitelist,
         testRewardToken,
         umaBinaryAdapter,
     };
@@ -115,6 +126,7 @@ describe("", function () {
         describe("Question scenarios", function () {
             let conditionalTokens: Contract;
             let optimisticOracle: MockContract;
+            let whitelist: MockContract;
             let testRewardToken: TestERC20;
             let umaBinaryAdapter: UmaConditionalTokensBinaryAdapter;
 
@@ -122,6 +134,7 @@ describe("", function () {
                 const deployment = await setup();
                 conditionalTokens = deployment.conditionalTokens;
                 optimisticOracle = deployment.optimisticOracle;
+                whitelist = deployment.whitelist;
                 testRewardToken = deployment.testRewardToken;
                 umaBinaryAdapter = deployment.umaBinaryAdapter;
             });
@@ -323,6 +336,34 @@ describe("", function () {
                         false,
                     ),
                 ).to.be.revertedWith("Adapter::initializeQuestion: Question already initialized");
+            });
+
+            it("should revert when initializing with an unsupported token", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = createQuestionID(title, desc);
+                const resolutionTime = Math.floor(new Date().getTime() / 1000);
+                const ancillaryData = ethers.utils.randomBytes(10);
+
+                // Deploy a new token
+                const unsupportedToken: TestERC20 = await deploy<TestERC20>("TestERC20", {
+                    args: ["", ""],
+                });
+
+                await whitelist.mock.isOnWhitelist.withArgs(unsupportedToken.address).returns(false);
+
+                // Reverts since the token isn't supported
+                await expect(
+                    umaBinaryAdapter.initializeQuestion(
+                        questionID,
+                        ancillaryData,
+                        resolutionTime,
+                        unsupportedToken.address,
+                        0,
+                        0,
+                        false,
+                    ),
+                ).to.be.revertedWith("Adapter::unsupported currency");
             });
 
             // RequestResolution tests
