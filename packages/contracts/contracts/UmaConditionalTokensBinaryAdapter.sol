@@ -201,7 +201,8 @@ contract UmaConditionalTokensBinaryAdapter {
         require(!questionData.paused, "Adapter::requestResolutionData: Question is paused");
 
         // Determine if a request for resolution data is an early resolution or the standard resolution flow
-        if (isEarlyResolution(questionID)) {
+        // solhint-disable-next-line not-rely-on-time
+        if (questionData.earlyResolutionEnabled && block.timestamp < questionData.resolutionTime) {
             return _earlyResolutionRequest(questionID, questionData);
         }
         return _standardRequest(questionID, questionData);
@@ -301,18 +302,18 @@ contract UmaConditionalTokensBinaryAdapter {
         if (questionData.resolutionDataRequested == false) {
             return false;
         }
-        // Ensure question hasn't been resolved
+        // Ensure question has not been resolved
         if (questionData.resolved == true) {
             return false;
         }
-        // Ensure question hasn't been settled
+        // Ensure question has not been settled
         if (questionData.settled != 0) {
             return false;
         }
 
         OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
 
-        if (isEarlyResolution(questionID)) {
+        if (questionData.earlyResolutionEnabled && questionData.earlyResolutionTimestamp > 0) {
             return
                 optimisticOracle.hasPrice(
                     address(this),
@@ -340,7 +341,7 @@ contract UmaConditionalTokensBinaryAdapter {
         QuestionData storage questionData = questions[questionID];
         require(!questionData.paused, "Adapter::settle: Question is paused");
 
-        if (isEarlyResolution(questionID)) {
+        if (questionData.earlyResolutionEnabled && questionData.earlyResolutionTimestamp > 0) {
             return _earlySettle(questionID, questionData);
         }
         return _standardSettle(questionID, questionData);
@@ -412,7 +413,7 @@ contract UmaConditionalTokensBinaryAdapter {
         require(!questionData.paused, "Adapter::getExpectedPayouts: Question is paused");
 
         // Fetches resolution data from OO
-        int256 resolutionData = getExpectedResolutionData(questionID, questionData);
+        int256 resolutionData = getExpectedResolutionData(questionData);
 
         // Payouts: [YES, NO]
         uint256[] memory payouts = new uint256[](2);
@@ -424,11 +425,11 @@ contract UmaConditionalTokensBinaryAdapter {
         );
 
         if (resolutionData == 0) {
-            //NO: Report [Yes, No] as [0, 1]
+            // NO: Report [Yes, No] as [0, 1]
             payouts[0] = 0;
             payouts[1] = 1;
         } else if (resolutionData == 0.5 ether) {
-            //UNKNOWN: Report [Yes, No] as [1, 1], 50/50
+            // UNKNOWN: Report [Yes, No] as [1, 1], 50/50
             payouts[0] = 1;
             payouts[1] = 1;
         } else {
@@ -439,12 +440,8 @@ contract UmaConditionalTokensBinaryAdapter {
         return payouts;
     }
 
-    function getExpectedResolutionData(bytes32 questionID, QuestionData storage questionData)
-        internal
-        view
-        returns (int256)
-    {
-        if (isEarlyResolution(questionID)) {
+    function getExpectedResolutionData(QuestionData storage questionData) internal view returns (int256) {
+        if (questionData.earlyResolutionEnabled && questionData.earlyResolutionTimestamp > 0) {
             return
                 getOptimisticOracle()
                     .getRequest(
@@ -527,12 +524,6 @@ contract UmaConditionalTokensBinaryAdapter {
 
     function isQuestionInitialized(bytes32 questionID) public view returns (bool) {
         return questions[questionID].resolutionTime != 0;
-    }
-
-    function isEarlyResolution(bytes32 questionID) public view returns (bool) {
-        QuestionData storage questionData = questions[questionID];
-        // solhint-disable-next-line not-rely-on-time
-        return questionData.earlyResolutionEnabled && block.timestamp < questionData.resolutionTime;
     }
 
     /// @notice Price that indicates that the OO does not have a valid price yet

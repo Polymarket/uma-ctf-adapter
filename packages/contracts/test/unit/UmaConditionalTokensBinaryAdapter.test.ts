@@ -1047,7 +1047,7 @@ describe("", function () {
                 expect(await questionData.resolved).eq(true);
             });
 
-            it("should fallback to standard resolution if past the resolution time", async function () {
+            it("should fall back to standard resolution if past the resolution time", async function () {
                 // Initialize a new question
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
@@ -1064,15 +1064,16 @@ describe("", function () {
                 // Fast forward time
                 await hardhatIncreaseTime(7200);
 
-                // Verify that isEarlyResolution is false
-                expect(await umaBinaryAdapter.isEarlyResolution(qID)).to.eq(false);
+                // Verify that the question is not an early resolution
+                let questionData: any;
+                questionData = await umaBinaryAdapter.questions(qID);
+                expect(questionData.earlyResolutionTimestamp).to.eq(0);
 
                 // request resolution data
                 await (await umaBinaryAdapter.requestResolutionData(qID)).wait();
 
                 // Verify that early resolution timestamp is not set
-                const questionData = await umaBinaryAdapter.questions(qID);
-                expect(questionData.earlyResolutionEnabled).to.eq(true);
+                questionData = await umaBinaryAdapter.questions(qID);
                 expect(questionData.earlyResolutionTimestamp).to.eq(0);
 
                 // Settle using standard resolution
@@ -1084,7 +1085,7 @@ describe("", function () {
 
                 expect(await umaBinaryAdapter.connect(this.signers.tester).settle(qID))
                     .to.emit(umaBinaryAdapter, "QuestionSettled")
-                    .withArgs(qID, 1, false); // Note QuestionSettled emitted with earlyResolution == false
+                    .withArgs(qID, 1, false); // Note: QuestionSettled event emitted with earlyResolution == false
 
                 // Report payouts
                 expect(await umaBinaryAdapter.reportPayouts(qID))
