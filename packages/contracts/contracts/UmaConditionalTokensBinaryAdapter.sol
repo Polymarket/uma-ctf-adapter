@@ -398,7 +398,7 @@ contract UmaConditionalTokensBinaryAdapter {
         emit QuestionSettled(questionID, settledPrice, true);
     }
 
-    /// @notice Can be called by anyone to retrieve the expected payout of a settled question
+    /// @notice Retrieves the expected payout of a settled question
     /// @param questionID - The unique questionID of the question
     function getExpectedPayouts(bytes32 questionID) public view returns (uint256[] memory) {
         require(isQuestionInitialized(questionID), "Adapter::getExpectedPayouts: questionID is not initialized");
@@ -458,7 +458,7 @@ contract UmaConditionalTokensBinaryAdapter {
                 .resolvedPrice;
     }
 
-    /// @notice Can be called by anyone to resolve a question
+    /// @notice Resolves a question
     /// @param questionID - The unique questionID of the question
     function reportPayouts(bytes32 questionID) public {
         QuestionData storage questionData = questions[questionID];
