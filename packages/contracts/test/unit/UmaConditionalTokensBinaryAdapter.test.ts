@@ -699,7 +699,7 @@ describe("", function () {
                     desc,
                     testRewardToken.address,
                     ethers.constants.Zero,
-                    ethers.constants.Zero
+                    ethers.constants.Zero,
                 );
 
                 const newResolutionTime = Math.floor(Date.now() / 1000);
@@ -707,15 +707,17 @@ describe("", function () {
                 const newProposalBond = ethers.utils.parseEther("100.0");
 
                 expect(
-                    await umaBinaryAdapter.connect(this.signers.admin).updateQuestion(
-                        questionID,
-                        ancillaryData,
-                        newResolutionTime,
-                        testRewardToken.address,
-                        newReward,
-                        newProposalBond,
-                        false
-                    )
+                    await umaBinaryAdapter
+                        .connect(this.signers.admin)
+                        .updateQuestion(
+                            questionID,
+                            ancillaryData,
+                            newResolutionTime,
+                            testRewardToken.address,
+                            newReward,
+                            newProposalBond,
+                            false,
+                        ),
                 )
                     .to.emit(umaBinaryAdapter, "QuestionUpdated")
                     .withArgs(
@@ -725,7 +727,7 @@ describe("", function () {
                         testRewardToken.address,
                         newReward,
                         newProposalBond,
-                        false
+                        false,
                     );
 
                 const questionData: QuestionData = await umaBinaryAdapter.questions(questionID);
@@ -733,7 +735,7 @@ describe("", function () {
                 // Verify updated properties on the question data
                 expect(questionData.resolutionTime.toString()).to.eq(newResolutionTime.toString());
                 expect(questionData.reward.toString()).to.eq(newReward.toString());
-                expect(questionData.proposalBond).to.eq(newProposalBond.toString())
+                expect(questionData.proposalBond).to.eq(newProposalBond.toString());
 
                 // Verify flags on the question data
                 expect(questionData.resolutionDataRequested).to.eq(false);
@@ -744,7 +746,8 @@ describe("", function () {
 
                 // Update reverts if not an admin
                 await expect(
-                    umaBinaryAdapter.connect(this.signers.tester)
+                    umaBinaryAdapter
+                        .connect(this.signers.tester)
                         .updateQuestion(
                             questionID,
                             ancillaryData,
@@ -752,7 +755,8 @@ describe("", function () {
                             testRewardToken.address,
                             newReward,
                             newProposalBond,
-                            false),
+                            false,
+                        ),
                 ).to.be.revertedWith("Adapter/not-authorized");
             });
 

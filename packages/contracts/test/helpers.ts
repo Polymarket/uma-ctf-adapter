@@ -14,7 +14,7 @@ export interface QuestionData {
     paused: boolean;
     rewardToken: string;
     ancillaryData: string;
-};
+}
 
 export interface Request {
     proposer: string;
