@@ -1041,14 +1041,14 @@ describe("", function () {
                 expect(earlyResolutionTimestamp).to.be.lt(questionData.resolutionTime);
             });
 
-            it("should revert if res data is requested twice", async function () {
+            it("should revert if resolution data is requested twice", async function () {
                 // Attempt to request data again for the same questionID
                 await expect(umaBinaryAdapter.requestResolutionData(questionID)).to.be.revertedWith(
                     "Adapter::requestResolutionData: Question not ready to be resolved",
                 );
             });
 
-            it("should allow new res data requests if OO sent ignore price", async function () {
+            it("should allow new resolution data requests if OO sent ignore price", async function () {
                 await optimisticOracle.mock.hasPrice.returns(true);
 
                 // Optimistic Oracle sends the IGNORE_PRICE to the Adapter
@@ -1165,7 +1165,7 @@ describe("", function () {
                     .withArgs(qID, false);
             });
 
-            it("should revert if OO returns Ignore price during standard settlement", async function () {
+            it("should reset resolutionDataRequested flag if the OO returns the Ignore price during standard settlement", async function () {
                 // Initialize a new question
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
@@ -1190,11 +1190,11 @@ describe("", function () {
                 await optimisticOracle.mock.getRequest.returns(request);
                 await optimisticOracle.mock.hasPrice.returns(true);
                 await optimisticOracle.mock.settleAndGetPrice.returns(1);
+                await (await umaBinaryAdapter.settle(qID)).wait();
 
-                // Revert
-                await expect(umaBinaryAdapter.settle(qID)).to.be.revertedWith(
-                    "Adapter: Ignore price received during standard settle",
-                );
+                // Verify resolutionDataRequested is false
+                const questionData: QuestionData = await umaBinaryAdapter.questions(qID);
+                expect(questionData.resolutionDataRequested).to.eq(false);
             });
         });
     });

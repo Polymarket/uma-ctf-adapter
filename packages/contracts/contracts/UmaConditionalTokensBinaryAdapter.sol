@@ -365,8 +365,12 @@ contract UmaConditionalTokensBinaryAdapter {
             .getRequest(address(this), identifier, questionData.resolutionTime, questionData.ancillaryData)
             .proposedPrice;
 
-        // If the OO returns the Ignore price, revert since it is an invalid value during standard settlement
-        require(proposedPrice != ignorePrice(), "Adapter: Ignore price received during standard settle");
+        // If the OO returns the Ignore price during standard settlement:
+        // Set the resolution data requested flag to false, allowing a new resolution request to be sent
+        if (proposedPrice == ignorePrice()) {
+            questionData.resolutionDataRequested = false;
+            return;
+        }
 
         // Set the settled block number
         questionData.settled = block.number;
@@ -390,7 +394,7 @@ contract UmaConditionalTokensBinaryAdapter {
 
         // If the proposed price is the ignore price:
         // 1) Do not settle the price
-        // 2) Set the resolution data requested flag to false, allowing a new price request to be sent for this question
+        // 2) Set the resolution data requested flag to false, allowing a new resolution request to be sent for this question
         if (proposedPrice == ignorePrice()) {
             questionData.earlyResolutionTimestamp = 0;
             questionData.resolutionDataRequested = false;
