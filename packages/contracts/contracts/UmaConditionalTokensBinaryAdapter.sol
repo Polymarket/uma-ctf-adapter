@@ -91,6 +91,17 @@ contract UmaConditionalTokensBinaryAdapter {
         bool earlyResolutionEnabled
     );
 
+    /// @notice Emitted when a questionID is updated
+    event QuestionUpdated(
+        bytes32 indexed questionID,
+        bytes ancillaryData,
+        uint256 resolutionTime,
+        address rewardToken,
+        uint256 reward,
+        uint256 proposalBond,
+        bool earlyResolutionEnabled
+    );
+
     /// @notice Emitted when a question is paused by the Admin
     event QuestionPaused(bytes32 questionID);
 
@@ -157,8 +168,8 @@ contract UmaConditionalTokensBinaryAdapter {
         });
 
         // Approve the OO to transfer the reward token
-        address optimisticOracleAddress = getOptimisticOracleAddress();
-        IERC20(rewardToken).approve(optimisticOracleAddress, reward);
+        IERC20(rewardToken).approve(getOptimisticOracleAddress(), reward);
+
         emit QuestionInitialized(
             questionID,
             ancillaryData,
@@ -475,6 +486,54 @@ contract UmaConditionalTokensBinaryAdapter {
         questionData.resolved = true;
         conditionalTokenContract.reportPayouts(questionID, payouts);
         emit QuestionResolved(questionID, false);
+    }
+
+    /// @notice Allows an admin to update a question
+    /// @param questionID             - The unique questionID of the question
+    /// @param ancillaryData          - Data used to resolve a question
+    /// @param resolutionTime         - Timestamp after which the Adapter can resolve a question
+    /// @param rewardToken            - ERC20 token address used for payment of rewards and fees
+    /// @param reward                 - Reward offered to a successful proposer
+    /// @param proposalBond           - Bond required to be posted by a price proposer and disputer
+    /// @param earlyResolutionEnabled - Determines whether a question can be resolved early
+    function updateQuestion(
+        bytes32 questionID,
+        bytes memory ancillaryData,
+        uint256 resolutionTime,
+        address rewardToken,
+        uint256 reward,
+        uint256 proposalBond,
+        bool earlyResolutionEnabled
+    ) public auth {
+        require(isQuestionInitialized(questionID), "Adapter::update: Question not initialized");
+        require(supportedToken(rewardToken), "Adapter::unsupported currency");
+
+        questions[questionID] = QuestionData({
+            ancillaryData: ancillaryData,
+            resolutionTime: resolutionTime,
+            rewardToken: rewardToken,
+            reward: reward,
+            proposalBond: proposalBond,
+            earlyResolutionEnabled: earlyResolutionEnabled,
+            resolutionDataRequested: false,
+            resolved: false,
+            paused: false,
+            settled: 0,
+            earlyResolutionTimestamp: 0
+        });
+
+        // Approve the OO to transfer the reward token
+        IERC20(rewardToken).approve(getOptimisticOracleAddress(), reward);
+
+        emit QuestionUpdated(
+            questionID,
+            ancillaryData,
+            resolutionTime,
+            rewardToken,
+            reward,
+            proposalBond,
+            earlyResolutionEnabled
+        );
     }
 
     /// @notice Allows an admin to report payouts in an emergency

@@ -16,6 +16,7 @@ import {
     takeSnapshot,
     revertToSnapshot,
     getMockRequest,
+    QuestionData,
 } from "../helpers";
 import { DESC, IGNORE_PRICE, QUESTION_TITLE, thirtyDays } from "./constants";
 
@@ -687,7 +688,74 @@ describe("", function () {
                 );
             });
 
-            // Finder address tests
+            it("should correctly update the question", async function () {
+                const title = ethers.utils.randomBytes(10).toString();
+                const desc = ethers.utils.randomBytes(20).toString();
+                const ancillaryData = createAncillaryData(title, desc);
+
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero
+                );
+
+                const newResolutionTime = Math.floor(Date.now() / 1000);
+                const newReward = ethers.utils.parseEther("1");
+                const newProposalBond = ethers.utils.parseEther("100.0");
+
+                expect(
+                    await umaBinaryAdapter.connect(this.signers.admin).updateQuestion(
+                        questionID,
+                        ancillaryData,
+                        newResolutionTime,
+                        testRewardToken.address,
+                        newReward,
+                        newProposalBond,
+                        false
+                    )
+                )
+                    .to.emit(umaBinaryAdapter, "QuestionUpdated")
+                    .withArgs(
+                        questionID,
+                        ethers.utils.hexlify(ancillaryData),
+                        newResolutionTime,
+                        testRewardToken.address,
+                        newReward,
+                        newProposalBond,
+                        false
+                    );
+
+                const questionData: QuestionData = await umaBinaryAdapter.questions(questionID);
+
+                // Verify updated properties on the question data
+                expect(questionData.resolutionTime.toString()).to.eq(newResolutionTime.toString());
+                expect(questionData.reward.toString()).to.eq(newReward.toString());
+                expect(questionData.proposalBond).to.eq(newProposalBond.toString())
+
+                // Verify flags on the question data
+                expect(questionData.resolutionDataRequested).to.eq(false);
+                expect(questionData.settled).to.eq(0);
+                expect(questionData.resolved).to.eq(false);
+                expect(questionData.earlyResolutionTimestamp).to.eq(0);
+                expect(questionData.paused).to.eq(false);
+
+                // Update reverts if not an admin
+                await expect(
+                    umaBinaryAdapter.connect(this.signers.tester)
+                        .updateQuestion(
+                            questionID,
+                            ancillaryData,
+                            newResolutionTime,
+                            testRewardToken.address,
+                            newReward,
+                            newProposalBond,
+                            false),
+                ).to.be.revertedWith("Adapter/not-authorized");
+            });
+
             it("should update the finder address", async function () {
                 const finderAddress = await umaBinaryAdapter.umaFinder();
                 const newFinderAddress = ethers.Wallet.createRandom();
@@ -1065,7 +1133,7 @@ describe("", function () {
                 await hardhatIncreaseTime(7200);
 
                 // Verify that the question is not an early resolution
-                let questionData: any;
+                let questionData: QuestionData;
                 questionData = await umaBinaryAdapter.questions(qID);
                 expect(questionData.earlyResolutionTimestamp).to.eq(0);
 
