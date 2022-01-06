@@ -253,12 +253,12 @@ contract UmaConditionalTokensBinaryAdapter {
     /// @param questionData - The questionData of the question
     function _earlyResolutionRequest(bytes32 questionID, QuestionData storage questionData) internal {
         // solhint-disable-next-line not-rely-on-time
-        uint256 earlyResTs = block.timestamp;
+        uint256 earlyResolutionTimestamp = block.timestamp;
 
         // Request a price
         _requestPrice(
             identifier,
-            earlyResTs,
+            earlyResolutionTimestamp,
             questionData.ancillaryData,
             questionData.rewardToken,
             questionData.reward,
@@ -266,7 +266,7 @@ contract UmaConditionalTokensBinaryAdapter {
         );
 
         // Update early resolution timestamp and resolution data requested flag
-        questionData.earlyResolutionTimestamp = earlyResTs;
+        questionData.earlyResolutionTimestamp = earlyResolutionTimestamp;
         questionData.resolutionDataRequested = true;
 
         emit ResolutionDataRequested(
@@ -344,8 +344,8 @@ contract UmaConditionalTokensBinaryAdapter {
     }
 
     /// @notice Settle/finalize the resolution data of a question
-    /// @notice If early resolution is enabled and the OO returned the ignore price,
-    ///         this method "refreshes" the question, allowing new price requests
+    /// @notice If the OO returns the ignore price, this method "refreshes"
+    ///         the question, allowing new price requests
     /// @param questionID - The unique questionID of the question
     function settle(bytes32 questionID) public {
         require(readyToSettle(questionID), "Adapter::settle: questionID is not ready to be settled");
@@ -365,8 +365,10 @@ contract UmaConditionalTokensBinaryAdapter {
             .getRequest(address(this), identifier, questionData.resolutionTime, questionData.ancillaryData)
             .proposedPrice;
 
-        // If the OO returns the Ignore price during standard settlement:
-        // Set the resolution data requested flag to false, allowing a new resolution request to be sent
+        // NOTE: If the proposed price is the ignore price:
+        // 1) Do not settle the question
+        // 2) Set the resolution data requested flag to false,
+        //    allowing a new resolution request to be sent for this question
         if (proposedPrice == ignorePrice()) {
             questionData.resolutionDataRequested = false;
             return;
@@ -392,9 +394,10 @@ contract UmaConditionalTokensBinaryAdapter {
             .getRequest(address(this), identifier, questionData.earlyResolutionTimestamp, questionData.ancillaryData)
             .proposedPrice;
 
-        // If the proposed price is the ignore price:
-        // 1) Do not settle the price
-        // 2) Set the resolution data requested flag to false, allowing a new resolution request to be sent for this question
+        // NOTE: If the proposed price is the ignore price:
+        // 1) Do not settle the question
+        // 2) Set the resolution data requested flag to false,
+        //    allowing a new resolution request to be sent for this question
         if (proposedPrice == ignorePrice()) {
             questionData.earlyResolutionTimestamp = 0;
             questionData.resolutionDataRequested = false;
