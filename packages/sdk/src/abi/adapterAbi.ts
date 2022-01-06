@@ -20,6 +20,51 @@ const adapterAbi = [
         "inputs": [
             {
                 "indexed": true,
+                "internalType": "address",
+                "name": "usr",
+                "type": "address"
+            }
+        ],
+        "name": "AuthorizedUser",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "usr",
+                "type": "address"
+            }
+        ],
+        "name": "DeauthorizedUser",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "oldFinder",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "newFinder",
+                "type": "address"
+            }
+        ],
+        "name": "NewFinderAddress",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
                 "internalType": "bytes32",
                 "name": "questionID",
                 "type": "bytes32"
@@ -53,6 +98,12 @@ const adapterAbi = [
                 "internalType": "uint256",
                 "name": "proposalBond",
                 "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "earlyResolutionEnabled",
+                "type": "bool"
             }
         ],
         "name": "QuestionInitialized",
@@ -98,6 +149,18 @@ const adapterAbi = [
                 "internalType": "bytes32",
                 "name": "questionID",
                 "type": "bytes32"
+            },
+            {
+                "indexed": true,
+                "internalType": "int256",
+                "name": "settledPrice",
+                "type": "int256"
+            },
+            {
+                "indexed": true,
+                "internalType": "bool",
+                "name": "earlyResolution",
+                "type": "bool"
             }
         ],
         "name": "QuestionSettled",
@@ -122,13 +185,62 @@ const adapterAbi = [
             {
                 "indexed": true,
                 "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "ancillaryData",
+                "type": "bytes"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "resolutionTime",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "rewardToken",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "reward",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "proposalBond",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "earlyResolutionEnabled",
+                "type": "bool"
+            }
+        ],
+        "name": "QuestionUpdated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
                 "name": "identifier",
                 "type": "bytes32"
             },
             {
                 "indexed": true,
                 "internalType": "uint256",
-                "name": "timestamp",
+                "name": "resolutionTimestamp",
                 "type": "uint256"
             },
             {
@@ -160,98 +272,16 @@ const adapterAbi = [
                 "internalType": "uint256",
                 "name": "proposalBond",
                 "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "earlyResolution",
+                "type": "bool"
             }
         ],
         "name": "ResolutionDataRequested",
         "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "bytes32",
-                "name": "role",
-                "type": "bytes32"
-            },
-            {
-                "indexed": true,
-                "internalType": "bytes32",
-                "name": "previousAdminRole",
-                "type": "bytes32"
-            },
-            {
-                "indexed": true,
-                "internalType": "bytes32",
-                "name": "newAdminRole",
-                "type": "bytes32"
-            }
-        ],
-        "name": "RoleAdminChanged",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "bytes32",
-                "name": "role",
-                "type": "bytes32"
-            },
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "account",
-                "type": "address"
-            },
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "sender",
-                "type": "address"
-            }
-        ],
-        "name": "RoleGranted",
-        "type": "event"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "bytes32",
-                "name": "role",
-                "type": "bytes32"
-            },
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "account",
-                "type": "address"
-            },
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "sender",
-                "type": "address"
-            }
-        ],
-        "name": "RoleRevoked",
-        "type": "event"
-    },
-    {
-        "inputs": [],
-        "name": "DEFAULT_ADMIN_ROLE",
-        "outputs": [
-            {
-                "internalType": "bytes32",
-                "name": "",
-                "type": "bytes32"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
     },
     {
         "inputs": [],
@@ -264,6 +294,19 @@ const adapterAbi = [
             }
         ],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "usr",
+                "type": "address"
+            }
+        ],
+        "name": "deny",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function"
     },
     {
@@ -317,67 +360,6 @@ const adapterAbi = [
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "role",
-                "type": "bytes32"
-            }
-        ],
-        "name": "getRoleAdmin",
-        "outputs": [
-            {
-                "internalType": "bytes32",
-                "name": "",
-                "type": "bytes32"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "role",
-                "type": "bytes32"
-            },
-            {
-                "internalType": "address",
-                "name": "account",
-                "type": "address"
-            }
-        ],
-        "name": "grantRole",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "role",
-                "type": "bytes32"
-            },
-            {
-                "internalType": "address",
-                "name": "account",
-                "type": "address"
-            }
-        ],
-        "name": "hasRole",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [],
         "name": "identifier",
         "outputs": [
@@ -388,6 +370,19 @@ const adapterAbi = [
             }
         ],
         "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "ignorePrice",
+        "outputs": [
+            {
+                "internalType": "int256",
+                "name": "",
+                "type": "int256"
+            }
+        ],
+        "stateMutability": "pure",
         "type": "function"
     },
     {
@@ -421,6 +416,11 @@ const adapterAbi = [
                 "internalType": "uint256",
                 "name": "proposalBond",
                 "type": "uint256"
+            },
+            {
+                "internalType": "bool",
+                "name": "earlyResolutionEnabled",
+                "type": "bool"
             }
         ],
         "name": "initializeQuestion",
@@ -471,19 +471,9 @@ const adapterAbi = [
         "name": "questions",
         "outputs": [
             {
-                "internalType": "bytes",
-                "name": "ancillaryData",
-                "type": "bytes"
-            },
-            {
                 "internalType": "uint256",
                 "name": "resolutionTime",
                 "type": "uint256"
-            },
-            {
-                "internalType": "address",
-                "name": "rewardToken",
-                "type": "address"
             },
             {
                 "internalType": "uint256",
@@ -494,6 +484,21 @@ const adapterAbi = [
                 "internalType": "uint256",
                 "name": "proposalBond",
                 "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "settled",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "earlyResolutionTimestamp",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bool",
+                "name": "earlyResolutionEnabled",
+                "type": "bool"
             },
             {
                 "internalType": "bool",
@@ -511,9 +516,14 @@ const adapterAbi = [
                 "type": "bool"
             },
             {
-                "internalType": "uint256",
-                "name": "settled",
-                "type": "uint256"
+                "internalType": "address",
+                "name": "rewardToken",
+                "type": "address"
+            },
+            {
+                "internalType": "bytes",
+                "name": "ancillaryData",
+                "type": "bytes"
             }
         ],
         "stateMutability": "view",
@@ -560,17 +570,12 @@ const adapterAbi = [
     {
         "inputs": [
             {
-                "internalType": "bytes32",
-                "name": "role",
-                "type": "bytes32"
-            },
-            {
                 "internalType": "address",
-                "name": "account",
+                "name": "usr",
                 "type": "address"
             }
         ],
-        "name": "renounceRole",
+        "name": "rely",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -604,17 +609,12 @@ const adapterAbi = [
     {
         "inputs": [
             {
-                "internalType": "bytes32",
-                "name": "role",
-                "type": "bytes32"
-            },
-            {
                 "internalType": "address",
-                "name": "account",
+                "name": "newFinderAddress",
                 "type": "address"
             }
         ],
-        "name": "revokeRole",
+        "name": "setFinderAddress",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"
@@ -633,30 +633,11 @@ const adapterAbi = [
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "internalType": "bytes4",
-                "name": "interfaceId",
-                "type": "bytes4"
-            }
-        ],
-        "name": "supportsInterface",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [],
         "name": "umaFinder",
         "outputs": [
             {
-                "internalType": "contract FinderInterface",
+                "internalType": "address",
                 "name": "",
                 "type": "address"
             }
@@ -675,6 +656,68 @@ const adapterAbi = [
         "name": "unPauseQuestion",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "bytes",
+                "name": "ancillaryData",
+                "type": "bytes"
+            },
+            {
+                "internalType": "uint256",
+                "name": "resolutionTime",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "rewardToken",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "reward",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "proposalBond",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bool",
+                "name": "earlyResolutionEnabled",
+                "type": "bool"
+            }
+        ],
+        "name": "updateQuestion",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "name": "wards",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     }
 ];

@@ -1055,12 +1055,15 @@ describe("", function () {
                 expect(await umaBinaryAdapter.readyToSettle(questionID)).to.eq(true);
 
                 // Attempt to settle the early resolution question
-                await umaBinaryAdapter.settle(questionID);
+                // Settle emits the QuestionReset event indicating that the question was not settled
+                expect(await umaBinaryAdapter.connect(this.signers.tester).settle(questionID))
+                    .to.emit(umaBinaryAdapter, "QuestionReset")
+                    .withArgs(questionID);
 
-                // Since the OO sent the IGNORE_PRICE, the Adapter will NOT settle the question
-                // But instead will allow new price requests by setting resolutionDataRequested to false
+                // Allow new price requests by setting resolutionDataRequested and earlyExpirationTimestamp to false
                 const questionData = await umaBinaryAdapter.questions(questionID);
                 expect(questionData.resolutionDataRequested).to.eq(false);
+                expect(questionData.earlyResolutionTimestamp).to.eq(0);
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).to.eq(true);
             });
 
@@ -1184,7 +1187,10 @@ describe("", function () {
                 await optimisticOracle.mock.getRequest.returns(request);
                 await optimisticOracle.mock.hasPrice.returns(true);
                 await optimisticOracle.mock.settleAndGetPrice.returns(1);
-                await (await umaBinaryAdapter.settle(qID)).wait();
+
+                expect(await umaBinaryAdapter.connect(this.signers.tester).settle(qID))
+                    .to.emit(umaBinaryAdapter, "QuestionReset")
+                    .withArgs(qID);
 
                 // Verify resolutionDataRequested is false
                 const questionData: QuestionData = await umaBinaryAdapter.questions(qID);

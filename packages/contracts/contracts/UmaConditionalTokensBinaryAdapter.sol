@@ -120,6 +120,9 @@ contract UmaConditionalTokensBinaryAdapter {
         bool earlyResolution
     );
 
+    /// @notice Emitted when a question is reset
+    event QuestionReset(bytes32 indexed questionID);
+
     /// @notice Emitted when a question is settled
     event QuestionSettled(bytes32 indexed questionID, int256 indexed settledPrice, bool indexed earlyResolution);
 
@@ -344,8 +347,7 @@ contract UmaConditionalTokensBinaryAdapter {
     }
 
     /// @notice Settle/finalize the resolution data of a question
-    /// @notice If the OO returns the ignore price, this method "refreshes"
-    ///         the question, allowing new price requests
+    /// @notice If the OO returns the ignore price, this method resets the question, allowing new price requests
     /// @param questionID - The unique questionID of the question
     function settle(bytes32 questionID) public {
         require(readyToSettle(questionID), "Adapter::settle: questionID is not ready to be settled");
@@ -365,12 +367,9 @@ contract UmaConditionalTokensBinaryAdapter {
             .getRequest(address(this), identifier, questionData.resolutionTime, questionData.ancillaryData)
             .proposedPrice;
 
-        // NOTE: If the proposed price is the ignore price:
-        // 1) Do not settle the question
-        // 2) Set the resolution data requested flag to false,
-        //    allowing a new resolution request to be sent for this question
+        // NOTE: If the proposed price is the ignore price, reset the question, allowing new resolution requests
         if (proposedPrice == ignorePrice()) {
-            questionData.resolutionDataRequested = false;
+            _resetQuestion(questionID, questionData);
             return;
         }
 
@@ -394,13 +393,9 @@ contract UmaConditionalTokensBinaryAdapter {
             .getRequest(address(this), identifier, questionData.earlyResolutionTimestamp, questionData.ancillaryData)
             .proposedPrice;
 
-        // NOTE: If the proposed price is the ignore price:
-        // 1) Do not settle the question
-        // 2) Set the resolution data requested flag to false,
-        //    allowing a new resolution request to be sent for this question
+        // NOTE: If the proposed price is the ignore price, reset the question, allowing new resolution requests
         if (proposedPrice == ignorePrice()) {
-            questionData.earlyResolutionTimestamp = 0;
-            questionData.resolutionDataRequested = false;
+            _resetQuestion(questionID, questionData);
             return;
         }
 
@@ -414,6 +409,12 @@ contract UmaConditionalTokensBinaryAdapter {
             questionData.ancillaryData
         );
         emit QuestionSettled(questionID, settledPrice, true);
+    }
+
+    function _resetQuestion(bytes32 questionID, QuestionData storage questionData) internal {
+        questionData.earlyResolutionTimestamp = 0;
+        questionData.resolutionDataRequested = false;
+        emit QuestionReset(questionID);
     }
 
     /// @notice Retrieves the expected payout of a settled question
@@ -482,7 +483,7 @@ contract UmaConditionalTokensBinaryAdapter {
         QuestionData storage questionData = questions[questionID];
 
         // Payouts: [YES, NO]
-        //getExpectedPayouts verifies that questionID is settled and can be resolved
+        // getExpectedPayouts verifies that questionID is settled and can be resolved
         uint256[] memory payouts = getExpectedPayouts(questionID);
 
         require(
@@ -582,6 +583,8 @@ contract UmaConditionalTokensBinaryAdapter {
         emit QuestionUnpaused(questionID);
     }
 
+    /// @notice Allows an admin to update the UMA Finder address
+    /// @param newFinderAddress - The new finder address
     function setFinderAddress(address newFinderAddress) external auth {
         emit NewFinderAddress(umaFinder, newFinderAddress);
         umaFinder = newFinderAddress;
