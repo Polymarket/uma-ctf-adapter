@@ -946,14 +946,8 @@ describe("", function () {
             });
 
             it("should revert if emergencyReport is called with invalid payout", async function () {
-                // fast forward the chain to after the emergencySafetyPeriod
+                // fast forward the chain to post-emergencySafetyPeriod
                 await hardhatIncreaseTime(thirtyDays + 1000);
-
-                // invalid conditional payout
-                const payouts = [10, 22];
-                await expect(umaBinaryAdapter.emergencyReportPayouts(questionID, payouts)).to.be.revertedWith(
-                    "Adapter::emergencyReportPayouts: payouts must be binary",
-                );
 
                 // invalid conditional payout
                 const nonBinaryPayoutVector = [0, 0, 0, 0, 1, 2, 3, 4, 5];

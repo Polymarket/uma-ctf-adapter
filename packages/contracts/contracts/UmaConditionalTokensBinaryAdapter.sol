@@ -554,7 +554,6 @@ contract UmaConditionalTokensBinaryAdapter {
             "Adapter::emergencyReportPayouts: safety period has not passed"
         );
 
-        require((payouts[0] + payouts[1]) == 1, "Adapter::emergencyReportPayouts: payouts must be binary");
         require(payouts.length == 2, "Adapter::emergencyReportPayouts: payouts must be binary");
 
         QuestionData storage questionData = questions[questionID];
