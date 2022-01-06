@@ -9,7 +9,7 @@ import { OptimisticOracleInterface } from "./interfaces/OptimisticOracleInterfac
 import { AddressWhitelistInterface } from "./interfaces/AddressWhitelistInterface.sol";
 
 /// @title UmaConditionalTokensBinaryAdapter
-/// @notice Adapter contract that enables conditional token resolution via UMA's Optimistic Oracle
+/// @notice Enables Conditional Token resolution via UMA's Optimistic Oracle
 contract UmaConditionalTokensBinaryAdapter {
     /// @notice Auth
     mapping(address => uint256) public wards;
