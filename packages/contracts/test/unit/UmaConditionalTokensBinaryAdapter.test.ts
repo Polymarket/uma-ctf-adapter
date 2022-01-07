@@ -385,7 +385,7 @@ describe("", function () {
                 ).to.be.revertedWith("Adapter::initializeQuestion: resolutionTime > 0");
             });
 
-            it.only("should atomically prepare and initialize a question", async function () {
+            it("should atomically prepare and initialize a question", async function () {
                 const questionID = createRandomQuestionID();
                 const resolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
                 const ancillaryData = ethers.utils.randomBytes(10);
