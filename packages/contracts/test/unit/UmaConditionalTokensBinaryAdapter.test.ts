@@ -382,7 +382,7 @@ describe("", function () {
                         0,
                         false,
                     ),
-                ).to.be.revertedWith("Adapter::initializeQuestion: resolutionTime > 0");
+                ).to.be.revertedWith("Adapter::initializeQuestion: resolutionTime must be positive");
             });
 
             it("should atomically prepare and initialize a question", async function () {

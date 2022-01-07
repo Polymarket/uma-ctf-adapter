@@ -167,7 +167,7 @@ contract UmaConditionalTokensBinaryAdapter {
         bool earlyResolutionEnabled
     ) public {
         require(!isQuestionInitialized(questionID), "Adapter::initializeQuestion: Question already initialized");
-        require(resolutionTime > 0, "Adapter::initializeQuestion: resolutionTime > 0");
+        require(resolutionTime > 0, "Adapter::initializeQuestion: resolutionTime must be positive");
         require(supportedToken(rewardToken), "Adapter::unsupported currency");
 
         questions[questionID] = QuestionData({
@@ -532,7 +532,7 @@ contract UmaConditionalTokensBinaryAdapter {
         bool earlyResolutionEnabled
     ) external auth {
         require(isQuestionInitialized(questionID), "Adapter::updateQuestion: Question not initialized");
-        require(resolutionTime > 0, "Adapter::updateQuestion: resolutionTime > 0");
+        require(resolutionTime > 0, "Adapter::updateQuestion: resolutionTime must be positive");
         require(supportedToken(rewardToken), "Adapter::unsupported currency");
         require(questions[questionID].settled == 0, "Adapter::updateQuestion: Question is already settled");
 
@@ -652,7 +652,7 @@ contract UmaConditionalTokensBinaryAdapter {
     /// @notice Utility function that verifies if a question is initialized
     /// @param questionID - The unique questionID
     function isQuestionInitialized(bytes32 questionID) public view returns (bool) {
-        return questions[questionID].resolutionTime != 0;
+        return questions[questionID].resolutionTime > 0;
     }
 
     /// @notice Price that indicates that the OO does not have a valid price yet
