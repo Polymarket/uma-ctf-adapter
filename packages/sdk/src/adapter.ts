@@ -1,5 +1,5 @@
 import { Contract } from "@ethersproject/contracts";
-import { JsonRpcSigner, TransactionResponse } from "@ethersproject/providers";
+import { JsonRpcSigner, TransactionResponse, TransactionReceipt } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
 import { BigNumber, ethers } from "ethers";
 import adapterAbi from "./abi/adapterAbi";
@@ -42,7 +42,7 @@ export class UmaBinaryAdapterClient {
         proposalBond: BigNumber,
         earlyResolutionEnabled: boolean,
         overrides?: ethers.Overrides
-    ): Promise<TransactionResponse> {
+    ): Promise<TransactionReceipt> {
 
         if (outcomes.length != 2) {
             throw new Error("Invalid outcome length! Must be 2!");
@@ -59,9 +59,9 @@ export class UmaBinaryAdapterClient {
 
         console.log(`Initializing questionID: ${questionID}...`);
         console.log(`Transaction hash: ${txn.hash}`);
-        await txn.wait();
+        const receipt: TransactionReceipt = await txn.wait();
         console.log(`Question initialized!`);
-        return txn;
+        return receipt;
     }
 
     /**
@@ -87,7 +87,7 @@ export class UmaBinaryAdapterClient {
         proposalBond: BigNumber,
         earlyResolutionEnabled: boolean,
         overrides?: ethers.Overrides
-    ): Promise<TransactionResponse> {
+    ): Promise<TransactionReceipt> {
         if (outcomes.length != 2) {
             throw new Error("Invalid outcome length! Must be 2!");
         }
@@ -103,9 +103,9 @@ export class UmaBinaryAdapterClient {
 
         console.log(`Preparing and initializing questionID: ${questionID}...`);
         console.log(`Transaction hash: ${txn.hash}`);
-        await txn.wait();
-        console.log(`Question initialized!`);
-        return txn;
+        const receipt: TransactionReceipt = await txn.wait();
+        console.log(`Condition prepared and question initialized!`);
+        return receipt;
     }
 
     /**
@@ -152,7 +152,7 @@ export class UmaBinaryAdapterClient {
      * Requests question resolution data from UMA
      * @param questionID 
      */
-    public async requestResolutionData(questionID: string, overrides?: ethers.Overrides): Promise<TransactionResponse> {
+    public async requestResolutionData(questionID: string, overrides?: ethers.Overrides): Promise<TransactionReceipt> {
         console.log(`Requesting resolution data from the Optimistic oracle...`);
         let txn: TransactionResponse;
         if (overrides != undefined) {
@@ -161,9 +161,9 @@ export class UmaBinaryAdapterClient {
             txn = await this.contract.requestResolutionData(questionID);
         }
         console.log(`Transaction hash: ${txn.hash}`);
-        await txn.wait();
+        const receipt: TransactionReceipt = await txn.wait();
         console.log(`Resolution data requested!`);
-        return txn;
+        return receipt;
     }
 
     /**
@@ -179,7 +179,7 @@ export class UmaBinaryAdapterClient {
      * Settles/finalizes the OO price for a question
      * @param questionID 
      */
-    public async settle(questionID: string, overrides?: ethers.Overrides): Promise<TransactionResponse> {
+    public async settle(questionID: string, overrides?: ethers.Overrides): Promise<TransactionReceipt> {
         console.log(`Settling the OO price for questionID: ${questionID}...`);
         let txn: TransactionResponse;
         if (overrides != undefined) {
@@ -188,9 +188,9 @@ export class UmaBinaryAdapterClient {
             txn = await this.contract.settle(questionID);
         }
         console.log(`Transaction hash: ${txn.hash}`);
-        await txn.wait();
+        const receipt: TransactionReceipt = await txn.wait();
         console.log(`Question settled!`);
-        return txn;
+        return receipt;
     }
 
     /**
@@ -208,7 +208,7 @@ export class UmaBinaryAdapterClient {
      * Resolves a question by using the requested resolution data
      * @param questionID 
      */
-    public async reportPayouts(questionID: string, overrides?: ethers.Overrides): Promise<TransactionResponse> {
+    public async reportPayouts(questionID: string, overrides?: ethers.Overrides): Promise<TransactionReceipt> {
         console.log(`Resolving question...`);
         let txn: TransactionResponse;
         if (overrides != undefined) {
@@ -217,9 +217,9 @@ export class UmaBinaryAdapterClient {
             txn = await this.contract.reportPayouts(questionID);
         }
         console.log(`Transaction hash: ${txn.hash}`);
-        await txn.wait();
+        const receipt: TransactionReceipt = await txn.wait();
         console.log(`Question resolved!`);
-        return txn;
+        return receipt;
     }
 
     /**
@@ -227,7 +227,7 @@ export class UmaBinaryAdapterClient {
      * @param questionID 
      * @param overrides 
      */
-    public async pauseQuestion(questionID: string, overrides?: ethers.Overrides): Promise<TransactionResponse> {
+    public async pauseQuestion(questionID: string, overrides?: ethers.Overrides): Promise<TransactionReceipt> {
         console.log(`Pausing questionID: ${questionID}...`);
         let txn: TransactionResponse;
         if (overrides != undefined) {
@@ -236,9 +236,9 @@ export class UmaBinaryAdapterClient {
             txn = await this.contract.pauseQuestion(questionID);
         }
         console.log(`Transaction hash: ${txn.hash}`);
-        await txn.wait();
+        const receipt: TransactionReceipt = await txn.wait();
         console.log(`Question paused!`);
-        return txn;
+        return receipt;
     }
 
     /**
@@ -246,7 +246,7 @@ export class UmaBinaryAdapterClient {
      * @param questionID 
      * @param overrides 
      */
-    public async unpauseQuestion(questionID: string, overrides?: ethers.Overrides): Promise<TransactionResponse> {
+    public async unpauseQuestion(questionID: string, overrides?: ethers.Overrides): Promise<TransactionReceipt> {
         console.log(`Unpausing questionID: ${questionID}...`);
         let txn: TransactionResponse;
         if (overrides != undefined) {
@@ -255,9 +255,9 @@ export class UmaBinaryAdapterClient {
             txn = await this.contract.unpauseQuestion(questionID);
         }
         console.log(`Transaction hash: ${txn.hash}`);
-        await txn.wait();
+        const receipt: TransactionReceipt = await txn.wait();
         console.log(`Question unpaused!`);
-        return txn;
+        return receipt;
     }
 
     /**
@@ -265,7 +265,7 @@ export class UmaBinaryAdapterClient {
      * @param questionID 
      * @param payouts 
      */
-    public async emergencyReportPayouts(questionID: string, payouts: number[], overrides?: ethers.Overrides): Promise<TransactionResponse> {
+    public async emergencyReportPayouts(questionID: string, payouts: number[], overrides?: ethers.Overrides): Promise<TransactionReceipt> {
         console.log(`Emergency resolving question...`);
         let txn: TransactionResponse;
         if (overrides != undefined) {
@@ -275,8 +275,8 @@ export class UmaBinaryAdapterClient {
             txn = await this.contract.emergencyReportPayouts(questionID, payouts);
         }
         console.log(`Transaction hash: ${txn.hash}`);
-        await txn.wait();
+        const receipt: TransactionReceipt = await txn.wait();
         console.log(`Question resolved!`);
-        return txn;
+        return receipt;
     }
 }
