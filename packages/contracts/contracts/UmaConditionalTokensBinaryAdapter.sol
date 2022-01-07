@@ -209,7 +209,6 @@ contract UmaConditionalTokensBinaryAdapter {
         if (questionData.earlyResolutionEnabled) {
             return true;
         }
-        // solhint-disable-next-line not-rely-on-time
         return block.timestamp > questionData.resolutionTime;
     }
 
@@ -224,7 +223,6 @@ contract UmaConditionalTokensBinaryAdapter {
         require(!questionData.paused, "Adapter::requestResolutionData: Question is paused");
 
         // Determine if a request for resolution data is an early resolution or the standard resolution flow
-        // solhint-disable-next-line not-rely-on-time
         if (questionData.earlyResolutionEnabled && block.timestamp < questionData.resolutionTime) {
             return _earlyResolutionRequest(questionID, questionData);
         }
@@ -266,7 +264,6 @@ contract UmaConditionalTokensBinaryAdapter {
     /// @param questionID   - The unique questionID of the question
     /// @param questionData - The questionData of the question
     function _earlyResolutionRequest(bytes32 questionID, QuestionData storage questionData) internal {
-        // solhint-disable-next-line not-rely-on-time
         uint256 earlyResolutionTimestamp = block.timestamp;
 
         // Request a price
@@ -560,7 +557,6 @@ contract UmaConditionalTokensBinaryAdapter {
         require(isQuestionInitialized(questionID), "Adapter::emergencyReportPayouts: questionID is not initialized");
 
         require(
-            // solhint-disable-next-line not-rely-on-time
             block.timestamp > questions[questionID].resolutionTime + emergencySafetyPeriod,
             "Adapter::emergencyReportPayouts: safety period has not passed"
         );

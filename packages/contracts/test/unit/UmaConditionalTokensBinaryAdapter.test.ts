@@ -460,7 +460,7 @@ describe("", function () {
                     testRewardToken.address,
                     reward,
                     bond,
-                    resolutionTime
+                    resolutionTime,
                 );
 
                 await optimisticOracle.mock.hasPrice.returns(true);
