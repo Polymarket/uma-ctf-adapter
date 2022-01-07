@@ -531,7 +531,7 @@ describe("", function () {
                 expect(requestorBalance.sub(requestorBalancePost).toString()).to.eq(reward.toString());
             });
 
-            it.only("should revert if the requestor does not have reward tokens or allowance", async function () {
+            it("should revert if the requestor does not have reward tokens or allowance", async function () {
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
                 const bond = ethers.utils.parseEther("10000.0");
