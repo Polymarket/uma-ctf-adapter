@@ -531,6 +531,34 @@ describe("", function () {
                 expect(requestorBalance.sub(requestorBalancePost).toString()).to.eq(reward.toString());
             });
 
+            it.only("should revert if the requestor does not have reward tokens or allowance", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const bond = ethers.utils.parseEther("10000.0");
+                const reward = ethers.utils.parseEther("10");
+                const resolutionTime = Math.floor(Date.now() / 1000) - 2000;
+
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    reward,
+                    bond,
+                    resolutionTime,
+                );
+
+                await optimisticOracle.mock.hasPrice.returns(true);
+                await optimisticOracle.mock.setBond.returns(bond);
+
+                expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
+                expect((await testRewardToken.balanceOf(this.signers.tester.address))).eq(0);
+
+                await expect(umaBinaryAdapter.connect(this.signers.tester).requestResolutionData(questionID)).to.be.revertedWith(
+                    "STF",
+                );
+            });
+
             it("requestResolutionData should revert if question is not initialized", async function () {
                 const questionID = HashZero;
                 await expect(umaBinaryAdapter.requestResolutionData(questionID)).to.be.revertedWith(
