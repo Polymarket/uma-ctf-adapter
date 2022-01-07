@@ -14,7 +14,7 @@ export const buildResolutionData = (outcomes: string[]): string => {
 
 /**
  * Creates the ancillary data used to resolve questions
- * Automatically appends resolution request information
+ * Appends resolution request information
  * 
  * @param title 
  * @param description
