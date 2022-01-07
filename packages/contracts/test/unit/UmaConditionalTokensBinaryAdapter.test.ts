@@ -18,7 +18,7 @@ import {
     getMockRequest,
     QuestionData,
 } from "../helpers";
-import { DESC, IGNORE_PRICE, QUESTION_TITLE, thirtyDays } from "./constants";
+import { DESC, IGNORE_PRICE, QUESTION_TITLE, emergencySafetyPeriod } from "./constants";
 
 const setup = deployments.createFixture(async () => {
     const signers = await hre.ethers.getSigners();
@@ -426,6 +426,8 @@ describe("", function () {
                 expect(await questionDataAfterRequest.resolutionDataRequested).eq(true);
                 expect(await questionDataAfterRequest.resolved).eq(false);
             });
+
+            // TODO: test request price with non-zero reward
 
             it("requestResolutionData should revert if question is not initialized", async function () {
                 const questionID = HashZero;
@@ -906,7 +908,7 @@ describe("", function () {
 
             it("should allow emergency reporting by the admin", async function () {
                 // fast forward the chain to after the emergencySafetyPeriod
-                await hardhatIncreaseTime(thirtyDays + 1000);
+                await hardhatIncreaseTime(emergencySafetyPeriod + 1000);
 
                 // YES conditional payout
                 const payouts = [1, 0];
@@ -924,7 +926,7 @@ describe("", function () {
                 await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID);
 
                 // fast forward the chain to after the emergencySafetyPeriod
-                await hardhatIncreaseTime(thirtyDays + 1000);
+                await hardhatIncreaseTime(emergencySafetyPeriod + 1000);
 
                 // YES conditional payout
                 const payouts = [1, 0];
@@ -947,7 +949,7 @@ describe("", function () {
 
             it("should revert if emergencyReport is called with invalid payout", async function () {
                 // fast forward the chain to post-emergencySafetyPeriod
-                await hardhatIncreaseTime(thirtyDays + 1000);
+                await hardhatIncreaseTime(emergencySafetyPeriod + 1000);
 
                 // invalid conditional payout
                 const nonBinaryPayoutVector = [0, 0, 0, 0, 1, 2, 3, 4, 5];

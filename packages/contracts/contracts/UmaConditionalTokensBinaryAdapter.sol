@@ -45,7 +45,7 @@ contract UmaConditionalTokensBinaryAdapter {
     bytes32 public constant identifier = "YES_OR_NO_QUERY";
 
     /// @notice Time period after which an admin can emergency resolve a condition
-    uint256 public constant emergencySafetyPeriod = 30 days;
+    uint256 public constant emergencySafetyPeriod = 2 days;
 
     struct QuestionData {
         // Unix timestamp(in seconds) at which a market can be resolved
