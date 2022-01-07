@@ -200,13 +200,6 @@ describe("", function () {
                 // ensure paused defaults to false
                 expect(returnedQuestionData.paused).eq(false);
                 expect(returnedQuestionData.settled).eq(0);
-
-                // Verify rewardToken allowance where adapter is owner and OO is spender
-                const rewardTokenAllowance: BigNumber = await testRewardToken.allowance(
-                    umaBinaryAdapter.address,
-                    optimisticOracle.address,
-                );
-                expect(rewardTokenAllowance).eq(0);
             });
 
             it("correctly initializes a question with non-zero rewardToken", async function () {
@@ -249,13 +242,6 @@ describe("", function () {
                 expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
                 expect(returnedQuestionData.reward).eq(reward);
                 expect(returnedQuestionData.proposalBond).eq(0);
-
-                // Verify rewardToken allowance where adapter is owner and OO is spender
-                const rewardTokenAllowance: BigNumber = await testRewardToken.allowance(
-                    umaBinaryAdapter.address,
-                    optimisticOracle.address,
-                );
-                expect(rewardTokenAllowance).eq(ethers.constants.MaxUint256);
             });
 
             it("correctly initializes a question with non-zero proposalBond and rewardToken", async function () {
@@ -301,13 +287,6 @@ describe("", function () {
                 expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
                 expect(returnedQuestionData.reward).eq(reward);
                 expect(returnedQuestionData.proposalBond).eq(proposalBond);
-
-                // Verify rewardToken allowance where adapter is owner and OO is spender
-                const rewardTokenAllowance: BigNumber = await testRewardToken.allowance(
-                    umaBinaryAdapter.address,
-                    optimisticOracle.address,
-                );
-                expect(rewardTokenAllowance).eq(ethers.constants.MaxUint256);
             });
 
             it("should revert when trying to reinitialize a question", async function () {
@@ -507,6 +486,7 @@ describe("", function () {
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
 
                 const requestorBalance = await testRewardToken.balanceOf(this.signers.admin.address);
+
                 // Request resolution data with the signer paying the reward token
                 expect(await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID))
                     .to.emit(umaBinaryAdapter, "ResolutionDataRequested")
@@ -525,6 +505,13 @@ describe("", function () {
                 const questionDataAfterRequest = await umaBinaryAdapter.questions(questionID);
                 expect(await questionDataAfterRequest.resolutionDataRequested).eq(true);
                 expect(await questionDataAfterRequest.resolved).eq(false);
+
+                // Verify rewardToken allowance where adapter is owner and OO is spender
+                const rewardTokenAllowance: BigNumber = await testRewardToken.allowance(
+                    umaBinaryAdapter.address,
+                    optimisticOracle.address,
+                );
+                expect(rewardTokenAllowance).eq(ethers.constants.MaxUint256);
 
                 // Ensure that the price request was paid for by the requestor
                 const requestorBalancePost = await testRewardToken.balanceOf(this.signers.admin.address);

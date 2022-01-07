@@ -184,14 +184,6 @@ contract UmaConditionalTokensBinaryAdapter {
             earlyResolutionTimestamp: 0
         });
 
-        // Approve the OO to transfer the reward token
-        if (reward > 0) {
-            address optimisticOracle = getOptimisticOracleAddress();
-            if (IERC20(rewardToken).allowance(address(this), optimisticOracle) < type(uint256).max) {
-                TransferHelper.safeApprove(rewardToken, optimisticOracle, type(uint256).max);
-            }
-        }
-
         emit QuestionInitialized(
             questionID,
             ancillaryData,
@@ -317,9 +309,14 @@ contract UmaConditionalTokensBinaryAdapter {
         // Fetch the optimistic oracle
         OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
 
-        // If non-zero reward, transfer rewardToken from the requestor
+        // If non-zero reward, pay for the price request by transferring rewardToken from the requestor
         if (reward > 0) {
             TransferHelper.safeTransferFrom(rewardToken, requestor, address(this), reward);
+
+            // Approve the OO to transfer the reward token from the Adapter
+            if (IERC20(rewardToken).allowance(address(this), address(optimisticOracle)) < type(uint256).max) {
+                TransferHelper.safeApprove(rewardToken, address(optimisticOracle), type(uint256).max);
+            }
         }
 
         // Send a price request to the Optimistic oracle
@@ -549,12 +546,6 @@ contract UmaConditionalTokensBinaryAdapter {
             settled: 0,
             earlyResolutionTimestamp: 0
         });
-
-        // Approve the OO to transfer the reward token
-        address optimisticOracle = getOptimisticOracleAddress();
-        if (IERC20(rewardToken).allowance(address(this), optimisticOracle) < type(uint256).max) {
-            TransferHelper.safeApprove(rewardToken, optimisticOracle, type(uint256).max);
-        }
 
         emit QuestionUpdated(
             questionID,
