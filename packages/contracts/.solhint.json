@@ -33,6 +33,8 @@
                 "maxLength": 96
             }
         ],
-        "no-empty-blocks": "off"
+        "no-empty-blocks": "off",
+        "avoid-low-level-calls": "off",
+        "not-rely-on-time": "off"
     }
 }

@@ -6,6 +6,8 @@ export interface QuestionData {
     rewardToken: string;
     reward: BigNumber;
     proposalBond: BigNumber;
+    earlyResolutionEnabled: boolean;
+    earlyResolutionTimestamp: number;
     resolutionDataRequested: boolean;
     resolved: boolean;
     paused: boolean;

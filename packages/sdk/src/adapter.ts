@@ -21,30 +21,44 @@ export class UmaBinaryAdapterClient {
 
     /**
      * Initializes a question on the adapter contract
-     * 
+     * @param questionID
      * @param title 
      * @param description 
+     * @param outcomes
      * @param resolutionTime 
      * @param rewardToken 
      * @param reward 
      * @param proposalBond
+     * @param earlyResolutionEnabled
      */
-    public async initializeQuestion(questionID: string, title: string, description: string, outcomes: string[], resolutionTime: number, rewardToken: string, reward: BigNumber, proposalBond: BigNumber, overrides?: ethers.Overrides): Promise<TransactionResponse> {
+    public async initializeQuestion(
+        questionID: string,
+        title: string,
+        description: string,
+        outcomes: string[],
+        resolutionTime: number,
+        rewardToken: string,
+        reward: BigNumber,
+        proposalBond: BigNumber,
+        earlyResolutionEnabled: boolean,
+        overrides?: ethers.Overrides
+    ): Promise<TransactionResponse> {
 
         if (outcomes.length != 2) {
             throw new Error("Invalid outcome length! Must be 2!");
         }
-        //dynamically generate ancillary data with binary resolution data appended
+        // Dynamically generate ancillary data with binary resolution data appended
         const ancillaryData = createAncillaryData(title, description, outcomes);
 
         let txn: TransactionResponse;
         if (overrides != undefined) {
-            txn = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward, proposalBond, overrides);
+            txn = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward, proposalBond, earlyResolutionEnabled, overrides);
         } else {
-            txn = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward, proposalBond);
+            txn = await this.contract.initializeQuestion(questionID, ancillaryData, resolutionTime, rewardToken, reward, proposalBond, earlyResolutionEnabled);
         }
 
-        console.log(`Initializing questionID: ${questionID} with: ${txn.hash}`);
+        console.log(`Initializing questionID: ${questionID}...`);
+        console.log(`Transaction hash: ${txn.hash}`);
         await txn.wait();
         console.log(`Question initialized!`);
         return txn;
@@ -57,18 +71,19 @@ export class UmaBinaryAdapterClient {
      */
     public async getQuestionData(questionID: string): Promise<QuestionData> {
         const data = await this.contract.questions(questionID);
-        const questionData: QuestionData = {
+        return {
             ancillaryData: data.ancillaryData,
             resolutionTime: data.resolutionTime,
             rewardToken: data.rewardToken,
             reward: data.reward,
             proposalBond: data.proposalBond,
+            earlyResolutionEnabled: data.earlyResolutionEnabled,
+            earlyResolutionTimestamp: data.earlyResolutionTimestamp,
             resolutionDataRequested: data.resolutionDataRequested,
             resolved: data.resolved,
             paused: data.paused,
             settled: data.settled,
         }
-        return questionData;
     }
 
     /**
@@ -102,7 +117,8 @@ export class UmaBinaryAdapterClient {
         } else {
             txn = await this.contract.requestResolutionData(questionID);
         }
-        await txn.wait()
+        console.log(`Transaction hash: ${txn.hash}`);
+        await txn.wait();
         console.log(`Resolution data requested!`);
         return txn;
     }
@@ -128,7 +144,8 @@ export class UmaBinaryAdapterClient {
         } else {
             txn = await this.contract.settle(questionID);
         }
-        await txn.wait()
+        console.log(`Transaction hash: ${txn.hash}`);
+        await txn.wait();
         console.log(`Question settled!`);
         return txn;
     }
@@ -156,7 +173,8 @@ export class UmaBinaryAdapterClient {
         } else {
             txn = await this.contract.reportPayouts(questionID);
         }
-        await txn.wait()
+        console.log(`Transaction hash: ${txn.hash}`);
+        await txn.wait();
         console.log(`Question resolved!`);
         return txn;
     }
@@ -174,7 +192,8 @@ export class UmaBinaryAdapterClient {
         } else {
             txn = await this.contract.pauseQuestion(questionID);
         }
-        await txn.wait()
+        console.log(`Transaction hash: ${txn.hash}`);
+        await txn.wait();
         console.log(`Question paused!`);
         return txn;
     }
@@ -192,7 +211,8 @@ export class UmaBinaryAdapterClient {
         } else {
             txn = await this.contract.unpauseQuestion(questionID);
         }
-        await txn.wait()
+        console.log(`Transaction hash: ${txn.hash}`);
+        await txn.wait();
         console.log(`Question unpaused!`);
         return txn;
     }
@@ -211,7 +231,8 @@ export class UmaBinaryAdapterClient {
         else {
             txn = await this.contract.emergencyReportPayouts(questionID, payouts);
         }
-        await txn.wait()
+        console.log(`Transaction hash: ${txn.hash}`);
+        await txn.wait();
         console.log(`Question resolved!`);
         return txn;
     }

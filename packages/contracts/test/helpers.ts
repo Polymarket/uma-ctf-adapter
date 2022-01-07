@@ -2,8 +2,41 @@ import { MockContract } from "ethereum-waffle";
 import { BigNumber, Contract, Signer } from "ethers";
 import { deployments, ethers, waffle } from "hardhat";
 
+export interface QuestionData {
+    resolutionTime: BigNumber;
+    reward: BigNumber;
+    proposalBond: BigNumber;
+    settled: BigNumber;
+    earlyResolutionTimestamp: BigNumber;
+    earlyResolutionEnabled: boolean;
+    resolutionDataRequested: boolean;
+    resolved: boolean;
+    paused: boolean;
+    rewardToken: string;
+    ancillaryData: string;
+}
+
+export interface Request {
+    proposer: string;
+    disputer: string;
+    currency: string;
+    settled: boolean;
+    refundOnDispute: boolean;
+    proposedPrice: number | BigNumber;
+    resolvedPrice: BigNumber;
+    expirationTime: number;
+    reward: number;
+    finalFee: number;
+    bond: number;
+    customLiveness: number;
+}
+
 export function createQuestionID(title: string, description: string): string {
     return ethers.utils.solidityKeccak256(["string", "string"], [title, description]);
+}
+
+export function createRandomQuestionID(): string {
+    return createQuestionID(ethers.utils.randomBytes(5).toString(), ethers.utils.randomBytes(10).toString());
 }
 
 export function createAncillaryData(title: string, description: string): Uint8Array {
@@ -28,15 +61,24 @@ export async function initializeQuestion(
     reward: BigNumber,
     proposalBond: BigNumber,
     resolutionTime?: number,
+    earlyExpiryEnabled?: boolean,
 ): Promise<string> {
     const questionID = createQuestionID(title, description);
     const defaultResolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
 
     const resTime = resolutionTime != null ? resolutionTime : defaultResolutionTime;
     const ancillaryData = createAncillaryData(title, description);
-
+    const earlyExpiry = earlyExpiryEnabled === undefined ? false : earlyExpiryEnabled;
     await (
-        await adapter.initializeQuestion(questionID, ancillaryData, resTime, rewardAddress, reward, proposalBond)
+        await adapter.initializeQuestion(
+            questionID,
+            ancillaryData,
+            resTime,
+            rewardAddress,
+            reward,
+            proposalBond,
+            earlyExpiry,
+        )
     ).wait();
 
     return questionID;
@@ -70,21 +112,6 @@ export async function deployMock(contractName: string, connect?: Signer): Promis
     const artifact = await deployments.getArtifact(contractName);
     const deployer = await ethers.getNamedSigner("deployer");
     return waffle.deployMockContract(connect ?? deployer, artifact.abi);
-}
-
-export interface Request {
-    proposer: string;
-    disputer: string;
-    currency: string;
-    settled: boolean;
-    refundOnDispute: boolean;
-    proposedPrice: number;
-    resolvedPrice: BigNumber;
-    expirationTime: number;
-    reward: number;
-    finalFee: number;
-    bond: number;
-    customLiveness: number;
 }
 
 export function getMockRequest(): Request {
