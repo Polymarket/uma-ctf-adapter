@@ -552,11 +552,11 @@ describe("", function () {
                 await optimisticOracle.mock.setBond.returns(bond);
 
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
-                expect((await testRewardToken.balanceOf(this.signers.tester.address))).eq(0);
+                expect(await testRewardToken.balanceOf(this.signers.tester.address)).eq(0);
 
-                await expect(umaBinaryAdapter.connect(this.signers.tester).requestResolutionData(questionID)).to.be.revertedWith(
-                    "STF",
-                );
+                await expect(
+                    umaBinaryAdapter.connect(this.signers.tester).requestResolutionData(questionID),
+                ).to.be.revertedWith("STF");
             });
 
             it("requestResolutionData should revert if question is not initialized", async function () {
