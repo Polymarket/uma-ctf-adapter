@@ -77,7 +77,11 @@ contract UmaConditionalTokensBinaryAdapter {
     /// @notice Mapping of questionID to QuestionData
     mapping(bytes32 => QuestionData) public questions;
 
-    // Events
+    /*
+    ////////////////////////////////////////////////////////////////////
+                            EVENTS 
+    ////////////////////////////////////////////////////////////////////
+    */
 
     /// @notice Emitted when the UMA Finder is changed
     event NewFinderAddress(address oldFinder, address newFinder);
@@ -138,6 +142,12 @@ contract UmaConditionalTokensBinaryAdapter {
         conditionalTokenContract = IConditionalTokens(conditionalTokenAddress);
         umaFinder = umaFinderAddress;
     }
+
+    /*
+    ////////////////////////////////////////////////////////////////////
+                            PUBLIC 
+    ////////////////////////////////////////////////////////////////////
+    */
 
     /// @notice Initializes a question on the Adapter to report on
     /// @param questionID               - The unique questionID of the question
@@ -423,6 +433,13 @@ contract UmaConditionalTokensBinaryAdapter {
         emit QuestionReset(questionID);
     }
 
+    function _getTimestamp(QuestionData storage questionData) internal view returns (uint256) {
+        if (questionData.earlyResolutionEnabled && questionData.earlyResolutionTimestamp > 0) {
+            return questionData.earlyResolutionTimestamp;
+        }
+        return questionData.resolutionTime;
+    }
+
     /// @notice Retrieves the expected payout of a settled question
     /// @param questionID - The unique questionID of the question
     function getExpectedPayouts(bytes32 questionID) public view returns (uint256[] memory) {
@@ -491,6 +508,12 @@ contract UmaConditionalTokensBinaryAdapter {
         emit QuestionResolved(questionID, false);
     }
 
+    /*
+    ////////////////////////////////////////////////////////////////////
+                            ADMIN ONLY FUNCTIONS 
+    ////////////////////////////////////////////////////////////////////
+    */
+
     /// @notice Allows an admin to update a question
     /// @param questionID             - The unique questionID of the question
     /// @param ancillaryData          - Data used to resolve a question
@@ -507,7 +530,7 @@ contract UmaConditionalTokensBinaryAdapter {
         uint256 reward,
         uint256 proposalBond,
         bool earlyResolutionEnabled
-    ) public auth {
+    ) external auth {
         require(isQuestionInitialized(questionID), "Adapter::updateQuestion: Question not initialized");
         require(resolutionTime > 0, "Adapter::updateQuestion: resolutionTime > 0");
         require(supportedToken(rewardToken), "Adapter::unsupported currency");
@@ -542,13 +565,6 @@ contract UmaConditionalTokensBinaryAdapter {
             proposalBond,
             earlyResolutionEnabled
         );
-    }
-
-    function _getTimestamp(QuestionData storage questionData) internal view returns (uint256) {
-        if (questionData.earlyResolutionEnabled && questionData.earlyResolutionTimestamp > 0) {
-            return questionData.earlyResolutionTimestamp;
-        }
-        return questionData.resolutionTime;
     }
 
     /// @notice Allows an admin to report payouts in an emergency
