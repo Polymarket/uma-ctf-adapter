@@ -5,7 +5,7 @@ import { BigNumber, ethers } from "ethers";
 import adapterAbi from "./abi/adapterAbi";
 import { QuestionData } from "./model";
 import { getAdapterAddress } from "./networks";
-import { createAncillaryData } from "./questionUtils";
+import { createAncillaryData } from "./utils";
 
 
 export class UmaBinaryAdapterClient {
