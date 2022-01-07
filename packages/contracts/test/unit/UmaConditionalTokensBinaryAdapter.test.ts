@@ -17,6 +17,7 @@ import {
     revertToSnapshot,
     getMockRequest,
     QuestionData,
+    createRandomQuestionID,
 } from "../helpers";
 import { DESC, IGNORE_PRICE, QUESTION_TITLE, emergencySafetyPeriod } from "./constants";
 
@@ -309,9 +310,7 @@ describe("", function () {
 
             it("should revert when trying to reinitialize a question", async function () {
                 // init question
-                const title = ethers.utils.randomBytes(5).toString();
-                const desc = ethers.utils.randomBytes(10).toString();
-                const questionID = createQuestionID(title, desc);
+                const questionID = createRandomQuestionID();
                 const resolutionTime = Math.floor(new Date().getTime() / 1000);
                 const ancillaryData = ethers.utils.randomBytes(10);
 
@@ -340,9 +339,7 @@ describe("", function () {
             });
 
             it("should revert when initializing with an unsupported token", async function () {
-                const title = ethers.utils.randomBytes(5).toString();
-                const desc = ethers.utils.randomBytes(10).toString();
-                const questionID = createQuestionID(title, desc);
+                const questionID = createRandomQuestionID();
                 const resolutionTime = Math.floor(new Date().getTime() / 1000);
                 const ancillaryData = ethers.utils.randomBytes(10);
 
@@ -365,6 +362,25 @@ describe("", function () {
                         false,
                     ),
                 ).to.be.revertedWith("Adapter::unsupported currency");
+            });
+
+            it("should revert if resolution time is invalid", async function () {
+                const questionID = createRandomQuestionID();
+                const ancillaryData = ethers.utils.randomBytes(10);
+                const resolutionTimestamp = 0;
+
+                // Reverts if resolutionTime == 0
+                await expect(
+                    umaBinaryAdapter.initializeQuestion(
+                        questionID,
+                        ancillaryData,
+                        resolutionTimestamp,
+                        testRewardToken.address,
+                        0,
+                        0,
+                        false,
+                    ),
+                ).to.be.revertedWith("Adapter::initializeQuestion: resolutionTime must be > 0");
             });
 
             // RequestResolution tests
@@ -426,8 +442,6 @@ describe("", function () {
                 expect(await questionDataAfterRequest.resolutionDataRequested).eq(true);
                 expect(await questionDataAfterRequest.resolved).eq(false);
             });
-
-            // TODO: test request price with non-zero reward
 
             it("requestResolutionData should revert if question is not initialized", async function () {
                 const questionID = HashZero;

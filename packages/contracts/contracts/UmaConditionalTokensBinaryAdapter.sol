@@ -154,6 +154,7 @@ contract UmaConditionalTokensBinaryAdapter {
         bool earlyResolutionEnabled
     ) public {
         require(!isQuestionInitialized(questionID), "Adapter::initializeQuestion: Question already initialized");
+        require(resolutionTime > 0, "Adapter::initializeQuestion: resolutionTime must be > 0");
         require(supportedToken(rewardToken), "Adapter::unsupported currency");
 
         questions[questionID] = QuestionData({

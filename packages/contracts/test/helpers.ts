@@ -35,6 +35,10 @@ export function createQuestionID(title: string, description: string): string {
     return ethers.utils.solidityKeccak256(["string", "string"], [title, description]);
 }
 
+export function createRandomQuestionID(): string {
+    return createQuestionID(ethers.utils.randomBytes(5).toString(), ethers.utils.randomBytes(10).toString());
+}
+
 export function createAncillaryData(title: string, description: string): Uint8Array {
     return ethers.utils.toUtf8Bytes(`q: ${title}d: ${description}`);
 }
