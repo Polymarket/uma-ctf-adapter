@@ -46,7 +46,7 @@ contract UmaConditionalTokensBinaryAdapter {
     /// @notice Unique query identifier for the Optimistic Oracle
     bytes32 public constant identifier = "YES_OR_NO_QUERY";
 
-    /// @notice Time period after which an admin can emergency resolve a condition
+    /// @notice Time period after which an authorized user can emergency resolve a condition
     uint256 public constant emergencySafetyPeriod = 2 days;
 
     struct QuestionData {
@@ -108,10 +108,10 @@ contract UmaConditionalTokensBinaryAdapter {
         bool earlyResolutionEnabled
     );
 
-    /// @notice Emitted when a question is paused by the Admin
+    /// @notice Emitted when a question is paused by an authorized user
     event QuestionPaused(bytes32 questionID);
 
-    /// @notice Emitted when a question is unpaused by the Admin
+    /// @notice Emitted when a question is unpaused by an authorized user
     event QuestionUnpaused(bytes32 questionID);
 
     /// @notice Emitted when resolution data is requested from the Optimistic Oracle
@@ -510,11 +510,11 @@ contract UmaConditionalTokensBinaryAdapter {
 
     /*
     ////////////////////////////////////////////////////////////////////
-                            ADMIN ONLY FUNCTIONS 
+                            AUTHORIZED ONLY FUNCTIONS 
     ////////////////////////////////////////////////////////////////////
     */
 
-    /// @notice Allows an admin to update a question
+    /// @notice Allows an authorized user to update a question
     /// @param questionID             - The unique questionID of the question
     /// @param ancillaryData          - Data used to resolve a question
     /// @param resolutionTime         - Timestamp after which the Adapter can resolve a question
@@ -567,7 +567,7 @@ contract UmaConditionalTokensBinaryAdapter {
         );
     }
 
-    /// @notice Allows an admin to report payouts in an emergency
+    /// @notice Allows an authorized user to report payouts in an emergency
     /// @param questionID - The unique questionID of the question
     function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external auth {
         require(isQuestionInitialized(questionID), "Adapter::emergencyReportPayouts: questionID is not initialized");
@@ -586,7 +586,7 @@ contract UmaConditionalTokensBinaryAdapter {
         emit QuestionResolved(questionID, true);
     }
 
-    /// @notice Allows an admin to pause market resolution in an emergency
+    /// @notice Allows an authorized user to pause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
     function pauseQuestion(bytes32 questionID) external auth {
         require(isQuestionInitialized(questionID), "Adapter::pauseQuestion: questionID is not initialized");
@@ -596,7 +596,7 @@ contract UmaConditionalTokensBinaryAdapter {
         emit QuestionPaused(questionID);
     }
 
-    /// @notice Allows an admin to unpause market resolution in an emergency
+    /// @notice Allows an authorized user to unpause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
     function unPauseQuestion(bytes32 questionID) external auth {
         require(isQuestionInitialized(questionID), "Adapter::unPauseQuestion: questionID is not initialized");
@@ -605,13 +605,52 @@ contract UmaConditionalTokensBinaryAdapter {
         emit QuestionUnpaused(questionID);
     }
 
-    /// @notice Allows an admin to update the UMA Finder address
+    /// @notice Allows an authorized user to update the UMA Finder address
     /// @param newFinderAddress - The new finder address
     function setFinderAddress(address newFinderAddress) external auth {
         emit NewFinderAddress(umaFinder, newFinderAddress);
         umaFinder = newFinderAddress;
     }
 
+    /*
+    ////////////////////////////////////////////////////////////////////
+                            UTILITY FUNCTIONS 
+    ////////////////////////////////////////////////////////////////////
+    */
+
+    /// @notice Utility function that atomically prepares a question on the Conditional Tokens contract
+    ///         and initializes it on the Adapter
+    /// @dev Prepares the condition using the Adapter as the oracle and a fixed outcomeSlotCount
+    /// @param questionID               - The unique questionID of the question
+    /// @param ancillaryData            - Data used to resolve a question
+    /// @param resolutionTime           - Timestamp after which the Adapter can resolve a question
+    /// @param rewardToken              - ERC20 token address used for payment of rewards and fees
+    /// @param reward                   - Reward offered to a successful proposer
+    /// @param proposalBond             - Bond required to be posted by a price proposer and disputer
+    /// @param earlyResolutionEnabled   - Determines whether a question can be resolved early
+    function prepareAndInitialize(
+        bytes32 questionID,
+        bytes memory ancillaryData,
+        uint256 resolutionTime,
+        address rewardToken,
+        uint256 reward,
+        uint256 proposalBond,
+        bool earlyResolutionEnabled
+    ) public {
+        conditionalTokenContract.prepareCondition(address(this), questionID, 2);
+        initializeQuestion(
+            questionID,
+            ancillaryData,
+            resolutionTime,
+            rewardToken,
+            reward,
+            proposalBond,
+            earlyResolutionEnabled
+        );
+    }
+
+    /// @notice Utility function that verifies if a question is initialized
+    /// @param questionID - The unique questionID
     function isQuestionInitialized(bytes32 questionID) public view returns (bool) {
         return questions[questionID].resolutionTime != 0;
     }

@@ -366,7 +366,7 @@ describe("", function () {
                 ).to.be.revertedWith("Adapter::unsupported currency");
             });
 
-            it("should revert if resolution time is invalid", async function () {
+            it("should revert initialization if resolution time is invalid", async function () {
                 const questionID = createRandomQuestionID();
                 const ancillaryData = ethers.utils.randomBytes(10);
                 const resolutionTimestamp = 0;
@@ -383,6 +383,41 @@ describe("", function () {
                         false,
                     ),
                 ).to.be.revertedWith("Adapter::initializeQuestion: resolutionTime > 0");
+            });
+
+            it.only("should atomically prepare and initialize a question", async function () {
+                const questionID = createRandomQuestionID();
+                const resolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
+                const ancillaryData = ethers.utils.randomBytes(10);
+                const ancillaryDataHexlified = ethers.utils.hexlify(ancillaryData);
+                const reward = ethers.utils.parseEther("10.0");
+                const bond = ethers.utils.parseEther("1000.0");
+
+                const conditionID = await conditionalTokens.getConditionId(umaBinaryAdapter.address, questionID, 2);
+
+                expect(
+                    await umaBinaryAdapter.prepareAndInitialize(
+                        questionID,
+                        ancillaryData,
+                        resolutionTime,
+                        testRewardToken.address,
+                        reward,
+                        bond,
+                        false,
+                    ),
+                )
+                    .to.emit(umaBinaryAdapter, "QuestionInitialized")
+                    .withArgs(
+                        questionID,
+                        ancillaryDataHexlified,
+                        resolutionTime,
+                        testRewardToken.address,
+                        reward,
+                        bond,
+                        false,
+                    )
+                    .and.to.emit(conditionalTokens, "ConditionPreparation")
+                    .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2);
             });
 
             // RequestResolution tests
