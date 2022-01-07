@@ -150,7 +150,6 @@ export class UmaBinaryAdapterClient {
 
     /**
      * Requests question resolution data from UMA
-     * 
      * @param questionID 
      */
     public async requestResolutionData(questionID: string, overrides?: ethers.Overrides): Promise<TransactionResponse> {
