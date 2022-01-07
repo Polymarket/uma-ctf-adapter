@@ -61,6 +61,8 @@ const setup = deployments.createFixture(async () => {
         },
     );
 
+    // Approve TST token with admin signer as owner and adapter as spender
+    await (await testRewardToken.connect(admin).approve(umaBinaryAdapter.address, ethers.constants.MaxUint256)).wait();
     return {
         conditionalTokens,
         finderContract,
@@ -253,7 +255,7 @@ describe("", function () {
                     umaBinaryAdapter.address,
                     optimisticOracle.address,
                 );
-                expect(rewardTokenAllowance).eq(reward);
+                expect(rewardTokenAllowance).eq(ethers.constants.MaxUint256);
             });
 
             it("correctly initializes a question with non-zero proposalBond and rewardToken", async function () {
@@ -305,7 +307,7 @@ describe("", function () {
                     umaBinaryAdapter.address,
                     optimisticOracle.address,
                 );
-                expect(rewardTokenAllowance).eq(reward);
+                expect(rewardTokenAllowance).eq(ethers.constants.MaxUint256);
             });
 
             it("should revert when trying to reinitialize a question", async function () {
@@ -380,7 +382,7 @@ describe("", function () {
                         0,
                         false,
                     ),
-                ).to.be.revertedWith("Adapter::initializeQuestion: resolutionTime must be > 0");
+                ).to.be.revertedWith("Adapter::initializeQuestion: resolutionTime > 0");
             });
 
             // RequestResolution tests
@@ -424,12 +426,13 @@ describe("", function () {
 
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
 
-                expect(await umaBinaryAdapter.requestResolutionData(questionID))
+                expect(await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID))
                     .to.emit(umaBinaryAdapter, "ResolutionDataRequested")
                     .withArgs(
-                        identifier,
+                        this.signers.admin.address,
                         questionData.resolutionTime,
                         questionID,
+                        identifier,
                         questionData.ancillaryData,
                         testRewardToken.address,
                         ethers.constants.Zero,
@@ -441,6 +444,56 @@ describe("", function () {
 
                 expect(await questionDataAfterRequest.resolutionDataRequested).eq(true);
                 expect(await questionDataAfterRequest.resolved).eq(false);
+            });
+
+            it("should correctly request resolution data with non-zero reward and bond", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const bond = ethers.utils.parseEther("10000.0");
+                const reward = ethers.utils.parseEther("10");
+                const resolutionTime = Math.floor(Date.now() / 1000) - 2000;
+
+                const questionID = await initializeQuestion(
+                    umaBinaryAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    reward,
+                    bond,
+                    resolutionTime
+                );
+
+                await optimisticOracle.mock.hasPrice.returns(true);
+                await optimisticOracle.mock.setBond.returns(bond);
+
+                const identifier = await umaBinaryAdapter.identifier();
+                const questionData = await umaBinaryAdapter.questions(questionID);
+
+                expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
+
+                const requestorBalance = await testRewardToken.balanceOf(this.signers.admin.address);
+                // Request resolution data with the signer paying the reward token
+                expect(await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID))
+                    .to.emit(umaBinaryAdapter, "ResolutionDataRequested")
+                    .withArgs(
+                        this.signers.admin.address,
+                        questionData.resolutionTime,
+                        questionID,
+                        identifier,
+                        questionData.ancillaryData,
+                        testRewardToken.address,
+                        reward,
+                        bond,
+                        false,
+                    );
+
+                const questionDataAfterRequest = await umaBinaryAdapter.questions(questionID);
+                expect(await questionDataAfterRequest.resolutionDataRequested).eq(true);
+                expect(await questionDataAfterRequest.resolved).eq(false);
+
+                // Ensure that the price request was paid for by the requestor
+                const requestorBalancePost = await testRewardToken.balanceOf(this.signers.admin.address);
+                expect(requestorBalance.sub(requestorBalancePost).toString()).to.eq(reward.toString());
             });
 
             it("requestResolutionData should revert if question is not initialized", async function () {

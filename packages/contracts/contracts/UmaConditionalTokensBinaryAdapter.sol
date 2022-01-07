@@ -3,6 +3,8 @@ pragma solidity 0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { TransferHelper } from "./libraries/TransferHelper.sol";
+
 import { FinderInterface } from "./interfaces/FinderInterface.sol";
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { OptimisticOracleInterface } from "./interfaces/OptimisticOracleInterface.sol";
@@ -110,9 +112,10 @@ contract UmaConditionalTokensBinaryAdapter {
 
     /// @notice Emitted when resolution data is requested from the Optimistic Oracle
     event ResolutionDataRequested(
-        bytes32 indexed identifier,
+        address indexed requestor,
         uint256 indexed resolutionTimestamp,
         bytes32 indexed questionID,
+        bytes32 identifier,
         bytes ancillaryData,
         address rewardToken,
         uint256 reward,
@@ -154,7 +157,7 @@ contract UmaConditionalTokensBinaryAdapter {
         bool earlyResolutionEnabled
     ) public {
         require(!isQuestionInitialized(questionID), "Adapter::initializeQuestion: Question already initialized");
-        require(resolutionTime > 0, "Adapter::initializeQuestion: resolutionTime must be > 0");
+        require(resolutionTime > 0, "Adapter::initializeQuestion: resolutionTime > 0");
         require(supportedToken(rewardToken), "Adapter::unsupported currency");
 
         questions[questionID] = QuestionData({
@@ -172,7 +175,12 @@ contract UmaConditionalTokensBinaryAdapter {
         });
 
         // Approve the OO to transfer the reward token
-        IERC20(rewardToken).approve(getOptimisticOracleAddress(), reward);
+        if (reward > 0) {
+            address optimisticOracle = getOptimisticOracleAddress();
+            if (IERC20(rewardToken).allowance(address(this), optimisticOracle) < type(uint256).max) {
+                TransferHelper.safeApprove(rewardToken, optimisticOracle, type(uint256).max);
+            }
+        }
 
         emit QuestionInitialized(
             questionID,
@@ -229,6 +237,7 @@ contract UmaConditionalTokensBinaryAdapter {
     function _standardRequest(bytes32 questionID, QuestionData storage questionData) internal {
         // Request a price
         _requestPrice(
+            msg.sender,
             identifier,
             questionData.resolutionTime,
             questionData.ancillaryData,
@@ -241,9 +250,10 @@ contract UmaConditionalTokensBinaryAdapter {
         questionData.resolutionDataRequested = true;
 
         emit ResolutionDataRequested(
-            identifier,
+            msg.sender,
             questionData.resolutionTime,
             questionID,
+            identifier,
             questionData.ancillaryData,
             questionData.rewardToken,
             questionData.reward,
@@ -261,6 +271,7 @@ contract UmaConditionalTokensBinaryAdapter {
 
         // Request a price
         _requestPrice(
+            msg.sender,
             identifier,
             earlyResolutionTimestamp,
             questionData.ancillaryData,
@@ -274,9 +285,10 @@ contract UmaConditionalTokensBinaryAdapter {
         questionData.resolutionDataRequested = true;
 
         emit ResolutionDataRequested(
-            identifier,
+            msg.sender,
             questionData.earlyResolutionTimestamp,
             questionID,
+            identifier,
             questionData.ancillaryData,
             questionData.rewardToken,
             questionData.reward,
@@ -287,6 +299,7 @@ contract UmaConditionalTokensBinaryAdapter {
 
     /// @notice Request a price from the Optimistic Oracle
     function _requestPrice(
+        address requestor,
         bytes32 priceIdentifier,
         uint256 timestamp,
         bytes memory ancillaryData,
@@ -296,6 +309,11 @@ contract UmaConditionalTokensBinaryAdapter {
     ) internal {
         // Fetch the optimistic oracle
         OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
+
+        // If non-zero reward, transfer rewardToken from the requestor
+        if (reward > 0) {
+            TransferHelper.safeTransferFrom(rewardToken, requestor, address(this), reward);
+        }
 
         // Send a price request to the Optimistic oracle
         optimisticOracle.requestPrice(priceIdentifier, timestamp, ancillaryData, IERC20(rewardToken), reward);
@@ -328,21 +346,11 @@ contract UmaConditionalTokensBinaryAdapter {
 
         OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
 
-        if (questionData.earlyResolutionEnabled && questionData.earlyResolutionTimestamp > 0) {
-            return
-                optimisticOracle.hasPrice(
-                    address(this),
-                    identifier,
-                    questionData.earlyResolutionTimestamp,
-                    questionData.ancillaryData
-                );
-        }
-
         return
             optimisticOracle.hasPrice(
                 address(this),
                 identifier,
-                questionData.resolutionTime,
+                _getTimestamp(questionData),
                 questionData.ancillaryData
             );
     }
@@ -461,20 +469,9 @@ contract UmaConditionalTokensBinaryAdapter {
     }
 
     function getExpectedResolutionData(QuestionData storage questionData) internal view returns (int256) {
-        if (questionData.earlyResolutionEnabled && questionData.earlyResolutionTimestamp > 0) {
-            return
-                getOptimisticOracle()
-                    .getRequest(
-                        address(this),
-                        identifier,
-                        questionData.earlyResolutionTimestamp,
-                        questionData.ancillaryData
-                    )
-                    .resolvedPrice;
-        }
         return
             getOptimisticOracle()
-                .getRequest(address(this), identifier, questionData.resolutionTime, questionData.ancillaryData)
+                .getRequest(address(this), identifier, _getTimestamp(questionData), questionData.ancillaryData)
                 .resolvedPrice;
     }
 
@@ -514,8 +511,10 @@ contract UmaConditionalTokensBinaryAdapter {
         uint256 proposalBond,
         bool earlyResolutionEnabled
     ) public auth {
-        require(isQuestionInitialized(questionID), "Adapter::update: Question not initialized");
+        require(isQuestionInitialized(questionID), "Adapter::updateQuestion: Question not initialized");
+        require(resolutionTime > 0, "Adapter::updateQuestion: resolutionTime > 0");
         require(supportedToken(rewardToken), "Adapter::unsupported currency");
+        require(questions[questionID].settled == 0, "Adapter::updateQuestion: Question is already settled");
 
         questions[questionID] = QuestionData({
             ancillaryData: ancillaryData,
@@ -532,7 +531,10 @@ contract UmaConditionalTokensBinaryAdapter {
         });
 
         // Approve the OO to transfer the reward token
-        IERC20(rewardToken).approve(getOptimisticOracleAddress(), reward);
+        address optimisticOracle = getOptimisticOracleAddress();
+        if (IERC20(rewardToken).allowance(address(this), optimisticOracle) < type(uint256).max) {
+            TransferHelper.safeApprove(rewardToken, optimisticOracle, type(uint256).max);
+        }
 
         emit QuestionUpdated(
             questionID,
@@ -543,6 +545,13 @@ contract UmaConditionalTokensBinaryAdapter {
             proposalBond,
             earlyResolutionEnabled
         );
+    }
+
+    function _getTimestamp(QuestionData storage questionData) internal view returns (uint256) {
+        if (questionData.earlyResolutionEnabled && questionData.earlyResolutionTimestamp > 0) {
+            return questionData.earlyResolutionTimestamp;
+        }
+        return questionData.resolutionTime;
     }
 
     /// @notice Allows an admin to report payouts in an emergency
