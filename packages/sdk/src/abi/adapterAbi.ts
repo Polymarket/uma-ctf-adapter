@@ -130,6 +130,19 @@ const adapterAbi = [
                 "internalType": "bytes32",
                 "name": "questionID",
                 "type": "bytes32"
+            }
+        ],
+        "name": "QuestionReset",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
             },
             {
                 "indexed": true,
@@ -233,9 +246,9 @@ const adapterAbi = [
         "inputs": [
             {
                 "indexed": true,
-                "internalType": "bytes32",
-                "name": "identifier",
-                "type": "bytes32"
+                "internalType": "address",
+                "name": "requestor",
+                "type": "address"
             },
             {
                 "indexed": true,
@@ -247,6 +260,12 @@ const adapterAbi = [
                 "indexed": true,
                 "internalType": "bytes32",
                 "name": "questionID",
+                "type": "bytes32"
+            },
+            {
+                "indexed": false,
+                "internalType": "bytes32",
+                "name": "identifier",
                 "type": "bytes32"
             },
             {
@@ -456,6 +475,49 @@ const adapterAbi = [
             }
         ],
         "name": "pauseQuestion",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            },
+            {
+                "internalType": "bytes",
+                "name": "ancillaryData",
+                "type": "bytes"
+            },
+            {
+                "internalType": "uint256",
+                "name": "resolutionTime",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "rewardToken",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "reward",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "proposalBond",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bool",
+                "name": "earlyResolutionEnabled",
+                "type": "bool"
+            }
+        ],
+        "name": "prepareAndInitialize",
         "outputs": [],
         "stateMutability": "nonpayable",
         "type": "function"

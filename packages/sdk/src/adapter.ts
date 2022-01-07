@@ -65,6 +65,50 @@ export class UmaBinaryAdapterClient {
     }
 
     /**
+     * Atomically prepares a condition on the CTF and initializes a question on the adapter
+     * @param questionID
+     * @param title 
+     * @param description 
+     * @param outcomes
+     * @param resolutionTime 
+     * @param rewardToken 
+     * @param reward 
+     * @param proposalBond
+     * @param earlyResolutionEnabled
+     */
+    public async prepareAndInitialize(
+        questionID: string,
+        title: string,
+        description: string,
+        outcomes: string[],
+        resolutionTime: number,
+        rewardToken: string,
+        reward: BigNumber,
+        proposalBond: BigNumber,
+        earlyResolutionEnabled: boolean,
+        overrides?: ethers.Overrides
+    ): Promise<TransactionResponse> {
+        if (outcomes.length != 2) {
+            throw new Error("Invalid outcome length! Must be 2!");
+        }
+        // Dynamically generate ancillary data with binary resolution data appended
+        const ancillaryData = createAncillaryData(title, description, outcomes);
+
+        let txn: TransactionResponse;
+        if (overrides != undefined) {
+            txn = await this.contract.prepareAndInitialize(questionID, ancillaryData, resolutionTime, rewardToken, reward, proposalBond, earlyResolutionEnabled, overrides);
+        } else {
+            txn = await this.contract.prepareAndInitialize(questionID, ancillaryData, resolutionTime, rewardToken, reward, proposalBond, earlyResolutionEnabled);
+        }
+
+        console.log(`Preparing and initializing questionID: ${questionID}...`);
+        console.log(`Transaction hash: ${txn.hash}`);
+        await txn.wait();
+        console.log(`Question initialized!`);
+        return txn;
+    }
+
+    /**
      * Fetch initialized question data 
      * @param questionID 
      * @returns 
