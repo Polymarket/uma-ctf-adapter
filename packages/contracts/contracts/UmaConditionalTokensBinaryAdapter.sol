@@ -2,6 +2,7 @@
 pragma solidity 0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 
@@ -12,7 +13,7 @@ import { AddressWhitelistInterface } from "./interfaces/AddressWhitelistInterfac
 
 /// @title UmaConditionalTokensBinaryAdapter
 /// @notice Enables Conditional Token resolution via UMA's Optimistic Oracle
-contract UmaConditionalTokensBinaryAdapter {
+contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
     /// @notice Auth
     mapping(address => uint256) public wards;
 
@@ -216,7 +217,7 @@ contract UmaConditionalTokensBinaryAdapter {
 
     /// @notice Request resolution data from the Optimistic Oracle
     /// @param questionID - The unique questionID of the question
-    function requestResolutionData(bytes32 questionID) public {
+    function requestResolutionData(bytes32 questionID) public nonReentrant {
         require(
             readyToRequestResolution(questionID),
             "Adapter::requestResolutionData: Question not ready to be resolved"
