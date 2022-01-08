@@ -383,7 +383,7 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
 
         // NOTE: If the proposed price is the ignore price, reset the question, allowing new resolution requests
         if (proposedPrice == ignorePrice()) {
-            _resetQuestion(questionID, questionData);
+            _resetQuestion(questionID, questionData, optimisticOracle);
             return;
         }
 
@@ -409,7 +409,7 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
 
         // NOTE: If the proposed price is the ignore price, reset the question, allowing new resolution requests
         if (proposedPrice == ignorePrice()) {
-            _resetQuestion(questionID, questionData);
+            _resetQuestion(questionID, questionData, optimisticOracle);
             return;
         }
 
@@ -425,9 +425,16 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
         emit QuestionSettled(questionID, settledPrice, true);
     }
 
-    function _resetQuestion(bytes32 questionID, QuestionData storage questionData) internal {
+    function _resetQuestion(
+        bytes32 questionID,
+        QuestionData storage questionData,
+        OptimisticOracleInterface optimisticOracle
+    ) internal {
+        optimisticOracle.settleAndGetPrice(identifier, _getTimestamp(questionData), questionData.ancillaryData);
+
         questionData.earlyResolutionTimestamp = 0;
         questionData.resolutionDataRequested = false;
+
         emit QuestionReset(questionID);
     }
 

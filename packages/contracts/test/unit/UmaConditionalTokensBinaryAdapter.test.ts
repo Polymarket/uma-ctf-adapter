@@ -39,6 +39,8 @@ const setup = deployments.createFixture(async () => {
 
     const optimisticOracle: MockContract = await deployMock("OptimisticOracleInterface");
     await optimisticOracle.mock.requestPrice.returns(0);
+    await optimisticOracle.mock.settleAndGetPrice.returns(ethers.constants.One);
+    await optimisticOracle.mock.setBond.returns(ethers.constants.One);
 
     const whitelist: MockContract = await deployMock("AddressWhitelistInterface");
     await whitelist.mock.isOnWhitelist.returns(true);
@@ -1107,6 +1109,7 @@ describe("", function () {
             });
 
             it("should correctly initialize an early resolution question", async function () {
+                const bond = ethers.utils.parseEther("100");
                 // Verify QuestionInitialized event emitted
                 expect(
                     await umaBinaryAdapter.initializeQuestion(
@@ -1115,7 +1118,7 @@ describe("", function () {
                         resolutionTime,
                         testRewardToken.address,
                         0,
-                        0,
+                        bond,
                         true,
                     ),
                 )
@@ -1126,7 +1129,7 @@ describe("", function () {
                         resolutionTime,
                         testRewardToken.address,
                         0,
-                        0,
+                        bond,
                         true,
                     );
 
@@ -1169,13 +1172,15 @@ describe("", function () {
                 request.resolvedPrice = ethers.constants.Zero;
                 request.proposedPrice = BigNumber.from(IGNORE_PRICE);
                 await optimisticOracle.mock.getRequest.returns(request);
+                await optimisticOracle.mock.settleAndGetPrice.returns(IGNORE_PRICE);
 
                 // Verfiy that ready to settle suceeds
                 expect(await umaBinaryAdapter.readyToSettle(questionID)).to.eq(true);
 
                 // Attempt to settle the early resolution question
                 // Settle emits the QuestionReset event indicating that the question was not settled
-                expect(await umaBinaryAdapter.connect(this.signers.tester).settle(questionID))
+                // Ensures that the proposal bond is returned to the price proposer
+                expect(await umaBinaryAdapter.connect(this.signers.admin).settle(questionID))
                     .to.emit(umaBinaryAdapter, "QuestionReset")
                     .withArgs(questionID);
 
