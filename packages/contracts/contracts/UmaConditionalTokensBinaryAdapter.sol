@@ -426,8 +426,12 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
     }
 
     function _resetQuestion(bytes32 questionID, QuestionData storage questionData) internal {
+        OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
+        optimisticOracle.settleAndGetPrice(identifier, _getTimestamp(questionData), questionData.ancillaryData);
+
         questionData.earlyResolutionTimestamp = 0;
         questionData.resolutionDataRequested = false;
+
         emit QuestionReset(questionID);
     }
 
