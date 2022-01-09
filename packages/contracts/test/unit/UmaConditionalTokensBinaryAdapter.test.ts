@@ -1026,6 +1026,29 @@ describe("", function () {
             });
 
             it("should allow emergency reporting by the admin", async function () {
+                // Verify admin resolution timestamp was set to zero upon question initialization
+                let questionData = await umaBinaryAdapter.questions(questionID);
+                const resolutionTs = await questionData.adminResolutionTimestamp;
+                console.log("---------------------------");
+                console.log(resolutionTs);
+                console.log("---------------------------");
+                expect(await questionData.adminResolutionTimestamp).to.eq(BigNumber.from(0));
+
+                // Verify emergency resolution flag check returns false
+                expect(await umaBinaryAdapter.isQuestionFlaggedForEmergencyResolution(questionID)).eq(false);
+
+                // flag question for resolution
+                expect(await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID))
+                    .to.emit(umaBinaryAdapter, "QuestionFlaggedForAdminResolution")
+                    .withArgs(questionID);
+
+                // Verify admin resolution timestamp was set
+                questionData = await umaBinaryAdapter.questions(questionID);
+                expect((await questionData.adminResolutionTimestamp).gt(BigNumber.from(0))).is.eq(true);
+
+                // Verify emergency resolution flag check returns true
+                expect(await umaBinaryAdapter.isQuestionFlaggedForEmergencyResolution(questionID)).eq(true);
+
                 // fast forward the chain to after the emergencySafetyPeriod
                 await hardhatIncreaseTime(emergencySafetyPeriod + 1000);
 
@@ -1036,7 +1059,7 @@ describe("", function () {
                     .withArgs(questionID, true);
 
                 // Verify resolved flag on the QuestionData struct has been updated
-                const questionData = await umaBinaryAdapter.questions(questionID);
+                questionData = await umaBinaryAdapter.questions(questionID);
                 expect(await questionData.resolved).eq(true);
             });
 
@@ -1044,6 +1067,9 @@ describe("", function () {
                 // Pause question
                 await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID);
 
+                // flag for early resolution
+                await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID);
+
                 // fast forward the chain to after the emergencySafetyPeriod
                 await hardhatIncreaseTime(emergencySafetyPeriod + 1000);
 
@@ -1058,7 +1084,18 @@ describe("", function () {
                 expect(await questionData.resolved).eq(true);
             });
 
+            it("should revert if emergencyReport is called before the question is flagged for emergency resolution", async function () {
+                // YES conditional payout
+                const payouts = [1, 0];
+                await expect(umaBinaryAdapter.emergencyReportPayouts(questionID, payouts)).to.be.revertedWith(
+                    "Adapter::emergencyReportPayouts: questionID is not flagged for emergency resolution",
+                );
+            });
+
             it("should revert if emergencyReport is called before the safety period", async function () {
+                // flag for early resolution
+                await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID);
+
                 // YES conditional payout
                 const payouts = [1, 0];
                 await expect(umaBinaryAdapter.emergencyReportPayouts(questionID, payouts)).to.be.revertedWith(
@@ -1067,6 +1104,9 @@ describe("", function () {
             });
 
             it("should revert if emergencyReport is called with invalid payout", async function () {
+                // flag for early resolution
+                await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID);
+
                 // fast forward the chain to post-emergencySafetyPeriod
                 await hardhatIncreaseTime(emergencySafetyPeriod + 1000);
 

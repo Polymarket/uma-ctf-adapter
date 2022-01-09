@@ -73,6 +73,8 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
         address rewardToken;
         // Data used to resolve a condition
         bytes ancillaryData;
+        // Admin Resolution timestamp, set when a market is flagged for admin resolution
+        uint256 adminResolutionTimestamp;
     }
 
     /// @notice Mapping of questionID to QuestionData
@@ -114,6 +116,9 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
 
     /// @notice Emitted when a question is unpaused by an authorized user
     event QuestionUnpaused(bytes32 questionID);
+
+    /// @notice Emitted when a question is flagged by an admin for emergency resolution
+    event QuestionFlaggedForAdminResolution(bytes32 questionID);
 
     /// @notice Emitted when resolution data is requested from the Optimistic Oracle
     event ResolutionDataRequested(
@@ -182,7 +187,8 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
             resolved: false,
             paused: false,
             settled: 0,
-            earlyResolutionTimestamp: 0
+            earlyResolutionTimestamp: 0,
+            adminResolutionTimestamp: 0
         });
 
         emit QuestionInitialized(
@@ -552,7 +558,8 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
             resolved: false,
             paused: false,
             settled: 0,
-            earlyResolutionTimestamp: 0
+            earlyResolutionTimestamp: 0,
+            adminResolutionTimestamp: 0
         });
 
         emit QuestionUpdated(
@@ -566,13 +573,30 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
         );
     }
 
+    /// @notice Flags a market for emergency resolution in an emergency
+    /// @param questionID - The unique questionID of the question
+    function flagQuestionForEmergencyResolution(bytes32 questionID) external auth {
+        require(
+            isQuestionInitialized(questionID),
+            "Adapter::flagQuestionForEarlyResolution: questionID is not initialized"
+        );
+        questions[questionID].adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
+        emit QuestionFlaggedForAdminResolution(questionID);
+    }
+
     /// @notice Allows an authorized user to report payouts in an emergency
     /// @param questionID - The unique questionID of the question
+    /// @param payouts - Array of position payouts for the referenced question
     function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external auth {
         require(isQuestionInitialized(questionID), "Adapter::emergencyReportPayouts: questionID is not initialized");
 
         require(
-            block.timestamp > questions[questionID].resolutionTime + emergencySafetyPeriod,
+            isQuestionFlaggedForEmergencyResolution(questionID),
+            "Adapter::emergencyReportPayouts: questionID is not flagged for emergency resolution"
+        );
+
+        require(
+            block.timestamp > questions[questionID].adminResolutionTimestamp,
             "Adapter::emergencyReportPayouts: safety period has not passed"
         );
 
@@ -652,6 +676,10 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
     /// @param questionID - The unique questionID
     function isQuestionInitialized(bytes32 questionID) public view returns (bool) {
         return questions[questionID].resolutionTime > 0;
+    }
+
+    function isQuestionFlaggedForEmergencyResolution(bytes32 questionID) public view returns (bool) {
+        return questions[questionID].adminResolutionTimestamp > 0;
     }
 
     /// @notice Price that indicates that the OO does not have a valid price yet
