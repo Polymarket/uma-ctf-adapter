@@ -1027,10 +1027,9 @@ describe("", function () {
 
             it("should allow emergency reporting by the admin", async function () {
                 // Verify admin resolution timestamp was set to zero upon question initialization
-                let questionData = await umaBinaryAdapter.questions(questionID);
-                const resolutionTs = await questionData.adminResolutionTimestamp;
+                const questionData = await umaBinaryAdapter.questions(questionID);
 
-                expect(await questionData.adminResolutionTimestamp).to.eq(BigNumber.from(0));
+                expect(await questionData.adminResolutionTimestamp).to.eq(0);
 
                 // Verify emergency resolution flag check returns false
                 expect(await umaBinaryAdapter.isQuestionFlaggedForEmergencyResolution(questionID)).eq(false);
@@ -1046,8 +1045,8 @@ describe("", function () {
                 );
 
                 // Verify admin resolution timestamp was set
-                questionData = await umaBinaryAdapter.questions(questionID);
-                expect((await questionData.adminResolutionTimestamp).gt(BigNumber.from(0))).is.eq(true);
+                expect((await umaBinaryAdapter.questions(questionID)).adminResolutionTimestamp)
+                    .gt(0);
 
                 // Verify emergency resolution flag check returns true
                 expect(await umaBinaryAdapter.isQuestionFlaggedForEmergencyResolution(questionID)).eq(true);
@@ -1062,8 +1061,7 @@ describe("", function () {
                     .withArgs(questionID, true);
 
                 // Verify resolved flag on the QuestionData struct has been updated
-                questionData = await umaBinaryAdapter.questions(questionID);
-                expect(await questionData.resolved).eq(true);
+                expect((await umaBinaryAdapter.questions(questionID)).resolved).eq(true);
             });
 
             it("should allow emergency reporting even if the question is paused", async function () {

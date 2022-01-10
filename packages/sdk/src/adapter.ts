@@ -316,14 +316,14 @@ export class UmaBinaryAdapterClient {
     }
 
     /**
-     * Emergency report payouts
+     * Flag question for emergency report resolution
      * @param questionID
      */
     public async flagQuestionForEmergencyResolution(
         questionID: string,
         overrides?: ethers.Overrides,
     ): Promise<TransactionReceipt> {
-        console.log(`Emergency resolving question...`);
+        console.log(`Flagging ${questionID} for emergency resolution...`);
         let txn: TransactionResponse;
         if (overrides != undefined) {
             txn = await this.contract.flagQuestionForEmergencyResolution(questionID, overrides);
@@ -342,7 +342,7 @@ export class UmaBinaryAdapterClient {
      * @returns
      */
     public async isQuestionFlaggedForEmergencyResolution(questionID: string): Promise<TransactionReceipt> {
-        console.log(`Checking if question has been flagged for early resolution`);
+        console.log(`Checking if question has been flagged for early resolution...`);
         const hasBeenFlaggedForEarlyResolutionQ = await this.contract.isQuestionFlaggedForEmergencyResolution(
             questionID,
         );
