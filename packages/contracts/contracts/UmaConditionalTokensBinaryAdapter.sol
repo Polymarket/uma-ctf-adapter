@@ -59,17 +59,17 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
         uint256 proposalBond;
         // Flag marking the block number when a question was settled
         uint256 settled;
-        // Early Resolution timestamp, set when an early resolution data request is sent
-        uint256 earlyResolutionTimestamp;
+        // Request timestmap, set when a request is made to the Optimistic Oracle
+        uint256 requestTimestamp;
+        // Admin Resolution timestamp, set when a market is flagged for admin resolution
+        uint256 adminResolutionTimestamp;
         // Flag marking whether a question can be resolved early
         bool earlyResolutionEnabled;
-        // Flag marking whether resolution data has been requested from the Oracle
-        bool resolutionDataRequested;
         // Flag marking whether a question is resolved
         bool resolved;
         // Flag marking whether a question is paused
         bool paused;
-        // ERC20 token address used for payment of rewards and fees
+        // ERC20 token address used for payment of rewards, proposal bonds and fees
         address rewardToken;
         // Data used to resolve a condition
         bytes ancillaryData;
@@ -115,10 +115,13 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
     /// @notice Emitted when a question is unpaused by an authorized user
     event QuestionUnpaused(bytes32 questionID);
 
+    /// @notice Emitted when a question is flagged by an admin for emergency resolution
+    event QuestionFlaggedForAdminResolution(bytes32 questionID);
+
     /// @notice Emitted when resolution data is requested from the Optimistic Oracle
     event ResolutionDataRequested(
         address indexed requestor,
-        uint256 indexed resolutionTimestamp,
+        uint256 indexed requestTimestamp,
         bytes32 indexed questionID,
         bytes32 identifier,
         bytes ancillaryData,
@@ -169,7 +172,7 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
     ) public {
         require(!isQuestionInitialized(questionID), "Adapter::initializeQuestion: Question already initialized");
         require(resolutionTime > 0, "Adapter::initializeQuestion: resolutionTime must be positive");
-        require(supportedToken(rewardToken), "Adapter::unsupported currency");
+        require(supportedToken(rewardToken), "Adapter::unsupported reward token");
 
         questions[questionID] = QuestionData({
             ancillaryData: ancillaryData,
@@ -178,11 +181,11 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
             reward: reward,
             proposalBond: proposalBond,
             earlyResolutionEnabled: earlyResolutionEnabled,
-            resolutionDataRequested: false,
             resolved: false,
             paused: false,
             settled: 0,
-            earlyResolutionTimestamp: 0
+            requestTimestamp: 0,
+            adminResolutionTimestamp: 0
         });
 
         emit QuestionInitialized(
@@ -199,19 +202,27 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
     /// @notice Checks whether or not a question can start the resolution process
     /// @param questionID - The unique questionID of the question
     function readyToRequestResolution(bytes32 questionID) public view returns (bool) {
+        // Ensure question has been initialized
         if (!isQuestionInitialized(questionID)) {
             return false;
         }
         QuestionData storage questionData = questions[questionID];
-        if (questionData.resolutionDataRequested) {
+
+        // Ensure resolution data has not already been requested for the question
+        if (resolutionDataRequested(questionData)) {
             return false;
         }
+
+        // Ensure the question is not already resolved
         if (questionData.resolved) {
             return false;
         }
+
+        // If early resolution is enabled, do not restrict resolution to after resolution time
         if (questionData.earlyResolutionEnabled) {
             return true;
         }
+        // Ensure that current time is after resolution time
         return block.timestamp > questionData.resolutionTime;
     }
 
@@ -225,79 +236,42 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
         QuestionData storage questionData = questions[questionID];
         require(!questionData.paused, "Adapter::requestResolutionData: Question is paused");
 
-        // Determine if a request for resolution data is an early resolution or the standard resolution flow
-        if (questionData.earlyResolutionEnabled && block.timestamp < questionData.resolutionTime) {
-            return _earlyResolutionRequest(questionID, questionData);
-        }
-        return _standardRequest(questionID, questionData);
+        _requestResolution(questionID, questionData);
     }
 
-    /// @notice Requests data from the Optimistic Oracle using the standard process
+    /// @notice Requests data from the Optimistic Oracle
     /// @param questionID   - The unique questionID of the question
     /// @param questionData - The questionData of the question
-    function _standardRequest(bytes32 questionID, QuestionData storage questionData) internal {
+    function _requestResolution(bytes32 questionID, QuestionData storage questionData) internal {
+        // Update request timestamp
+        questionData.requestTimestamp = block.timestamp;
+
         // Request a price
         _requestPrice(
             msg.sender,
             identifier,
-            questionData.resolutionTime,
+            questionData.requestTimestamp,
             questionData.ancillaryData,
             questionData.rewardToken,
             questionData.reward,
             questionData.proposalBond
         );
 
-        // Update the resolutionDataRequested flag
-        questionData.resolutionDataRequested = true;
-
         emit ResolutionDataRequested(
             msg.sender,
-            questionData.resolutionTime,
+            questionData.requestTimestamp,
             questionID,
             identifier,
             questionData.ancillaryData,
             questionData.rewardToken,
             questionData.reward,
             questionData.proposalBond,
-            false
-        );
-    }
-
-    /// @notice Requests data from the Optimistic Oracle using early resolution
-    /// @param questionID   - The unique questionID of the question
-    /// @param questionData - The questionData of the question
-    function _earlyResolutionRequest(bytes32 questionID, QuestionData storage questionData) internal {
-        uint256 earlyResolutionTimestamp = block.timestamp;
-
-        // Request a price
-        _requestPrice(
-            msg.sender,
-            identifier,
-            earlyResolutionTimestamp,
-            questionData.ancillaryData,
-            questionData.rewardToken,
-            questionData.reward,
-            questionData.proposalBond
-        );
-
-        // Update early resolution timestamp and resolution data requested flag
-        questionData.earlyResolutionTimestamp = earlyResolutionTimestamp;
-        questionData.resolutionDataRequested = true;
-
-        emit ResolutionDataRequested(
-            msg.sender,
-            questionData.earlyResolutionTimestamp,
-            questionID,
-            identifier,
-            questionData.ancillaryData,
-            questionData.rewardToken,
-            questionData.reward,
-            questionData.proposalBond,
-            true
+            questionData.earlyResolutionEnabled && questionData.requestTimestamp < questionData.resolutionTime
         );
     }
 
     /// @notice Request a price from the Optimistic Oracle
+    /// @dev Transfers reward token from the requestor if non-zero reward is specified
     function _requestPrice(
         address requestor,
         bytes32 priceIdentifier,
@@ -337,7 +311,7 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
         }
         QuestionData storage questionData = questions[questionID];
         // Ensure resolution data has been requested for question
-        if (questionData.resolutionDataRequested == false) {
+        if (resolutionDataRequested(questionData) == false) {
             return false;
         }
         // Ensure question has not been resolved
@@ -355,7 +329,7 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
             optimisticOracle.hasPrice(
                 address(this),
                 identifier,
-                _getTimestamp(questionData),
+                questionData.requestTimestamp,
                 questionData.ancillaryData
             );
     }
@@ -368,17 +342,14 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
         QuestionData storage questionData = questions[questionID];
         require(!questionData.paused, "Adapter::settle: Question is paused");
 
-        if (questionData.earlyResolutionEnabled && questionData.earlyResolutionTimestamp > 0) {
-            return _earlySettle(questionID, questionData);
-        }
-        return _standardSettle(questionID, questionData);
+        return _settle(questionID, questionData);
     }
 
-    function _standardSettle(bytes32 questionID, QuestionData storage questionData) internal {
+    function _settle(bytes32 questionID, QuestionData storage questionData) internal {
         OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
 
         int256 proposedPrice = optimisticOracle
-            .getRequest(address(this), identifier, questionData.resolutionTime, questionData.ancillaryData)
+            .getRequest(address(this), identifier, questionData.requestTimestamp, questionData.ancillaryData)
             .proposedPrice;
 
         // NOTE: If the proposed price is the ignore price, reset the question, allowing new resolution requests
@@ -393,36 +364,10 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
         // Settle the price
         int256 settledPrice = optimisticOracle.settleAndGetPrice(
             identifier,
-            questionData.resolutionTime,
+            questionData.requestTimestamp,
             questionData.ancillaryData
         );
-        emit QuestionSettled(questionID, settledPrice, false);
-    }
-
-    function _earlySettle(bytes32 questionID, QuestionData storage questionData) internal {
-        OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
-
-        // Fetch the current proposed price from the OO
-        int256 proposedPrice = optimisticOracle
-            .getRequest(address(this), identifier, questionData.earlyResolutionTimestamp, questionData.ancillaryData)
-            .proposedPrice;
-
-        // NOTE: If the proposed price is the ignore price, reset the question, allowing new resolution requests
-        if (proposedPrice == ignorePrice()) {
-            _resetQuestion(questionID, questionData, optimisticOracle);
-            return;
-        }
-
-        // Set the settled block number
-        questionData.settled = block.number;
-
-        // Settle the price
-        int256 settledPrice = optimisticOracle.settleAndGetPrice(
-            identifier,
-            questionData.earlyResolutionTimestamp,
-            questionData.ancillaryData
-        );
-        emit QuestionSettled(questionID, settledPrice, true);
+        emit QuestionSettled(questionID, settledPrice, questionData.requestTimestamp < questionData.resolutionTime);
     }
 
     function _resetQuestion(
@@ -430,19 +375,9 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
         QuestionData storage questionData,
         OptimisticOracleInterface optimisticOracle
     ) internal {
-        optimisticOracle.settleAndGetPrice(identifier, _getTimestamp(questionData), questionData.ancillaryData);
-
-        questionData.earlyResolutionTimestamp = 0;
-        questionData.resolutionDataRequested = false;
-
+        optimisticOracle.settleAndGetPrice(identifier, questionData.requestTimestamp, questionData.ancillaryData);
+        questionData.requestTimestamp = 0;
         emit QuestionReset(questionID);
-    }
-
-    function _getTimestamp(QuestionData storage questionData) internal view returns (uint256) {
-        if (questionData.earlyResolutionEnabled && questionData.earlyResolutionTimestamp > 0) {
-            return questionData.earlyResolutionTimestamp;
-        }
-        return questionData.resolutionTime;
     }
 
     /// @notice Retrieves the expected payout of a settled question
@@ -452,7 +387,7 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
         QuestionData storage questionData = questions[questionID];
 
         require(
-            questionData.resolutionDataRequested,
+            resolutionDataRequested(questionData),
             "Adapter::getExpectedPayouts: resolutionData has not been requested"
         );
         require(!questionData.resolved, "Adapter::getExpectedPayouts: questionID is already resolved");
@@ -490,7 +425,7 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
     function getExpectedResolutionData(QuestionData storage questionData) internal view returns (int256) {
         return
             getOptimisticOracle()
-                .getRequest(address(this), identifier, _getTimestamp(questionData), questionData.ancillaryData)
+                .getRequest(address(this), identifier, questionData.requestTimestamp, questionData.ancillaryData)
                 .resolvedPrice;
     }
 
@@ -538,7 +473,7 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
     ) external auth {
         require(isQuestionInitialized(questionID), "Adapter::updateQuestion: Question not initialized");
         require(resolutionTime > 0, "Adapter::updateQuestion: resolutionTime must be positive");
-        require(supportedToken(rewardToken), "Adapter::unsupported currency");
+        require(supportedToken(rewardToken), "Adapter::unsupported reward token");
         require(questions[questionID].settled == 0, "Adapter::updateQuestion: Question is already settled");
 
         questions[questionID] = QuestionData({
@@ -548,11 +483,11 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
             reward: reward,
             proposalBond: proposalBond,
             earlyResolutionEnabled: earlyResolutionEnabled,
-            resolutionDataRequested: false,
             resolved: false,
             paused: false,
             settled: 0,
-            earlyResolutionTimestamp: 0
+            requestTimestamp: 0,
+            adminResolutionTimestamp: 0
         });
 
         emit QuestionUpdated(
@@ -566,13 +501,36 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
         );
     }
 
+    /// @notice Flags a market for emergency resolution in an emergency
+    /// @param questionID - The unique questionID of the question
+    function flagQuestionForEmergencyResolution(bytes32 questionID) external auth {
+        require(
+            isQuestionInitialized(questionID),
+            "Adapter::flagQuestionForEarlyResolution: questionID is not initialized"
+        );
+
+        require(
+            !isQuestionFlaggedForEmergencyResolution(questionID),
+            "Adapter::emergencyReportPayouts: questionID is already flagged for emergency resolution"
+        );
+
+        questions[questionID].adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
+        emit QuestionFlaggedForAdminResolution(questionID);
+    }
+
     /// @notice Allows an authorized user to report payouts in an emergency
     /// @param questionID - The unique questionID of the question
+    /// @param payouts - Array of position payouts for the referenced question
     function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external auth {
         require(isQuestionInitialized(questionID), "Adapter::emergencyReportPayouts: questionID is not initialized");
 
         require(
-            block.timestamp > questions[questionID].resolutionTime + emergencySafetyPeriod,
+            isQuestionFlaggedForEmergencyResolution(questionID),
+            "Adapter::emergencyReportPayouts: questionID is not flagged for emergency resolution"
+        );
+
+        require(
+            block.timestamp > questions[questionID].adminResolutionTimestamp,
             "Adapter::emergencyReportPayouts: safety period has not passed"
         );
 
@@ -652,6 +610,15 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
     /// @param questionID - The unique questionID
     function isQuestionInitialized(bytes32 questionID) public view returns (bool) {
         return questions[questionID].resolutionTime > 0;
+    }
+
+    function isQuestionFlaggedForEmergencyResolution(bytes32 questionID) public view returns (bool) {
+        return questions[questionID].adminResolutionTimestamp > 0;
+    }
+
+    // Checks if a request has been sent to the Optimistic Oracle
+    function resolutionDataRequested(QuestionData storage questionData) internal view returns (bool) {
+        return questionData.requestTimestamp > 0;
     }
 
     /// @notice Price that indicates that the OO does not have a valid price yet

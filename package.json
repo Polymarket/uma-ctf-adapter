@@ -1,17 +1,21 @@
 {
-    "name": "@polymarket/uma-conditional-tokens-adapter",
-    "description": "UMA Conditional Tokens Adapter for Binary Markets",
-    "version": "1.0.0",
-    "repository": "https://github.com/Polymarket/uma-conditional-tokens-adapter/",
-    "contributors": [
-        {
-            "name": "Jonathan Amenechi",
-            "url": "https://github.com/JonathanAmenechi"
-        }
-    ],
-    "license": "MIT",
-    "private": true,
-    "workspaces": [
-        "packages/*"
-    ]
+  "name": "@polymarket/uma-conditional-tokens-adapter",
+  "description": "UMA Conditional Tokens Adapter for Binary Markets",
+  "version": "1.0.0",
+  "repository": "https://github.com/Polymarket/uma-conditional-tokens-adapter/",
+  "contributors": [
+    {
+      "name": "Jonathan Amenechi",
+      "url": "https://github.com/JonathanAmenechi"
+    },
+    {
+      "name": "Liam Kovatch",
+      "url": "https://github.com/L-Kov"
+    }
+  ],
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ]
 }

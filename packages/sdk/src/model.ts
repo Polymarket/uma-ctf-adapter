@@ -1,15 +1,15 @@
 import { BigNumber } from "ethers";
 
 export interface QuestionData {
-    ancillaryData: string;
-    resolutionTime: number;
-    rewardToken: string;
+    resolutionTime: BigNumber;
     reward: BigNumber;
     proposalBond: BigNumber;
+    settled: BigNumber;
+    requestTimestamp: BigNumber;
+    adminResolutionTimestamp: BigNumber;
     earlyResolutionEnabled: boolean;
-    earlyResolutionTimestamp: number;
-    resolutionDataRequested: boolean;
     resolved: boolean;
     paused: boolean;
-    settled: number;
+    rewardToken: string;
+    ancillaryData: string;
 }

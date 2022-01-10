@@ -6,6 +6,10 @@
         {
             "name": "Jonathan Amenechi",
             "url": "https://github.com/JonathanAmenechi"
+        },
+        {
+            "name": "Liam Kovatch",
+            "url": "https://github.com/L-Kov"
         }
     ],
     "devDependencies": {

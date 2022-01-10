@@ -2,20 +2,6 @@ import { MockContract } from "ethereum-waffle";
 import { BigNumber, Contract, Signer } from "ethers";
 import { deployments, ethers, waffle } from "hardhat";
 
-export interface QuestionData {
-    resolutionTime: BigNumber;
-    reward: BigNumber;
-    proposalBond: BigNumber;
-    settled: BigNumber;
-    earlyResolutionTimestamp: BigNumber;
-    earlyResolutionEnabled: boolean;
-    resolutionDataRequested: boolean;
-    resolved: boolean;
-    paused: boolean;
-    rewardToken: string;
-    ancillaryData: string;
-}
-
 export interface Request {
     proposer: string;
     disputer: string;

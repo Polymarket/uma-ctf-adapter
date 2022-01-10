@@ -64,6 +64,19 @@ const adapterAbi = [
         "anonymous": false,
         "inputs": [
             {
+                "indexed": false,
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
+        "name": "QuestionFlaggedForAdminResolution",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
                 "indexed": true,
                 "internalType": "bytes32",
                 "name": "questionID",
@@ -253,7 +266,7 @@ const adapterAbi = [
             {
                 "indexed": true,
                 "internalType": "uint256",
-                "name": "resolutionTimestamp",
+                "name": "requestTimestamp",
                 "type": "uint256"
             },
             {
@@ -367,6 +380,19 @@ const adapterAbi = [
                 "type": "bytes32"
             }
         ],
+        "name": "flagQuestionForEmergencyResolution",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
         "name": "getExpectedPayouts",
         "outputs": [
             {
@@ -445,6 +471,25 @@ const adapterAbi = [
         "name": "initializeQuestion",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
+        "name": "isQuestionFlaggedForEmergencyResolution",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -554,17 +599,22 @@ const adapterAbi = [
             },
             {
                 "internalType": "uint256",
-                "name": "earlyResolutionTimestamp",
+                "name": "requestTimestamp",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "earlyRequestTimestamp",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "adminResolutionTimestamp",
                 "type": "uint256"
             },
             {
                 "internalType": "bool",
                 "name": "earlyResolutionEnabled",
-                "type": "bool"
-            },
-            {
-                "internalType": "bool",
-                "name": "resolutionDataRequested",
                 "type": "bool"
             },
             {
