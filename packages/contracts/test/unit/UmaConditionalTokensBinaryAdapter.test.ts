@@ -423,6 +423,7 @@ describe("", function () {
             it("should correctly request resolution data from the OO", async function () {
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
+                const reward = ethers.constants.Zero;
                 const bond = ethers.utils.parseEther("10000.0");
 
                 const questionID = await initializeQuestion(
@@ -430,8 +431,9 @@ describe("", function () {
                     title,
                     desc,
                     testRewardToken.address,
-                    ethers.constants.Zero,
+                    reward,
                     bond,
+                    Math.floor(Date.now() / 1000) - 1000,
                 );
 
                 await optimisticOracle.mock.hasPrice.returns(true);
@@ -439,16 +441,34 @@ describe("", function () {
 
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
 
-                expect(await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID)).to.emit(
-                    umaBinaryAdapter,
-                    "ResolutionDataRequested",
-                );
+                // Request resolution
+                const receipt = await (
+                    await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID)
+                ).wait();
 
-                const questionDataAfterRequest = await umaBinaryAdapter.questions(questionID);
+                // Ensure ResolutionDataRequested emitted
+                expect(receipt.logs.length).to.eq(1);
+                const log = receipt.logs[0];
+                const evt = await umaBinaryAdapter.interface.parseLog(log);
 
-                // Ensure
-                expect(await questionDataAfterRequest.requestTimestamp).gt(0);
-                expect(await questionDataAfterRequest.resolved).eq(false);
+                const identifier = await umaBinaryAdapter.identifier();
+                const questionData = await umaBinaryAdapter.questions(questionID);
+
+                // Verify event args
+                expect(evt.name).eq("ResolutionDataRequested");
+                expect(evt.args.requestor).eq(this.signers.admin.address);
+                expect(evt.args.requestTimestamp).eq(questionData.requestTimestamp);
+                expect(evt.args.questionID).eq(questionID);
+                expect(evt.args.identifier).eq(identifier);
+                expect(evt.args.ancillaryData).eq(questionData.ancillaryData);
+                expect(evt.args.reward).eq(reward);
+                expect(evt.args.rewardToken).eq(testRewardToken.address);
+                expect(evt.args.proposalBond).eq(bond);
+                expect(evt.args.earlyResolution).eq(false); // Note early resolution is correctly set to false
+
+                // Expect that requestTimestamp is set
+                expect(await questionData.requestTimestamp).gt(0);
+                expect(await questionData.resolved).eq(false);
             });
 
             it("should correctly request resolution data with non-zero reward and bond", async function () {
@@ -476,14 +496,36 @@ describe("", function () {
                 const requestorBalance = await testRewardToken.balanceOf(this.signers.admin.address);
 
                 // Request resolution data with the signer paying the reward token
-                expect(await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID)).to.emit(
-                    umaBinaryAdapter,
-                    "ResolutionDataRequested",
-                );
+                const receipt = await (
+                    await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID)
+                ).wait();
 
-                const questionDataAfterRequest = await umaBinaryAdapter.questions(questionID);
-                expect(await questionDataAfterRequest.requestTimestamp).gt(0);
-                expect(await questionDataAfterRequest.resolved).eq(false);
+                // Ensure ResolutionDataRequested emitted
+                const topic = umaBinaryAdapter.interface.getEventTopic("ResolutionDataRequested");
+                const logs = receipt.logs.filter(log => log.topics[0] === topic);
+                expect(logs.length).to.eq(1);
+
+                const log = logs[0];
+                const evt = await umaBinaryAdapter.interface.parseLog(log);
+
+                const identifier = await umaBinaryAdapter.identifier();
+                const questionData = await umaBinaryAdapter.questions(questionID);
+
+                // Verify event args
+                expect(evt.name).eq("ResolutionDataRequested");
+                expect(evt.args.requestor).eq(this.signers.admin.address);
+                expect(evt.args.requestTimestamp).eq(questionData.requestTimestamp);
+                expect(evt.args.questionID).eq(questionID);
+                expect(evt.args.identifier).eq(identifier);
+                expect(evt.args.ancillaryData).eq(questionData.ancillaryData);
+                expect(evt.args.reward).eq(reward);
+                expect(evt.args.rewardToken).eq(testRewardToken.address);
+                expect(evt.args.proposalBond).eq(bond);
+                expect(evt.args.earlyResolution).eq(false); // Note early resolution is correctly set to false
+
+                // Expect that requestTimestamp is set
+                expect(await questionData.requestTimestamp).gt(0);
+                expect(await questionData.resolved).eq(false);
 
                 // Verify rewardToken allowance where adapter is owner and OO is spender
                 const rewardTokenAllowance: BigNumber = await testRewardToken.allowance(
@@ -1160,17 +1202,38 @@ describe("", function () {
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).to.eq(true);
 
                 // Request resolution data
-                expect(await umaBinaryAdapter.requestResolutionData(questionID)).to.emit(
-                    umaBinaryAdapter,
-                    "ResolutionDataRequested",
-                );
+                const receipt = await (
+                    await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID)
+                ).wait();
 
-                const questionData = await umaBinaryAdapter.questions(questionID);
-                const requestTimestamp = questionData.requestTimestamp;
+                // Ensure ResolutionDataRequested emitted
+                const topic = umaBinaryAdapter.interface.getEventTopic("ResolutionDataRequested");
+                const logs = receipt.logs.filter(log => log.topics[0] === topic);
+                expect(logs.length).to.eq(1);
+
+                const log = logs[0];
+                const evt = await umaBinaryAdapter.interface.parseLog(log);
+
+                const identifier = await umaBinaryAdapter.identifier();
+                const data = await umaBinaryAdapter.questions(questionID);
+
+                // Verify event args
+                expect(evt.name).eq("ResolutionDataRequested");
+                expect(evt.args.requestor).eq(this.signers.admin.address);
+                expect(evt.args.requestTimestamp).eq(data.requestTimestamp);
+                expect(evt.args.questionID).eq(questionID);
+                expect(evt.args.identifier).eq(identifier);
+                expect(evt.args.ancillaryData).eq(data.ancillaryData);
+                expect(evt.args.reward).eq(ethers.constants.Zero);
+                expect(evt.args.rewardToken).eq(testRewardToken.address);
+                expect(evt.args.proposalBond).eq(ethers.utils.parseEther("100"));
+
+                // Note: early resolution is correctly set to true as this is an early resolution
+                expect(evt.args.earlyResolution).eq(true);
 
                 // Verify that the requestTimestamp is set and is less than resolution time
-                expect(requestTimestamp).to.be.gt(0);
-                expect(requestTimestamp).to.be.lt(questionData.resolutionTime);
+                expect(data.requestTimestamp).to.be.gt(0);
+                expect(data.requestTimestamp).to.be.lt(data.resolutionTime);
             });
 
             it("should revert if resolution data is requested twice", async function () {
@@ -1209,12 +1272,34 @@ describe("", function () {
             it("should request new resolution data", async function () {
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).to.eq(true);
 
-                // Request resolution data
-                expect(await umaBinaryAdapter.requestResolutionData(questionID)).to.emit(
-                    umaBinaryAdapter,
-                    "ResolutionDataRequested",
-                );
+                const receipt = await (
+                    await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID)
+                ).wait();
+
+                // Ensure ResolutionDataRequested emitted
+                const topic = umaBinaryAdapter.interface.getEventTopic("ResolutionDataRequested");
+                const logs = receipt.logs.filter(log => log.topics[0] === topic);
+                expect(logs.length).to.eq(1);
+
+                const log = logs[0];
+                const evt = await umaBinaryAdapter.interface.parseLog(log);
+
+                const identifier = await umaBinaryAdapter.identifier();
                 const questionData = await umaBinaryAdapter.questions(questionID);
+
+                // Verify event args
+                expect(evt.name).eq("ResolutionDataRequested");
+                expect(evt.args.requestor).eq(this.signers.admin.address);
+                expect(evt.args.requestTimestamp).eq(questionData.requestTimestamp);
+                expect(evt.args.questionID).eq(questionID);
+                expect(evt.args.identifier).eq(identifier);
+                expect(evt.args.ancillaryData).eq(questionData.ancillaryData);
+                expect(evt.args.reward).eq(ethers.constants.Zero);
+                expect(evt.args.rewardToken).eq(testRewardToken.address);
+                expect(evt.args.proposalBond).eq(ethers.utils.parseEther("100"));
+
+                // Note: early resolution is correctly set to true as this is an early resolution
+                expect(evt.args.earlyResolution).eq(true);
 
                 // Verify that the requestTimestamp is set and is less than resolution time
                 expect(questionData.requestTimestamp).to.be.gt(0);
