@@ -1045,8 +1045,7 @@ describe("", function () {
                 );
 
                 // Verify admin resolution timestamp was set
-                expect((await umaBinaryAdapter.questions(questionID)).adminResolutionTimestamp)
-                    .gt(0);
+                expect((await umaBinaryAdapter.questions(questionID)).adminResolutionTimestamp).gt(0);
 
                 // Verify emergency resolution flag check returns true
                 expect(await umaBinaryAdapter.isQuestionFlaggedForEmergencyResolution(questionID)).eq(true);
