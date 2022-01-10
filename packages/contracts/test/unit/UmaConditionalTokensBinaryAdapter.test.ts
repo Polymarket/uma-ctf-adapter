@@ -434,20 +434,20 @@ describe("", function () {
                     ethers.constants.Zero,
                     bond,
                 );
-                const identifier = await umaBinaryAdapter.identifier();
-                const questionData = await umaBinaryAdapter.questions(questionID);
 
                 await optimisticOracle.mock.hasPrice.returns(true);
                 await optimisticOracle.mock.setBond.returns(bond);
 
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
 
-                expect(await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID))
-                    .to.emit(umaBinaryAdapter, "ResolutionDataRequested");
+                expect(await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID)).to.emit(
+                    umaBinaryAdapter,
+                    "ResolutionDataRequested",
+                );
 
                 const questionDataAfterRequest = await umaBinaryAdapter.questions(questionID);
 
-                // Ensure 
+                // Ensure
                 expect(await questionDataAfterRequest.requestTimestamp).gt(0);
                 expect(await questionDataAfterRequest.resolved).eq(false);
             });
@@ -472,16 +472,15 @@ describe("", function () {
                 await optimisticOracle.mock.hasPrice.returns(true);
                 await optimisticOracle.mock.setBond.returns(bond);
 
-                const identifier = await umaBinaryAdapter.identifier();
-                const questionData = await umaBinaryAdapter.questions(questionID);
-
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
 
                 const requestorBalance = await testRewardToken.balanceOf(this.signers.admin.address);
 
                 // Request resolution data with the signer paying the reward token
-                expect(await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID))
-                    .to.emit(umaBinaryAdapter, "ResolutionDataRequested");
+                expect(await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID)).to.emit(
+                    umaBinaryAdapter,
+                    "ResolutionDataRequested",
+                );
 
                 const questionDataAfterRequest = await umaBinaryAdapter.questions(questionID);
                 expect(await questionDataAfterRequest.requestTimestamp).gt(0);
