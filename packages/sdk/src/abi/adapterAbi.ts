@@ -604,11 +604,6 @@ const adapterAbi = [
             },
             {
                 "internalType": "uint256",
-                "name": "earlyRequestTimestamp",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
                 "name": "adminResolutionTimestamp",
                 "type": "uint256"
             },
