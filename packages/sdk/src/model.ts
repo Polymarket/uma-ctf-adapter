@@ -6,7 +6,6 @@ export interface QuestionData {
     proposalBond: BigNumber;
     settled: BigNumber;
     requestTimestamp: BigNumber;
-    earlyRequestTimestamp: BigNumber;
     adminResolutionTimestamp: BigNumber;
     earlyResolutionEnabled: boolean;
     resolved: boolean;

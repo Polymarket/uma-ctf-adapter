@@ -155,7 +155,6 @@ export class UmaBinaryAdapterClient {
             proposalBond: data.proposalBond,
             earlyResolutionEnabled: data.earlyResolutionEnabled,
             requestTimestamp: data.requestTimestamp,
-            earlyRequestTimestamp: data.earlyRequestTimestamp,
             adminResolutionTimestamp: data.adminResolutionTimestamp,
             resolved: data.resolved,
             paused: data.paused,
