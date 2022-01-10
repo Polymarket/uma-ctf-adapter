@@ -22,8 +22,8 @@ After resolution data is available, anyone can call `reportPayouts` which resolv
 
 | Network          | Explorer                                                                          |
 | ---------------- | --------------------------------------------------------------------------------- |
-| Polygon          | https://polygonscan.com/address/0x7336e3e181b0e615dd9cc3e35197593363bd6407        |
-| Mumbai           | https://mumbai.polygonscan.com/address/0x7336e3e181b0E615dD9Cc3e35197593363Bd6407 |
+| Polygon          | https://polygonscan.com/address/0xCB1822859cEF82Cd2Eb4E6276C7916e692995130        |
+| Mumbai           | https://mumbai.polygonscan.com/address/0xCB1822859cEF82Cd2Eb4E6276C7916e692995130 |
 
 
 ### Dependencies
