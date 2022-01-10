@@ -7,9 +7,10 @@ export interface QuestionData {
     reward: BigNumber;
     proposalBond: BigNumber;
     settled: BigNumber;
-    earlyResolutionTimestamp: BigNumber;
+    requestTimestamp: BigNumber;
+    earlyRequestTimestamp: BigNumber;
+    adminResolutionTimestamp: BigNumber;
     earlyResolutionEnabled: boolean;
-    resolutionDataRequested: boolean;
     resolved: boolean;
     paused: boolean;
     rewardToken: string;

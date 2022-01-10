@@ -443,22 +443,12 @@ describe("", function () {
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).eq(true);
 
                 expect(await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID))
-                    .to.emit(umaBinaryAdapter, "ResolutionDataRequested")
-                    .withArgs(
-                        this.signers.admin.address,
-                        questionData.resolutionTime,
-                        questionID,
-                        identifier,
-                        questionData.ancillaryData,
-                        testRewardToken.address,
-                        ethers.constants.Zero,
-                        bond,
-                        false,
-                    );
+                    .to.emit(umaBinaryAdapter, "ResolutionDataRequested");
 
                 const questionDataAfterRequest = await umaBinaryAdapter.questions(questionID);
 
-                expect(await questionDataAfterRequest.resolutionDataRequested).eq(true);
+                // Ensure 
+                expect(await questionDataAfterRequest.requestTimestamp).gt(0);
                 expect(await questionDataAfterRequest.resolved).eq(false);
             });
 
@@ -491,21 +481,10 @@ describe("", function () {
 
                 // Request resolution data with the signer paying the reward token
                 expect(await umaBinaryAdapter.connect(this.signers.admin).requestResolutionData(questionID))
-                    .to.emit(umaBinaryAdapter, "ResolutionDataRequested")
-                    .withArgs(
-                        this.signers.admin.address,
-                        questionData.resolutionTime,
-                        questionID,
-                        identifier,
-                        questionData.ancillaryData,
-                        testRewardToken.address,
-                        reward,
-                        bond,
-                        false,
-                    );
+                    .to.emit(umaBinaryAdapter, "ResolutionDataRequested");
 
                 const questionDataAfterRequest = await umaBinaryAdapter.questions(questionID);
-                expect(await questionDataAfterRequest.resolutionDataRequested).eq(true);
+                expect(await questionDataAfterRequest.requestTimestamp).gt(0);
                 expect(await questionDataAfterRequest.resolved).eq(false);
 
                 // Verify rewardToken allowance where adapter is owner and OO is spender
@@ -859,10 +838,9 @@ describe("", function () {
                 expect(questionData.proposalBond).to.eq(newProposalBond.toString());
 
                 // Verify flags on the question data
-                expect(questionData.resolutionDataRequested).to.eq(false);
                 expect(questionData.settled).to.eq(0);
                 expect(questionData.resolved).to.eq(false);
-                expect(questionData.earlyResolutionTimestamp).to.eq(0);
+                expect(questionData.earlyRequestTimestamp).to.eq(0);
                 expect(questionData.paused).to.eq(false);
 
                 // Update reverts if not an admin
@@ -1002,7 +980,7 @@ describe("", function () {
 
                 // Verify resolved flag on the QuestionData struct has been updated
                 const questionData = await umaBinaryAdapter.questions(questionID);
-                expect(await questionData.resolutionDataRequested).eq(true);
+                expect(await questionData.requestTimestamp).gt(0);
                 expect(await questionData.resolved).eq(true);
             });
 
@@ -1067,7 +1045,7 @@ describe("", function () {
                 // Pause question
                 await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID);
 
-                // flag for early resolution
+                // flag for emergency resolution
                 await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID);
 
                 // fast forward the chain to after the emergencySafetyPeriod
@@ -1093,7 +1071,7 @@ describe("", function () {
             });
 
             it("should revert if emergencyReport is called before the safety period", async function () {
-                // flag for early resolution
+                // flag for emergency resolution
                 await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID);
 
                 // YES conditional payout
@@ -1104,7 +1082,7 @@ describe("", function () {
             });
 
             it("should revert if emergencyReport is called with invalid payout", async function () {
-                // flag for early resolution
+                // flag for emergency resolution
                 await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID);
 
                 // fast forward the chain to post-emergencySafetyPeriod
@@ -1190,11 +1168,11 @@ describe("", function () {
                 );
 
                 const questionData = await umaBinaryAdapter.questions(questionID);
-                const earlyResolutionTimestamp = questionData.earlyResolutionTimestamp;
+                const earlyRequestTimestamp = questionData.earlyRequestTimestamp;
 
-                // Verify that the earlyResolutionTimestamp is set and is less than resolution time
-                expect(earlyResolutionTimestamp).to.be.gt(0);
-                expect(earlyResolutionTimestamp).to.be.lt(questionData.resolutionTime);
+                // Verify that the earlyRequestTimestamp is set and is less than resolution time
+                expect(earlyRequestTimestamp).to.be.gt(0);
+                expect(earlyRequestTimestamp).to.be.lt(questionData.resolutionTime);
             });
 
             it("should revert if resolution data is requested twice", async function () {
@@ -1224,10 +1202,9 @@ describe("", function () {
                     .to.emit(umaBinaryAdapter, "QuestionReset")
                     .withArgs(questionID);
 
-                // Allow new price requests by setting resolutionDataRequested and earlyExpirationTimestamp to false
+                // Allow new price requests by setting earlyRequestTimestamp to 0
                 const questionData = await umaBinaryAdapter.questions(questionID);
-                expect(questionData.resolutionDataRequested).to.eq(false);
-                expect(questionData.earlyResolutionTimestamp).to.eq(0);
+                expect(questionData.earlyRequestTimestamp).to.eq(0);
                 expect(await umaBinaryAdapter.readyToRequestResolution(questionID)).to.eq(true);
             });
 
@@ -1241,9 +1218,9 @@ describe("", function () {
                 );
                 const questionData = await umaBinaryAdapter.questions(questionID);
 
-                // Verify that the earlyResolutionTimestamp is set and is less than resolution time
-                expect(questionData.earlyResolutionTimestamp).to.be.gt(0);
-                expect(questionData.earlyResolutionTimestamp).to.be.lt(questionData.resolutionTime);
+                // Verify that the earlyRequestTimestamp is set and is less than resolution time
+                expect(questionData.earlyRequestTimestamp).to.be.gt(0);
+                expect(questionData.earlyRequestTimestamp).to.be.lt(questionData.resolutionTime);
             });
 
             it("should settle the question correctly", async function () {
@@ -1276,7 +1253,6 @@ describe("", function () {
                     .withArgs(questionID, false);
 
                 const questionData = await umaBinaryAdapter.questions(questionID);
-                expect(await questionData.resolutionDataRequested).eq(true);
                 expect(await questionData.resolved).eq(true);
             });
 
@@ -1300,14 +1276,14 @@ describe("", function () {
                 // Verify that the question is not an early resolution
                 let questionData: QuestionData;
                 questionData = await umaBinaryAdapter.questions(qID);
-                expect(questionData.earlyResolutionTimestamp).to.eq(0);
+                expect(questionData.earlyRequestTimestamp).to.eq(0);
 
                 // request resolution data
                 await (await umaBinaryAdapter.requestResolutionData(qID)).wait();
 
                 // Verify that early resolution timestamp is not set
                 questionData = await umaBinaryAdapter.questions(qID);
-                expect(questionData.earlyResolutionTimestamp).to.eq(0);
+                expect(questionData.earlyRequestTimestamp).to.eq(0);
 
                 // Settle using standard resolution
                 // mocks for settlement and resolution
@@ -1326,7 +1302,7 @@ describe("", function () {
                     .withArgs(qID, false);
             });
 
-            it("should reset resolutionDataRequested flag if the OO returns the Ignore price during standard settlement", async function () {
+            it("should reset the question if the OO returns the Ignore price during standard settlement", async function () {
                 // Initialize a new question
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
@@ -1356,9 +1332,9 @@ describe("", function () {
                     .to.emit(umaBinaryAdapter, "QuestionReset")
                     .withArgs(qID);
 
-                // Verify resolutionDataRequested is false
+                // Verify requestTimestamp is 0, i.e Question has been reset
                 const questionData: QuestionData = await umaBinaryAdapter.questions(qID);
-                expect(questionData.resolutionDataRequested).to.eq(false);
+                expect(questionData.requestTimestamp).to.eq(0);
             });
         });
     });
