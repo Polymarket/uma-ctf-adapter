@@ -1029,9 +1029,7 @@ describe("", function () {
                 // Verify admin resolution timestamp was set to zero upon question initialization
                 let questionData = await umaBinaryAdapter.questions(questionID);
                 const resolutionTs = await questionData.adminResolutionTimestamp;
-                console.log("---------------------------");
-                console.log(resolutionTs);
-                console.log("---------------------------");
+
                 expect(await questionData.adminResolutionTimestamp).to.eq(BigNumber.from(0));
 
                 // Verify emergency resolution flag check returns false
@@ -1041,6 +1039,11 @@ describe("", function () {
                 expect(await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID))
                     .to.emit(umaBinaryAdapter, "QuestionFlaggedForAdminResolution")
                     .withArgs(questionID);
+
+                // flag question for resolution should fail second time
+                expect(umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID)).to.be.revertedWith(
+                    "Adapter::emergencyReportPayouts: questionID is already flagged for emergency resolution",
+                );
 
                 // Verify admin resolution timestamp was set
                 questionData = await umaBinaryAdapter.questions(questionID);

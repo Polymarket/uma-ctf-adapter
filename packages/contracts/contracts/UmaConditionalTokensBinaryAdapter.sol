@@ -580,6 +580,12 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
             isQuestionInitialized(questionID),
             "Adapter::flagQuestionForEarlyResolution: questionID is not initialized"
         );
+
+        require(
+            !isQuestionFlaggedForEmergencyResolution(questionID),
+            "Adapter::emergencyReportPayouts: questionID is already flagged for emergency resolution"
+        );
+
         questions[questionID].adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
         emit QuestionFlaggedForAdminResolution(questionID);
     }
