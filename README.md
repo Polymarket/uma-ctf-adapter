@@ -7,7 +7,7 @@
 
 This repository contains code used to resolve [Polymarket](https://polymarket.com/) prediction markets via UMA's [optimistic oracle](https://docs.umaproject.org/oracle/optimistic-oracle-interface).
 
-### Architecture
+### [Architecture](./docs/Architecture.md)
 ![Contract Architecture](./docs/adapter.png)
 
 
