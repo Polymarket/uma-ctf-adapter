@@ -13,10 +13,10 @@ See architecture docs [here](./docs/Architecture.md)
 
 ### Deployments
 
-| Network          | Explorer                                                                          |
+| Network          | Address                                                                           |
 | ---------------- | --------------------------------------------------------------------------------- |
-| Polygon          | https://polygonscan.com/address/0xCB1822859cEF82Cd2Eb4E6276C7916e692995130        |
-| Mumbai           | https://mumbai.polygonscan.com/address/0xCB1822859cEF82Cd2Eb4E6276C7916e692995130 |
+| Polygon          | [0xCB1822859cEF82Cd2Eb4E6276C7916e692995130](https://polygonscan.com/address/0xCB1822859cEF82Cd2Eb4E6276C7916e692995130)|
+| Mumbai           | [0xCB1822859cEF82Cd2Eb4E6276C7916e692995130]https://mumbai.polygonscan.com/address/0xCB1822859cEF82Cd2Eb4E6276C7916e692995130 |
 
 
 ### Dependencies
