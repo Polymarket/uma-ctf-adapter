@@ -26,6 +26,13 @@ jobs:
             - name: Test
               run: yarn test
               working-directory: ./packages/contracts
+            - name: Run tests with coverage
+              run: yarn coverage
+              working-directory: ./packages/contracts
+            - name: Upload coverage report
+              uses: coverallsapp/github-action@master
+              with:
+                github-token: ${{ secrets.GITHUB_TOKEN }}
     
 env:
     MNEMONIC: "test test test test test test test test test test test test"
