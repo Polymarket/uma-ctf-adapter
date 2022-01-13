@@ -2,7 +2,6 @@ const shell = require("shelljs");
 const { mnemonic } = require("./config");
 
 module.exports = {
-    istanbulReporter: ["html"],
     onCompileComplete: async function (_config) {
         await run("typechain");
     },
