@@ -31,6 +31,7 @@ jobs:
               working-directory: ./packages/contracts
             - name: Upload coverage report
               uses: coverallsapp/github-action@master
+              working-directory: ./packages/contracts
               with:
                 github-token: ${{ secrets.GITHUB_TOKEN }}
     
