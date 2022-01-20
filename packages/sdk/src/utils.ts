@@ -11,6 +11,17 @@ export const buildResolutionData = (outcomes: string[]): string => {
     return `p1: 0, p2: 1, p3: 0.5. Where p2 corresponds to ${outcomes[0]}, p1 to a ${outcomes[1]}, p3 to unknown`;
 }
 
+export const OUTCOME_REGEX = /Where p2 corresponds to (\w+), p1 to a (\w+)/;
+
+export const extractOutcomes = (ancillaryDataString: string): string[] | null => {
+    const matched = ancillaryDataString.match(OUTCOME_REGEX);
+    if (matched && matched.length == 3) {
+        const outcomes: string[] = [matched[1], matched[2]];
+        return outcomes;
+    }
+    return null;
+}
+
 
 /**
  * Creates the ancillary data used to resolve questions

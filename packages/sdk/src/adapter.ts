@@ -299,7 +299,7 @@ export class UmaBinaryAdapterClient {
      */
     public async emergencyReportPayouts(
         questionID: string,
-        payouts: number[],
+        payouts: number[] | BigNumber[],
         overrides?: ethers.Overrides,
     ): Promise<TransactionReceipt> {
         console.log(`Emergency resolving question...`);
