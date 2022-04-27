@@ -8,7 +8,7 @@ import { ethers } from "ethers";
  * @returns 
  */
 export const buildResolutionData = (outcomes: string[]): string => {
-    return `p1: 0, p2: 1, p3: 0.5, p4: -57896044618658097711785492504343953926634992332820282019728.792003956564819968.
+    return `p1: 0, p2: 1, p3: 0.5, p4: -57896044618658097711785492504343953926634992332820282019728792003956564819968.
     Where p1 corresponds to ${outcomes[1]}, p2 to a ${outcomes[0]}, p3 to unknown, and p4 to an early request`;
 }
 
