@@ -9,7 +9,7 @@ import { ethers } from "ethers";
  */
 export const buildResolutionData = (outcomes: string[]): string => {
     return `p1: 0, p2: 1, p3: 0.5, p4: -57896044618658097711785492504343953926634992332820282019728.792003956564819968.
-    Where p2 corresponds to ${outcomes[0]}, p1 to a ${outcomes[1]}, p3 to unknown, and p4 to an early request`;
+    Where p1 to a ${outcomes[1]}, p2 corresponds to ${outcomes[0]}, p3 to unknown, and p4 to an early request`;
 }
 
 export const OUTCOME_REGEX = /Where p2 corresponds to (\w+), p1 to a (\w+)/;
