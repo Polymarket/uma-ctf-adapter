@@ -80,7 +80,7 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
 
     /*
     ////////////////////////////////////////////////////////////////////
-                            EVENTS 
+                            EVENTS: イベントが起こった時に通知 
     ////////////////////////////////////////////////////////////////////
     */
 
@@ -161,6 +161,7 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
     /// @param reward                   - Reward offered to a successful proposer
     /// @param proposalBond             - Bond required to be posted by a price proposer and disputer
     /// @param earlyResolutionEnabled   - Determines whether a question can be resolved early
+    /// 新しくマーケットを作成
     function initializeQuestion(
         bytes32 questionID,
         bytes memory ancillaryData,
@@ -201,6 +202,7 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
 
     /// @notice Checks whether or not a question can start the resolution process
     /// @param questionID - The unique questionID of the question
+    /// TODO ここ理解する
     function readyToRequestResolution(bytes32 questionID) public view returns (bool) {
         // Ensure question has been initialized
         if (!isQuestionInitialized(questionID)) {

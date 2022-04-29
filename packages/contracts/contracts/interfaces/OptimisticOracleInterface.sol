@@ -96,6 +96,7 @@ interface OptimisticOracleInterface {
      * @param ancillaryData ancillary data of the price being requested.
      * @return resolved price.
      */
+     /// 外部から呼び出されてint256を返す
     function settleAndGetPrice(
         bytes32 identifier,
         uint256 timestamp,

@@ -11,6 +11,8 @@ export enum ChainId {
     rinkeby = 4,
     ropsten = 3,
     xdai = 100,
+    shibuya = 81,
+    astarMainnet = 592,
 }
 
 // Delegate requests for a network config to a provider specific function based on which networks they serve
@@ -65,10 +67,31 @@ const getXDaiConfig = (network: XDaiChain): { url: string; chainId: number } => 
     };
 };
 
-export type RemoteChain = InfuraChain | MaticVigilChain | XDaiChain;
+// Astar
+const astarChains = ["shibuya", "astarMainnet"] as const;
+type AstarChain = typeof astarChains[number];
+const getAstarConfig = (network: AstarChain): { url: string; chainId: number } => {
+    if (network == "astarMainnet") {
+        return {
+            url: `https://astar.api.onfinality.io/public`,
+            chainId: ChainId[network],
+        };
+    } else if (network == "shibuya") {
+        return {
+            url: `https://rpc.shibuya.astar.network:8545`,
+            chainId: ChainId[network],
+        };
+    } else {
+        throw new Error("Please check the chain name");
+    }
+};
+
+export type RemoteChain = InfuraChain | MaticVigilChain | XDaiChain | AstarChain;
 export const getRemoteNetworkConfig = (network: RemoteChain): { url: string; chainId: number } => {
     if (infuraChains.includes(network as InfuraChain)) return getInfuraConfig(network as InfuraChain);
     if (maticVigilChains.includes(network as MaticVigilChain)) return getMaticVigilConfig(network as MaticVigilChain);
     if (xDaiChains.includes(network as XDaiChain)) return getXDaiConfig(network as XDaiChain);
+    if (astarChains.includes(network as AstarChain)) return getAstarConfig(network as AstarChain);
     throw Error("Unknown network");
 };
+
