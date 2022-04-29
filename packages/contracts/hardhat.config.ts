@@ -36,7 +36,8 @@ const config: HardhatUserConfig = {
         mumbai: { accounts, ...getRemoteNetworkConfig("mumbai"), gasPrice: 8000000000 },
         matic: { accounts, ...getRemoteNetworkConfig("matic"), gasPrice: 100000000000 },
         mainnet: { accounts, ...getRemoteNetworkConfig("mainnet") },
-        shibuya: { accounts, ...getRemoteNetworkConfig("")}
+        shibuya: { accounts, ...getRemoteNetworkConfig("shibuya") },
+        astarMainnet: { accounts, ...getRemoteNetworkConfig("astarMainnet") ,}
     },
     paths: {
         artifacts: "./artifacts",
