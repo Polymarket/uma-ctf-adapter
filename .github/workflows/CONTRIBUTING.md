@@ -7,9 +7,9 @@ All contributions are welcome and greatly appreciated! This document serves to o
 1. Fork this repo
 2. Clone your fork
 3. Follow the [installation instructions](./README.md) in the monorepo's top level README.
-4. Open pull requests with the `[WIP]` flag against the `main` branch and include a description of the intended change in the PR description.
+4. Open pull requests with the `WIP` flag against the `main` branch and include a description of the intended change in the PR description.
 
-Before removing the `[WIP]` tag and submitting a PR for review, make sure that:
+Before removing the `WIP` tag and submitting a PR for review, make sure that:
 
 - it passes our linter checks
 - the test suite passes for all packages
@@ -20,10 +20,10 @@ Before removing the `[WIP]` tag and submitting a PR for review, make sure that:
 
 Our main branch, `main`, represents the current development state of the codebase. All pull requests should be opened against `main`.
 
-Name your branch with the format `{fix | feature | refactor }/{ description }`
+Name your branch with the format `{fix | feat | refactor }/{ description }`
 
 - A `fix` addresses a bug or other issue
-- A `feature` adds new functionality/interface surface area
+- A `feat` adds new functionality/interface surface area
 - A `refactor` changes no business logic or interfaces, but improves implementation
 
 ### Additional Details
