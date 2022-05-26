@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.0;
+pragma solidity ^0.8.10;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -11,33 +11,11 @@ import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { OptimisticOracleInterface } from "./interfaces/OptimisticOracleInterface.sol";
 import { AddressWhitelistInterface } from "./interfaces/AddressWhitelistInterface.sol";
 
+import { Auth } from "./mixins/Auth.sol";
+
 /// @title UmaConditionalTokensBinaryAdapter
-/// @notice Enables Conditional Token resolution via UMA's Optimistic Oracle
-contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
-    /// @notice Auth
-    mapping(address => uint256) public wards;
-
-    /// @notice Authorizes a user
-    function rely(address usr) external auth {
-        wards[usr] = 1;
-        emit AuthorizedUser(usr);
-    }
-
-    /// @notice Deauthorizes a user
-    function deny(address usr) external auth {
-        wards[usr] = 0;
-        emit DeauthorizedUser(usr);
-    }
-
-    event AuthorizedUser(address indexed usr);
-    event DeauthorizedUser(address indexed usr);
-
-    /// @notice - Authorization modifier
-    modifier auth() {
-        require(wards[msg.sender] == 1, "Adapter/not-authorized");
-        _;
-    }
-
+/// @notice Enables CTF resolution via UMA's Optimistic Oracle
+contract UmaConditionalTokensBinaryAdapter is Auth, ReentrancyGuard {
     /// @notice Conditional Tokens
     IConditionalTokens public immutable conditionalTokenContract;
 
@@ -390,7 +368,6 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
             resolutionDataRequested(questionData),
             "Adapter::getExpectedPayouts: resolutionData has not been requested"
         );
-        require(!questionData.resolved, "Adapter::getExpectedPayouts: questionID is already resolved");
         require(questionData.settled > 0, "Adapter::getExpectedPayouts: questionID is not settled");
         require(!questionData.paused, "Adapter::getExpectedPayouts: Question is paused");
 
@@ -434,14 +411,15 @@ contract UmaConditionalTokensBinaryAdapter is ReentrancyGuard {
     function reportPayouts(bytes32 questionID) public {
         QuestionData storage questionData = questions[questionID];
 
-        // Payouts: [YES, NO]
-        // getExpectedPayouts verifies that questionID is settled and can be resolved
-        uint256[] memory payouts = getExpectedPayouts(questionID);
-
+        require(!questionData.resolved, "Adapter::getExpectedPayouts: questionID is already resolved");
         require(
             block.number > questionData.settled,
             "Adapter::reportPayouts: Attempting to settle and reportPayouts in the same block"
         );
+
+        // Payouts: [YES, NO]
+        // getExpectedPayouts verifies that questionID is settled and can be resolved
+        uint256[] memory payouts = getExpectedPayouts(questionID);
 
         questionData.resolved = true;
         conditionalTokenContract.reportPayouts(questionID, payouts);
