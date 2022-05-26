@@ -56,11 +56,9 @@ contract UmaConditionalTokensBinaryAdapter is Auth, ReentrancyGuard {
     /// @notice Mapping of questionID to QuestionData
     mapping(bytes32 => QuestionData) public questions;
 
-    /*
-    ////////////////////////////////////////////////////////////////////
+    /*////////////////////////////////////////////////////////////////////
                             EVENTS 
-    ////////////////////////////////////////////////////////////////////
-    */
+    ///////////////////////////////////////////////////////////////////*/
 
     /// @notice Emitted when the UMA Finder is changed
     event NewFinderAddress(address oldFinder, address newFinder);
@@ -206,7 +204,7 @@ contract UmaConditionalTokensBinaryAdapter is Auth, ReentrancyGuard {
 
     /// @notice Request resolution data from the Optimistic Oracle
     /// @param questionID - The unique questionID of the question
-    function requestResolutionData(bytes32 questionID) public nonReentrant {
+    function requestResolutionData(bytes32 questionID) external nonReentrant {
         require(
             readyToRequestResolution(questionID),
             "Adapter::requestResolutionData: Question not ready to be resolved"
@@ -250,6 +248,13 @@ contract UmaConditionalTokensBinaryAdapter is Auth, ReentrancyGuard {
 
     /// @notice Request a price from the Optimistic Oracle
     /// @dev Transfers reward token from the requestor if non-zero reward is specified
+    /// @param requestor        - Address of the requestor
+    /// @param priceIdentifier  - Bytes32 identifier for the OO
+    /// @param timestamp        - Timestamp used in the OO request
+    /// @param ancillaryData    - Data used to resolve a question
+    /// @param rewardToken      - Address of the reward token
+    /// @param reward           - Reward token amount
+    /// @param bond             - Bond amount used, also in rewardToken
     function _requestPrice(
         address requestor,
         bytes32 priceIdentifier,
@@ -315,7 +320,7 @@ contract UmaConditionalTokensBinaryAdapter is Auth, ReentrancyGuard {
     /// @notice Settle/finalize the resolution data of a question
     /// @notice If the OO returns the ignore price, this method resets the question, allowing new price requests
     /// @param questionID - The unique questionID of the question
-    function settle(bytes32 questionID) public {
+    function settle(bytes32 questionID) external {
         require(readyToSettle(questionID), "Adapter::settle: questionID is not ready to be settled");
         QuestionData storage questionData = questions[questionID];
         require(!questionData.paused, "Adapter::settle: Question is paused");
@@ -324,36 +329,26 @@ contract UmaConditionalTokensBinaryAdapter is Auth, ReentrancyGuard {
     }
 
     function _settle(bytes32 questionID, QuestionData storage questionData) internal {
-        OptimisticOracleInterface optimisticOracle = getOptimisticOracle();
+        // Get the price from the OO
+        int256 price = getOptimisticOracle().settleAndGetPrice(
+            identifier,
+            questionData.requestTimestamp,
+            questionData.ancillaryData
+        );
 
-        int256 proposedPrice = optimisticOracle
-            .getRequest(address(this), identifier, questionData.requestTimestamp, questionData.ancillaryData)
-            .proposedPrice;
-
-        // NOTE: If the proposed price is the ignore price, reset the question, allowing new resolution requests
-        if (proposedPrice == ignorePrice()) {
-            _resetQuestion(questionID, questionData, optimisticOracle);
-            return;
+        // If the price from the OO is the ignore price, reset the question by setting requestTimestamp to 0
+        // allowing new resolution requests
+        if (price == ignorePrice()) {
+            return _resetQuestion(questionID, questionData);
         }
 
         // Set the settled block number
         questionData.settled = block.number;
 
-        // Settle the price
-        int256 settledPrice = optimisticOracle.settleAndGetPrice(
-            identifier,
-            questionData.requestTimestamp,
-            questionData.ancillaryData
-        );
-        emit QuestionSettled(questionID, settledPrice, questionData.requestTimestamp < questionData.resolutionTime);
+        emit QuestionSettled(questionID, price, questionData.requestTimestamp < questionData.resolutionTime);
     }
 
-    function _resetQuestion(
-        bytes32 questionID,
-        QuestionData storage questionData,
-        OptimisticOracleInterface optimisticOracle
-    ) internal {
-        optimisticOracle.settleAndGetPrice(identifier, questionData.requestTimestamp, questionData.ancillaryData);
+    function _resetQuestion(bytes32 questionID, QuestionData storage questionData) internal {
         questionData.requestTimestamp = 0;
         emit QuestionReset(questionID);
     }
@@ -408,7 +403,7 @@ contract UmaConditionalTokensBinaryAdapter is Auth, ReentrancyGuard {
 
     /// @notice Resolves a question
     /// @param questionID - The unique questionID of the question
-    function reportPayouts(bytes32 questionID) public {
+    function reportPayouts(bytes32 questionID) external {
         QuestionData storage questionData = questions[questionID];
 
         require(!questionData.resolved, "Adapter::getExpectedPayouts: questionID is already resolved");
@@ -426,11 +421,9 @@ contract UmaConditionalTokensBinaryAdapter is Auth, ReentrancyGuard {
         emit QuestionResolved(questionID, false);
     }
 
-    /*
-    ////////////////////////////////////////////////////////////////////
-                            AUTHORIZED ONLY FUNCTIONS 
-    ////////////////////////////////////////////////////////////////////
-    */
+    /*////////////////////////////////////////////////////////////////////
+                            AUTHORIZED FUNCTIONS 
+    ///////////////////////////////////////////////////////////////////*/
 
     /// @notice Allows an authorized user to update a question
     /// @param questionID             - The unique questionID of the question

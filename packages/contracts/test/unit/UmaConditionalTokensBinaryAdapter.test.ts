@@ -1407,7 +1407,7 @@ describe("", function () {
                 request.proposedPrice = BigNumber.from(IGNORE_PRICE);
                 await optimisticOracle.mock.getRequest.returns(request);
                 await optimisticOracle.mock.hasPrice.returns(true);
-                await optimisticOracle.mock.settleAndGetPrice.returns(1);
+                await optimisticOracle.mock.settleAndGetPrice.returns(IGNORE_PRICE);
 
                 expect(await umaBinaryAdapter.connect(this.signers.tester).settle(qID))
                     .to.emit(umaBinaryAdapter, "QuestionReset")
