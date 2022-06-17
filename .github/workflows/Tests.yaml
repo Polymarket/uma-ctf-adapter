@@ -22,18 +22,18 @@ jobs:
               run: yarn
             - name: Typechain
               run: yarn typechain
-              working-directory: ./packages/contracts
+
             - name: Test
               run: yarn test
-              working-directory: ./packages/contracts
+
             - name: Run tests with coverage
               run: yarn coverage
-              working-directory: ./packages/contracts
+
             - name: Upload coverage report
               uses: coverallsapp/github-action@master
               with:
                 github-token: ${{ secrets.GITHUB_TOKEN }}
-                path-to-lcov: ./packages/contracts/coverage/lcov.info
+                path-to-lcov: ./coverage/lcov.info
     
 env:
     MNEMONIC: "test test test test test test test test test test test test"

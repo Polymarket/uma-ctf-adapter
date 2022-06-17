@@ -22,10 +22,8 @@ jobs:
               run: yarn
             - name: Typechain
               run: yarn typechain
-              working-directory: ./packages/contracts
             - name: Lint Typescript
               run: yarn lint:ts
-              working-directory: ./packages/contracts
     lint-contracts-solidity:
         runs-on: ubuntu-latest
         steps:
@@ -41,23 +39,6 @@ jobs:
               run: yarn
             - name: Lint Solidity
               run: yarn lint:sol
-              working-directory: ./packages/contracts
-    lint-sdk:
-      runs-on: ubuntu-latest
-      steps:
-          - name: Checkout code
-            uses: actions/checkout@v2
-            with:
-                persist-credentials: false
-          - name: Install node
-            uses: actions/setup-node@v1
-            with:
-                node-version: 16
-          - name: Install dependencies
-            run: yarn
-          - name: Lint Typescript
-            run: yarn lint
-            working-directory: ./packages/sdk
 
 env:
     MNEMONIC: "test test test test test test test test test test test test"
