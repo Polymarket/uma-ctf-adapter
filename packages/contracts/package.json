@@ -1,7 +1,7 @@
 {
-    "name": "@polymarket/uma-ctf-adapter",
+    "name": "@polymarket/uma-ctf-binary-adapter",
     "description": "Contracts to resolve Polymarket prediction markets via UMA",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "contributors": [
         {
             "name": "Jonathan Amenechi",
@@ -59,7 +59,11 @@
         "typescript": "^3.9.7"
     },
     "files": [
-        "/contracts"
+        "contracts/",
+        "artifacts/contracts/**/*.json",
+        "artifacts/contracts/**/*.json",
+        "!artifacts/contracts/**/*.dbg.json",
+        "!artifacts/contracts/test/**/*"
     ],
     "keywords": [
         "blockchain",
@@ -79,6 +83,5 @@
         "test": "hardhat test",
         "typechain": "hardhat typechain",
         "deploy": "hardhat deploy"
-    },
-    "dependencies": {}
+    }
 }
