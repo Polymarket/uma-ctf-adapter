@@ -1,7 +1,7 @@
 import { config as dotenvConfig } from "dotenv";
 import { resolve } from "path";
 
-dotenvConfig({ path: resolve(__dirname, "../../../.env") });
+dotenvConfig({ path: resolve(__dirname, "../.env") });
 
 // Ensure that we have all the environment variables we need.
 if (!process.env.MNEMONIC) {
