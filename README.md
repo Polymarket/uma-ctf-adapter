@@ -14,7 +14,7 @@ This repository contains contracts used to resolve [Polymarket](https://polymark
 
 ### Deployments
 
-See ./deploys.md
+See [current deployments](./deploys.md)
 
 
 ### Dependencies
