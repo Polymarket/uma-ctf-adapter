@@ -14,10 +14,8 @@ This repository contains contracts used to resolve [Polymarket](https://polymark
 
 ### Deployments
 
-| Network          | Address                                                                           |
-| ---------------- | --------------------------------------------------------------------------------- |
-| Polygon          | [0xCB1822859cEF82Cd2Eb4E6276C7916e692995130](https://polygonscan.com/address/0xCB1822859cEF82Cd2Eb4E6276C7916e692995130)|
-| Mumbai           | [0xCB1822859cEF82Cd2Eb4E6276C7916e692995130](https://mumbai.polygonscan.com/address/0xCB1822859cEF82Cd2Eb4E6276C7916e692995130)|
+See ./deploys.md
+
 
 ### Dependencies
 
@@ -26,13 +24,15 @@ Install dependencies with `yarn install`
 
 ### Compile
 
+
 Compile the contracts with `yarn compile`
 
-
 ### Testing
+
 
 Test the contracts with `yarn test`
 
 ### Coverage
+
 
 Generate coverage reports with `yarn coverage`
