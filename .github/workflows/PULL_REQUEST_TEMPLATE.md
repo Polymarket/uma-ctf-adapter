@@ -1,4 +1,4 @@
-<!-- Pull request template for the Adapter -->
+<!-- Pull request template for the UMA CTF Adapter -->
 <!-- Delete any sub-sections not used rather than leaving them empty. -->
 
 ## Overview
@@ -32,7 +32,7 @@
 <!-- Check any boxes that are already complete upon creation of the PR, and update whenever necessary. -->
 <!-- Make sure to check the "Ready for review" box when you are signing off on your changes for merge! -->
 
-- [ ] Prefix PR title with `[WIP]` if necessary (changes not yet made).
+- [ ] Prefix PR title with `WIP` if necessary (changes not yet made).
 - [ ] Add tests to cover changes as needed.
 - [ ] Update documentation/changelog as needed.
 - [ ] Verify all tests run correctly in CI and pass.
