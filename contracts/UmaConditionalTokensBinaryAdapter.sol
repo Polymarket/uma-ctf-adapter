@@ -29,27 +29,27 @@ contract UmaConditionalTokensBinaryAdapter is Auth, ReentrancyGuard {
     uint256 public constant emergencySafetyPeriod = 2 days;
 
     struct QuestionData {
-        // Unix timestamp(in seconds) at which a market can be resolved
+        /// @notice Unix timestamp(in seconds) at which a market can be resolved
         uint256 resolutionTime;
-        // Reward offered to a successful proposer
+        /// @notice Reward offered to a successful proposer
         uint256 reward;
-        // Additional bond required by Optimistic oracle proposers and disputers
+        /// @notice Additional bond required by Optimistic oracle proposers and disputers
         uint256 proposalBond;
-        // Flag marking the block number when a question was settled
+        /// @notice Flag marking the block number when a question was settled
         uint256 settled;
-        // Request timestmap, set when a request is made to the Optimistic Oracle
+        /// @notice Request timestmap, set when a request is made to the Optimistic Oracle
         uint256 requestTimestamp;
-        // Admin Resolution timestamp, set when a market is flagged for admin resolution
+        /// @notice Admin Resolution timestamp, set when a market is flagged for admin resolution
         uint256 adminResolutionTimestamp;
-        // Flag marking whether a question can be resolved early
+        /// @notice Flag marking whether a question can be resolved early
         bool earlyResolutionEnabled;
-        // Flag marking whether a question is resolved
+        /// @notice Flag marking whether a question is resolved
         bool resolved;
-        // Flag marking whether a question is paused
+        /// @notice Flag marking whether a question is paused
         bool paused;
-        // ERC20 token address used for payment of rewards, proposal bonds and fees
+        /// @notice ERC20 token address used for payment of rewards, proposal bonds and fees
         address rewardToken;
-        // Data used to resolve a condition
+        /// @notice Data used to resolve a condition
         bytes ancillaryData;
     }
 
@@ -117,8 +117,6 @@ contract UmaConditionalTokensBinaryAdapter is Auth, ReentrancyGuard {
     event QuestionResolved(bytes32 indexed questionID, bool indexed emergencyReport);
 
     constructor(address conditionalTokenAddress, address umaFinderAddress) {
-        wards[msg.sender] = 1;
-        emit AuthorizedUser(msg.sender);
         conditionalTokenContract = IConditionalTokens(conditionalTokenAddress);
         umaFinder = umaFinderAddress;
     }

@@ -7,6 +7,11 @@ abstract contract Auth {
     /// @notice Auth
     mapping(address => uint256) public wards;
 
+    constructor() {
+        wards[msg.sender] = 1;
+        emit AuthorizedUser(msg.sender);
+    }
+
     /// @notice Authorizes a user
     function rely(address usr) external auth {
         wards[usr] = 1;
