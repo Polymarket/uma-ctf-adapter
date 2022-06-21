@@ -1306,6 +1306,12 @@ describe("", function () {
                 expect(questionData.requestTimestamp).to.be.lt(questionData.resolutionTime);
             });
 
+            it("should revert calling expected payouts if the question is not settled", async function () {
+                await expect(umaBinaryAdapter.getExpectedPayouts(questionID)).to.be.revertedWith(
+                    "Adapter::getExpectedPayouts: questionID is not settled",
+                );
+            });
+
             it("should settle the question correctly", async function () {
                 await optimisticOracle.mock.hasPrice.returns(true);
                 await optimisticOracle.mock.getRequest.returns(getMockRequest());
@@ -1321,7 +1327,7 @@ describe("", function () {
                 expect(questionData.settled).to.not.eq(0);
             });
 
-            it("should return expected payouts", async function () {
+            it("should return expected payouts correctly after the question is settled", async function () {
                 const expectedPayouts = await (
                     await umaBinaryAdapter.getExpectedPayouts(questionID)
                 ).map(el => el.toString());
@@ -1337,6 +1343,15 @@ describe("", function () {
 
                 const questionData = await umaBinaryAdapter.questions(questionID);
                 expect(await questionData.resolved).eq(true);
+            });
+
+            it("should return expected payouts correctly even after the question is resolved", async function () {
+                const expectedPayouts = await (
+                    await umaBinaryAdapter.getExpectedPayouts(questionID)
+                ).map(el => el.toString());
+                expect(expectedPayouts.length).to.eq(2);
+                expect(expectedPayouts[0]).to.eq("1");
+                expect(expectedPayouts[1]).to.eq("0");
             });
 
             it("should fall back to standard resolution if past the resolution time", async function () {

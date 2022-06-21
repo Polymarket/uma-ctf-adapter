@@ -253,8 +253,8 @@ contract UmaConditionalTokensBinaryAdapter is Auth, ReentrancyGuard {
     /// @param timestamp        - Timestamp used in the OO request
     /// @param ancillaryData    - Data used to resolve a question
     /// @param rewardToken      - Address of the reward token
-    /// @param reward           - Reward token amount
-    /// @param bond             - Bond amount used, also in rewardToken
+    /// @param reward           - Reward amount, denominated in rewardToken
+    /// @param bond             - Bond amount used, denominated in rewardToken
     function _requestPrice(
         address requestor,
         bytes32 priceIdentifier,
@@ -272,7 +272,7 @@ contract UmaConditionalTokensBinaryAdapter is Auth, ReentrancyGuard {
             TransferHelper.safeTransferFrom(rewardToken, requestor, address(this), reward);
 
             // Approve the OO to transfer the reward token from the Adapter
-            if (IERC20(rewardToken).allowance(address(this), address(optimisticOracle)) < type(uint256).max) {
+            if (IERC20(rewardToken).allowance(address(this), address(optimisticOracle)) < reward) {
                 TransferHelper.safeApprove(rewardToken, address(optimisticOracle), type(uint256).max);
             }
         }
