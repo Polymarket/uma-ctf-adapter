@@ -898,22 +898,6 @@ describe("", function () {
                         ),
                 ).to.be.revertedWith("Adapter/not-authorized");
             });
-
-            it("should update the finder address", async function () {
-                const finderAddress = await umaBinaryAdapter.umaFinder();
-                const newFinderAddress = ethers.Wallet.createRandom();
-                expect(await umaBinaryAdapter.setFinderAddress(newFinderAddress.address))
-                    .to.emit(umaBinaryAdapter, "NewFinderAddress")
-                    .withArgs(finderAddress, newFinderAddress.address);
-            });
-
-            it("should revert if finder address updater is not the admin", async function () {
-                await expect(
-                    umaBinaryAdapter
-                        .connect(this.signers.tester)
-                        .setFinderAddress(ethers.Wallet.createRandom().address),
-                ).to.be.revertedWith("Adapter/not-authorized");
-            });
         });
 
         describe("Condition Resolution scenarios", function () {
