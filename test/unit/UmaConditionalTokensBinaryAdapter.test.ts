@@ -134,6 +134,7 @@ describe("", function () {
             before(async function () {
                 const deployment = await setup();
                 ctf = deployment.ctf;
+                optimisticOracle = deployment.optimisticOracle;
                 whitelist = deployment.whitelist;
                 testRewardToken = deployment.testRewardToken;
                 umaBinaryAdapter = deployment.umaBinaryAdapter;
@@ -151,8 +152,10 @@ describe("", function () {
                 const outcomeSlotCount = 2;
                 const conditionID = await ctf.getConditionId(umaBinaryAdapter.address, questionID, outcomeSlotCount);
 
-                // Initializing a question stores it in adapter storage, prepares it on the CTF and requests a price
-                // from the Optimistic Oracle
+                // Initializing a question does the following:
+                // 1. Stores the question parameters in Adapter storage,
+                // 2. Prepares the question on the CTF
+                // 3. Requests a price from the OO, paying the request reward
                 expect(
                     await umaBinaryAdapter.initializeQuestion(
                         questionID,
@@ -170,9 +173,9 @@ describe("", function () {
 
                 // Verify question data stored
                 expect(returnedQuestionData.ancillaryData).eq(ancillaryDataHexlified);
-                expect(returnedQuestionData.requestTimestamp).not.eq(0);
+                expect(returnedQuestionData.requestTimestamp).gt(0);
                 expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
-                expect(returnedQuestionData.reward).eq(reward);
+                expect(returnedQuestionData.reward).eq(0);
 
                 // ensure paused defaults to false
                 expect(returnedQuestionData.paused).eq(false);
@@ -187,8 +190,9 @@ describe("", function () {
                 const ancillaryDataHexlified = ethers.utils.hexlify(ancillaryData);
                 const reward = ethers.utils.parseEther("10.0");
                 const proposalBond = ethers.utils.parseEther("10000.0");
-                const outcomeSlotCount = 2; // Only YES/NO
+                const outcomeSlotCount = 2;
                 const conditionID = await ctf.getConditionId(umaBinaryAdapter.address, questionID, outcomeSlotCount);
+                const initializerBalance = await testRewardToken.balanceOf(this.signers.admin.address);
 
                 expect(
                     await umaBinaryAdapter
@@ -205,13 +209,25 @@ describe("", function () {
 
                 // Verify question data stored
                 expect(returnedQuestionData.ancillaryData).eq(ancillaryDataHexlified);
-                expect(returnedQuestionData.requestTimestamp).not.eq(0);
+                expect(returnedQuestionData.requestTimestamp).gt(0);
                 expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
                 expect(returnedQuestionData.reward).eq(reward);
                 expect(returnedQuestionData.proposalBond).eq(proposalBond);
+
+                // Verify reward token allowance from Adapter with OO as spender
+                const rewardTokenAllowance: BigNumber = await testRewardToken.allowance(
+                    umaBinaryAdapter.address,
+                    optimisticOracle.address,
+                );
+
+                expect(rewardTokenAllowance).eq(ethers.constants.MaxUint256);
+
+                // Verify that the initializeQuestion caller paid for the OO price request
+                const initializerBalancePost = await testRewardToken.balanceOf(this.signers.admin.address);
+                expect(initializerBalance.sub(initializerBalancePost).toString()).to.eq(reward.toString());
             });
 
-            it("should revert when trying to reinitialize a question", async function () {
+            it("should revert when trying to reinitialize the same question", async function () {
                 // init question
                 const questionID = createRandomQuestionID();
                 const ancillaryData = ethers.utils.randomBytes(10);
@@ -224,7 +240,29 @@ describe("", function () {
                 ).to.be.revertedWith("Adapter/already-initialized");
             });
 
-            it("should revert when initializing with an unsupported token", async function () {
+            it("should revert if the initializer does not have reward tokens or allowance", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = createQuestionID(title, desc);
+                const ancillaryData = createAncillaryData(title, desc);
+                const ancillaryDataHexlified = ethers.utils.hexlify(ancillaryData);
+                const reward = ethers.utils.parseEther("10.0");
+                const proposalBond = ethers.utils.parseEther("10000.0");
+
+                await expect(
+                    umaBinaryAdapter
+                        .connect(this.signers.tester)
+                        .initializeQuestion(
+                            questionID,
+                            ancillaryDataHexlified,
+                            testRewardToken.address,
+                            reward,
+                            proposalBond,
+                        ),
+                ).to.be.revertedWith("TransferHelper/STF");
+            });
+
+            it("should revert when initializing with an unsupported reward token", async function () {
                 const questionID = createRandomQuestionID();
                 const ancillaryData = ethers.utils.randomBytes(10);
 
@@ -241,24 +279,30 @@ describe("", function () {
                 ).to.be.revertedWith("Adapter/unsupported-token");
             });
 
-            // it("should revert initialization if resolution time is invalid", async function () {
-            //     const questionID = createRandomQuestionID();
-            //     const ancillaryData = ethers.utils.randomBytes(10);
-            //     const resolutionTimestamp = 0;
+            it("should revert initialization if ancillary data is invalid", async function () {
+                const questionID = createRandomQuestionID();
 
-            //     // Reverts if resolutionTime == 0
-            //     await expect(
-            //         umaBinaryAdapter.initializeQuestion(
-            //             questionID,
-            //             ancillaryData,
-            //             resolutionTimestamp,
-            //             testRewardToken.address,
-            //             0,
-            //             0,
-            //             false,
-            //         ),
-            //     ).to.be.revertedWith("Adapter::initializeQuestion: resolutionTime must be positive");
-            // });
+                // reverts if ancillary data length == 0 or > 8139
+                await expect(
+                    umaBinaryAdapter.initializeQuestion(
+                        questionID,
+                        ethers.utils.randomBytes(0),
+                        testRewardToken.address,
+                        0,
+                        0,
+                    ),
+                ).to.be.revertedWith("Adapter/invalid-ancillary-data");
+
+                await expect(
+                    umaBinaryAdapter.initializeQuestion(
+                        questionID,
+                        ethers.utils.randomBytes(8140),
+                        testRewardToken.address,
+                        0,
+                        0,
+                    ),
+                ).to.be.revertedWith("Adapter/invalid-ancillary-data");
+            });
 
             // // RequestResolution tests
             // it("should correctly call readyToRequestResolution", async function () {
