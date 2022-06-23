@@ -3,7 +3,7 @@
 
 ## Overview
 
-<!-- Provide a brief (1-3 sentence) summary of the PR and it's purpose. May include plans if a [WIP]. -->
+<!-- Provide a brief (1-3 sentence) summary of the PR and it's purpose. May include plans if a WIP. -->
 
 ## Description
 
