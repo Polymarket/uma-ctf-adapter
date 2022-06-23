@@ -121,7 +121,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /// @notice Initializes a question
     /// Atomically adds the question to the Adapter, prepares it on the CTF and requests a price from the OO.
     /// If reward > 0, caller must have approved the Adapter as spender and have enough rewardToken to pay for the price request.
-    /// Prepares the condition using the Adapter as the oracle and a fixed outcomeSlotCount = 2.
+    /// Prepares the condition using the Adapter as the oracle and a fixed outcome slot count = 2.
     /// @param questionID    - The unique questionID of the question
     /// @param ancillaryData - Data used to resolve a question
     /// @param rewardToken   - ERC20 token address used for payment of rewards and fees
