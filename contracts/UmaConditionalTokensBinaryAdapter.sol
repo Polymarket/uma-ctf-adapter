@@ -17,18 +17,17 @@ import { Auth } from "./mixins/Auth.sol";
 /// @title UmaCtfAdapter
 /// @notice Enables resolution of CTF markets via UMA's Optimistic Oracle
 contract UmaCtfAdapter is Auth, ReentrancyGuard {
-    
     /*///////////////////////////////////////////////////////////////////
                             IMMUTABLES 
     //////////////////////////////////////////////////////////////////*/
-    
+
     /// @notice Conditional Tokens Framework
     IConditionalTokens public immutable ctf;
 
     /// @notice Optimistic Oracle
     OptimisticOracleV2Interface public immutable optimisticOracle;
 
-    /// @notice Collateral Whitelist 
+    /// @notice Collateral Whitelist
     AddressWhitelistInterface public immutable collateralWhitelist;
 
     /*///////////////////////////////////////////////////////////////////
@@ -66,7 +65,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /*///////////////////////////////////////////////////////////////////
                             EVENTS 
     //////////////////////////////////////////////////////////////////*/
-    
+
     /// @notice Emitted when a questionID is initialized
     event QuestionInitialized(
         bytes32 indexed questionID,
@@ -134,16 +133,16 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         address rewardToken,
         uint256 reward,
         uint256 proposalBond
-    ) external {    
+    ) external {
         require(!isQuestionInitialized(questionID), "Adapter/already-initialized");
         require(collateralWhitelist.isOnWhitelist(rewardToken), "Adapter/unsupported-token");
         require(
-            ancillaryData.length > 0 && ancillaryData.length <= UmaConstants.AncillaryDataLimit, 
+            ancillaryData.length > 0 && ancillaryData.length <= UmaConstants.AncillaryDataLimit,
             "Adapter/invalid-ancillary-data"
         );
 
         uint256 requestTimestamp = block.timestamp;
-        
+
         // Save the question parameters in storage
         _saveQuestion(questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
 
@@ -161,14 +160,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
             proposalBond
         );
 
-        emit QuestionInitialized(
-            questionID,
-            requestTimestamp,
-            ancillaryData,
-            rewardToken,
-            reward,
-            proposalBond
-        );
+        emit QuestionInitialized(questionID, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
     }
 
     /// @notice Checks whether a questionID is ready to be settled
@@ -177,9 +169,9 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         if (!isQuestionInitialized(questionID)) {
             return false;
         }
-        
+
         QuestionData storage questionData = questions[questionID];
-        
+
         // Ensure question has not been resolved
         if (questionData.resolved == true) {
             return false;
@@ -190,19 +182,20 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
             return false;
         }
 
-        return optimisticOracle.hasPrice(
-            address(this),
-            UmaConstants.YesOrNoIdentifier,
-            questionData.requestTimestamp,
-            questionData.ancillaryData
-        );
+        return
+            optimisticOracle.hasPrice(
+                address(this),
+                UmaConstants.YesOrNoIdentifier,
+                questionData.requestTimestamp,
+                questionData.ancillaryData
+            );
     }
 
     /// @notice Settle the question
     /// @param questionID - The unique questionID of the question
     function settle(bytes32 questionID) external nonReentrant {
         require(readyToSettle(questionID), "Adapter/not-ready-to-settle");
-        
+
         QuestionData storage questionData = questions[questionID];
         require(!questionData.paused, "Adapter/paused");
 
@@ -263,17 +256,16 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         emit QuestionResolved(questionID, false);
     }
 
-
     /*///////////////////////////////////////////////////////////////////
                             INTERNAL FUNCTIONS 
     //////////////////////////////////////////////////////////////////*/
 
     function _saveQuestion(
-        bytes32 questionID, 
-        bytes memory ancillaryData, 
+        bytes32 questionID,
+        bytes memory ancillaryData,
         uint256 requestTimestamp,
-        address rewardToken, 
-        uint256 reward, 
+        address rewardToken,
+        uint256 reward,
         uint256 proposalBond
     ) internal {
         questions[questionID] = QuestionData({
@@ -338,7 +330,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         );
 
         // TODO: if a proposer proposes prematurely, the adapter needs to re-request the price request
-        // 
+        //
 
         // Set the settled block number
         questionData.settled = block.number;
@@ -352,12 +344,15 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     }
 
     function getExpectedResolutionData(QuestionData storage questionData) internal view returns (int256) {
-        return optimisticOracle.getRequest(
-            address(this), 
-            UmaConstants.YesOrNoIdentifier, 
-            questionData.requestTimestamp, 
-            questionData.ancillaryData
-        ).resolvedPrice;
+        return
+            optimisticOracle
+                .getRequest(
+                    address(this),
+                    UmaConstants.YesOrNoIdentifier,
+                    questionData.requestTimestamp,
+                    questionData.ancillaryData
+                )
+                .resolvedPrice;
     }
 
     /*////////////////////////////////////////////////////////////////////
@@ -382,35 +377,28 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         require(isQuestionInitialized(questionID), "Adapter/not-initialized");
         require(collateralWhitelist.isOnWhitelist(rewardToken), "Adapter/unsupported-token");
         require(
-            ancillaryData.length > 0 && ancillaryData.length <= UmaConstants.AncillaryDataLimit, 
+            ancillaryData.length > 0 && ancillaryData.length <= UmaConstants.AncillaryDataLimit,
             "Adapter/invalid-ancillary-data"
         );
         require(questions[questionID].settled == 0, "Adapter/already-settled");
 
         uint256 requestTimestamp = block.timestamp;
-        
+
         // Update question parameters in storage
         _saveQuestion(questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
 
         // Request a price from the OO
         _requestPrice(
-            msg.sender, 
-            UmaConstants.YesOrNoIdentifier, 
-            requestTimestamp, 
-            ancillaryData, 
-            rewardToken, 
-            reward, 
-            proposalBond
-        );
-
-        emit QuestionUpdated(
-            questionID,
+            msg.sender,
+            UmaConstants.YesOrNoIdentifier,
             requestTimestamp,
             ancillaryData,
             rewardToken,
             reward,
             proposalBond
         );
+
+        emit QuestionUpdated(questionID, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
     }
 
     /// @notice Flags a market for emergency resolution
