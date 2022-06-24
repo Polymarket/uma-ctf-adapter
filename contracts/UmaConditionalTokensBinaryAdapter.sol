@@ -183,9 +183,9 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
             return false;
         }
 
-        // If the question is disputed by the DVM, do not wait for DVM resolution(aka the hasPrice check)
+        // If the question is disputed by the DVM, do not wait for DVM resolution
         // instead, immediately flag the question as ready to be settled
-        if (_isQuestionDisputed(questionData)) {
+        if (_isDisputed(questionData)) {
             return true;
         }
 
@@ -211,8 +211,8 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         require(!questionData.paused, "Adapter/paused");
 
         // If the question is disputed, reset the question
-        if (_isQuestionDisputed(questionData)) {
-            _resetQuestion(questionID, questionData);
+        if (_isDisputed(questionData)) {
+            _reset(questionID, questionData);
         }
 
         return _settle(questionID, questionData);
@@ -261,6 +261,8 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         QuestionData storage questionData = questions[questionID];
 
         require(!questionData.resolved, "Adapter/already-resolved");
+
+        // TODO: revisit assumption on same block settle and report
         require(block.number > questionData.settled, "Adapter/same-block-settle-report");
 
         // Payouts: [YES, NO]
@@ -359,7 +361,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     }
 
 
-    function _isQuestionDisputed(QuestionData storage questionData) internal view returns (bool) {
+    function _isDisputed(QuestionData storage questionData) internal view returns (bool) {
         return
             optimisticOracle
                 .getRequest(
@@ -373,7 +375,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
 
     /// @notice Reset the question by updating the requestTimestamp field and sending out a new price request to the OO
     /// @param questionID - The unique questionID
-    function _resetQuestion(bytes32 questionID, QuestionData storage questionData) internal {
+    function _reset(bytes32 questionID, QuestionData storage questionData) internal {
         uint256 requestTimestamp = block.timestamp;
         
         // Update the question parameters in storage with the new request timestamp
