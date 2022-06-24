@@ -566,7 +566,21 @@ describe("", function () {
                 expect(callerBalance.sub(callerBalancePost).toString()).to.eq(newReward.toString());
             });
 
-            it("update reverts if not admin", async function () {
+            it("update reverts if not initialized", async function () {
+                await expect(
+                    umaBinaryAdapter
+                        .connect(this.signers.admin)
+                        .updateQuestion(
+                            ethers.constants.HashZero,
+                            ethers.utils.randomBytes(10),
+                            testRewardToken.address,
+                            ethers.constants.Zero,
+                            ethers.constants.Zero,
+                        ),
+                ).to.be.revertedWith("Adapter/not-initialized");
+            });
+
+            it("update revert scenarios", async function () {
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
                 const questionID = await initializeQuestion(
@@ -593,6 +607,34 @@ describe("", function () {
                             newProposalBond,
                         ),
                 ).to.be.revertedWith("Adapter/not-authorized");
+
+                // reverts if unsupported token
+                await whitelist.mock.isOnWhitelist.returns(false);
+                await expect(
+                    umaBinaryAdapter
+                        .connect(this.signers.admin)
+                        .updateQuestion(
+                            questionID,
+                            ethers.utils.randomBytes(10),
+                            ethers.Wallet.createRandom().address,
+                            newReward,
+                            newProposalBond,
+                        ),
+                ).to.be.revertedWith("Adapter/unsupported-token");
+
+                await whitelist.mock.isOnWhitelist.returns(true);
+                // reverts if invalid ancillary data
+                await expect(
+                    umaBinaryAdapter
+                        .connect(this.signers.admin)
+                        .updateQuestion(
+                            questionID,
+                            ethers.utils.randomBytes(0),
+                            testRewardToken.address,
+                            newReward,
+                            newProposalBond,
+                        ),
+                ).to.be.revertedWith("Adapter/invalid-ancillary-data");
             });
         });
 
