@@ -120,7 +120,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
 
     /// @notice Initializes a question
     /// Atomically adds the question to the Adapter, prepares it on the CTF and requests a price from the OO.
-    /// If a reward is provided, the caller must have approved the Adapter as spender and have enough rewardToken 
+    /// If a reward is provided, the caller must have approved the Adapter as spender and have enough rewardToken
     /// to pay for the price request.
     /// Prepares the condition using the Adapter as the oracle and a fixed outcome slot count = 2.
     /// @param questionID    - The unique questionID of the question
@@ -202,13 +202,14 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /// @notice Settle the question
     /// Settling a question means:
     /// 1. There is an undisputed price available from the OO and so the question can move on to resolution
-    /// 2. The question has been disputed, and a new price request needs to be sent out for the question 
+    /// 2. The question has been disputed, and a new price request needs to be sent out for the question
     /// @param questionID - The unique questionID of the question
     function settle(bytes32 questionID) external nonReentrant {
         require(readyToSettle(questionID), "Adapter/not-ready-to-settle");
 
         QuestionData storage questionData = questions[questionID];
         require(!questionData.paused, "Adapter/paused");
+        require(questionData.requestTimestamp != block.timestamp, "Adapter/same-block-init-settle");
 
         // If the question is disputed, reset the question
         if (_isDisputed(questionData)) {
@@ -360,7 +361,6 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         emit QuestionSettled(questionID, price);
     }
 
-
     function _isDisputed(QuestionData storage questionData) internal view returns (bool) {
         return
             optimisticOracle
@@ -377,12 +377,27 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /// @param questionID - The unique questionID
     function _reset(bytes32 questionID, QuestionData storage questionData) internal {
         uint256 requestTimestamp = block.timestamp;
-        
+
         // Update the question parameters in storage with the new request timestamp
-        _saveQuestion(questionID, questionData.ancillaryData, requestTimestamp, questionData.rewardToken, questionData.reward, questionData.proposalBond);
-        
+        _saveQuestion(
+            questionID,
+            questionData.ancillaryData,
+            requestTimestamp,
+            questionData.rewardToken,
+            questionData.reward,
+            questionData.proposalBond
+        );
+
         // Send out a new price request with the new request timestamp
-        _requestPrice(msg.sender, UmaConstants.YesOrNoIdentifier, requestTimestamp, questionData.ancillaryData, questionData.rewardToken, questionData.reward, questionData.proposalBond);
+        _requestPrice(
+            msg.sender,
+            UmaConstants.YesOrNoIdentifier,
+            requestTimestamp,
+            questionData.ancillaryData,
+            questionData.rewardToken,
+            questionData.reward,
+            questionData.proposalBond
+        );
 
         emit QuestionReset(questionID);
     }
