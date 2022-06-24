@@ -147,7 +147,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         _saveQuestion(questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
 
         // Prepare the question on the CTF
-        ctf.prepareCondition(address(this), questionID, 2);
+        _prepareQuestion(questionID);
 
         // Request a price for the question from the Optimistic oracle
         _requestPrice(
@@ -319,6 +319,12 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         if (bond > 0) {
             optimisticOracle.setBond(priceIdentifier, requestTimestamp, ancillaryData, bond);
         }
+    }
+
+    /// @notice Prepares the question on the CTF
+    /// @param questionID - The unique questionID
+    function _prepareQuestion(bytes32 questionID) internal {
+        ctf.prepareCondition(address(this), questionID, 2);   
     }
 
     function _settle(bytes32 questionID, QuestionData storage questionData) internal {
