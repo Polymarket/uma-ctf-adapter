@@ -324,7 +324,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /// @notice Prepares the question on the CTF
     /// @param questionID - The unique questionID
     function _prepareQuestion(bytes32 questionID) internal {
-        ctf.prepareCondition(address(this), questionID, 2);   
+        ctf.prepareCondition(address(this), questionID, 2);
     }
 
     function _settle(bytes32 questionID, QuestionData storage questionData) internal {
