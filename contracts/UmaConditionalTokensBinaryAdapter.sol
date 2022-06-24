@@ -120,7 +120,8 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
 
     /// @notice Initializes a question
     /// Atomically adds the question to the Adapter, prepares it on the CTF and requests a price from the OO.
-    /// If reward > 0, caller must have approved the Adapter as spender and have enough rewardToken to pay for the price request.
+    /// If a reward is provided, the caller must have approved the Adapter as spender and have enough rewardToken 
+    /// to pay for the price request.
     /// Prepares the condition using the Adapter as the oracle and a fixed outcome slot count = 2.
     /// @param questionID    - The unique questionID of the question
     /// @param ancillaryData - Data used to resolve a question
@@ -182,6 +183,13 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
             return false;
         }
 
+        // If the question is disputed by the DVM, do not wait for DVM resolution(aka the hasPrice check)
+        // instead, immediately flag the question as ready to be settled
+        if (_isQuestionDisputed(questionData)) {
+            return true;
+        }
+
+        // Check that the OO has an available price
         return
             optimisticOracle.hasPrice(
                 address(this),
@@ -192,12 +200,20 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     }
 
     /// @notice Settle the question
+    /// Settling a question means:
+    /// 1. There is an undisputed price available from the OO and so the question can move on to resolution
+    /// 2. The question has been disputed, and a new price request needs to be sent out for the question 
     /// @param questionID - The unique questionID of the question
     function settle(bytes32 questionID) external nonReentrant {
         require(readyToSettle(questionID), "Adapter/not-ready-to-settle");
 
         QuestionData storage questionData = questions[questionID];
         require(!questionData.paused, "Adapter/paused");
+
+        // If the question is disputed, reset the question
+        if (_isQuestionDisputed(questionData)) {
+            _resetQuestion(questionID, questionData);
+        }
 
         return _settle(questionID, questionData);
     }
@@ -327,6 +343,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         ctf.prepareCondition(address(this), questionID, 2);
     }
 
+    /// @notice Settles the question
     function _settle(bytes32 questionID, QuestionData storage questionData) internal {
         // Get the price from the OO
         int256 price = optimisticOracle.settleAndGetPrice(
@@ -335,17 +352,36 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
             questionData.ancillaryData
         );
 
-        // TODO: if a proposer proposes prematurely, the adapter needs to re-request the price request
-        //
-
         // Set the settled block number
         questionData.settled = block.number;
 
         emit QuestionSettled(questionID, price);
     }
 
+
+    function _isQuestionDisputed(QuestionData storage questionData) internal view returns (bool) {
+        return
+            optimisticOracle
+                .getRequest(
+                    address(this),
+                    UmaConstants.YesOrNoIdentifier,
+                    questionData.requestTimestamp,
+                    questionData.ancillaryData
+                )
+                .disputer != address(0);
+    }
+
+    /// @notice Reset the question by updating the requestTimestamp field and sending out a new price request to the OO
+    /// @param questionID - The unique questionID
     function _resetQuestion(bytes32 questionID, QuestionData storage questionData) internal {
-        questionData.requestTimestamp = 0;
+        uint256 requestTimestamp = block.timestamp;
+        
+        // Update the question parameters in storage with the new request timestamp
+        _saveQuestion(questionID, questionData.ancillaryData, requestTimestamp, questionData.rewardToken, questionData.reward, questionData.proposalBond);
+        
+        // Send out a new price request with the new request timestamp
+        _requestPrice(msg.sender, UmaConstants.YesOrNoIdentifier, requestTimestamp, questionData.ancillaryData, questionData.rewardToken, questionData.reward, questionData.proposalBond);
+
         emit QuestionReset(questionID);
     }
 

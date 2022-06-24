@@ -19,7 +19,6 @@ import {
     createRandomQuestionID,
 } from "../helpers";
 import { DESC, IGNORE_PRICE, QUESTION_TITLE, emergencySafetyPeriod, MAX_ANCILLARY_DATA } from "./constants";
-import { TASK_COMPILE_SOLIDITY_COMPILE } from "hardhat/builtin-tasks/task-names";
 
 const setup = deployments.createFixture(async () => {
     const signers = await hre.ethers.getSigners();
@@ -42,6 +41,7 @@ const setup = deployments.createFixture(async () => {
     await optimisticOracle.mock.settleAndGetPrice.returns(ethers.constants.One);
     await optimisticOracle.mock.setBond.returns(ethers.constants.One);
     await optimisticOracle.mock.setEventBased.returns();
+    await optimisticOracle.mock.getRequest.returns(getMockRequest());
 
     const whitelist: MockContract = await deployMock("AddressWhitelistInterface");
     await whitelist.mock.isOnWhitelist.returns(true);
