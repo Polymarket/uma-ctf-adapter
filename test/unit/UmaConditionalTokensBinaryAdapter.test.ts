@@ -638,231 +638,208 @@ describe("", function () {
             });
         });
 
-        // describe("Condition Resolution scenarios", function () {
-        //     let conditionalTokens: Contract;
-        //     let optimisticOracle: MockContract;
-        //     let testRewardToken: TestERC20;
-        //     let umaBinaryAdapter: UmaCtfAdapter;
-        //     let questionID: string;
-        //     let bond: BigNumber;
-        //     let snapshot: string;
+        describe("Resolution scenarios", function () {
+            let ctf: MockConditionalTokens;
+            let optimisticOracle: MockContract;
+            let testRewardToken: TestERC20;
+            let umaBinaryAdapter: UmaCtfAdapter;
+            let questionID: string;
+            let bond: BigNumber;
 
-        //     beforeEach(async function () {
-        //         // capture hardhat chain snapshot
-        //         snapshot = await takeSnapshot();
+            beforeEach(async function () {
+                const deployment = await setup();
+                ctf = deployment.ctf;
+                optimisticOracle = deployment.optimisticOracle;
+                testRewardToken = deployment.testRewardToken;
+                umaBinaryAdapter = deployment.umaBinaryAdapter;
 
-        //         const deployment = await setup();
-        //         conditionalTokens = deployment.conditionalTokens;
-        //         optimisticOracle = deployment.optimisticOracle;
-        //         testRewardToken = deployment.testRewardToken;
-        //         umaBinaryAdapter = deployment.umaBinaryAdapter;
+                await optimisticOracle.mock.hasPrice.returns(true);
 
-        //         await optimisticOracle.mock.hasPrice.returns(true);
+                questionID = createQuestionID(QUESTION_TITLE, DESC);
+                bond = ethers.utils.parseEther("10000.0");
 
-        //         questionID = createQuestionID(QUESTION_TITLE, DESC);
-        //         bond = ethers.utils.parseEther("10000.0");
+                // initialize question
+                await initializeQuestion(
+                    umaBinaryAdapter,
+                    QUESTION_TITLE,
+                    DESC,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    bond,
+                );
 
-        //         // prepare condition with adapter as oracle
-        //         await prepareCondition(conditionalTokens, umaBinaryAdapter.address, QUESTION_TITLE, DESC);
+                // settle
+                await optimisticOracle.mock.settleAndGetPrice.returns(1);
+                const request = getMockRequest();
+                await optimisticOracle.mock.getRequest.returns(request);
+                await (await umaBinaryAdapter.settle(questionID)).wait();
+            });
 
-        //         // initialize question
-        //         await initializeQuestion(
-        //             umaBinaryAdapter,
-        //             QUESTION_TITLE,
-        //             DESC,
-        //             testRewardToken.address,
-        //             ethers.constants.Zero,
-        //             bond,
-        //         );
+            it("should correctly report [1,0] when YES", async function () {
+                const conditionID = await ctf.getConditionId(umaBinaryAdapter.address, questionID, 2);
 
-        //         // fast forward hardhat block time
-        //         await hardhatIncreaseTime(7200);
+                expect(await umaBinaryAdapter.reportPayouts(questionID))
+                    .to.emit(ctf, "ConditionResolution")
+                    .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [1, 0]);
+            });
 
-        //         // Mock Optimistic Oracle setBond response
-        //         await optimisticOracle.mock.setBond.returns(bond);
+            it("should correctly report [0,1] when NO", async function () {
+                const conditionID = await ctf.getConditionId(umaBinaryAdapter.address, questionID, 2);
+                const request = getMockRequest();
+                request.resolvedPrice = ethers.constants.Zero;
+                await optimisticOracle.mock.getRequest.returns(request);
 
-        //         // request resolution data
-        //         await (await umaBinaryAdapter.requestResolutionData(questionID)).wait();
+                expect(await umaBinaryAdapter.reportPayouts(questionID))
+                    .to.emit(ctf, "ConditionResolution")
+                    .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [0, 1]);
+            });
 
-        //         // settle
-        //         await optimisticOracle.mock.settleAndGetPrice.returns(1);
-        //         const request = getMockRequest();
-        //         await optimisticOracle.mock.getRequest.returns(request);
-        //         await (await umaBinaryAdapter.settle(questionID)).wait();
-        //     });
+            it("should correctly report [1,1] when UNKNOWN", async function () {
+                const conditionID = await ctf.getConditionId(umaBinaryAdapter.address, questionID, 2);
 
-        //     afterEach(async function () {
-        //         // revert to snapshot
-        //         await revertToSnapshot(snapshot);
-        //     });
+                const request = getMockRequest();
+                request.resolvedPrice = ethers.utils.parseEther("0.5");
+                await optimisticOracle.mock.getRequest.returns(request);
 
-        //     it("should correctly report [1,0] when YES", async function () {
-        //         const conditionID = await conditionalTokens.getConditionId(umaBinaryAdapter.address, questionID, 2);
+                expect(await umaBinaryAdapter.reportPayouts(questionID))
+                    .to.emit(ctf, "ConditionResolution")
+                    .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [1, 1]);
+            });
 
-        //         expect(await umaBinaryAdapter.reportPayouts(questionID))
-        //             .to.emit(conditionalTokens, "ConditionResolution")
-        //             .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [1, 0]);
-        //     });
+            it("reportPayouts emits ConditionResolved if resolution data exists", async function () {
+                const conditionID = await ctf.getConditionId(umaBinaryAdapter.address, questionID, 2);
 
-        //     it("should correctly report [0,1] when NO", async function () {
-        //         const conditionID = await conditionalTokens.getConditionId(umaBinaryAdapter.address, questionID, 2);
-        //         const request = getMockRequest();
-        //         request.resolvedPrice = ethers.constants.Zero;
-        //         await optimisticOracle.mock.getRequest.returns(request);
+                expect(await umaBinaryAdapter.reportPayouts(questionID))
+                    .to.emit(ctf, "ConditionResolution")
+                    .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [1, 0]);
+            });
 
-        //         expect(await umaBinaryAdapter.reportPayouts(questionID))
-        //             .to.emit(conditionalTokens, "ConditionResolution")
-        //             .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [0, 1]);
-        //     });
+            it("reportPayouts emits QuestionResolved if resolution data exists", async function () {
+                expect(await umaBinaryAdapter.reportPayouts(questionID))
+                    .to.emit(umaBinaryAdapter, "QuestionResolved")
+                    .withArgs(questionID, false);
 
-        //     it("should correctly report [1,1] when UNKNOWN", async function () {
-        //         const conditionID = await conditionalTokens.getConditionId(umaBinaryAdapter.address, questionID, 2);
+                // Verify resolved flag on the QuestionData struct has been updated
+                const questionData = await umaBinaryAdapter.questions(questionID);
+                expect(await questionData.requestTimestamp).gt(0);
+                expect(await questionData.resolved).eq(true);
+            });
 
-        //         const request = getMockRequest();
-        //         request.resolvedPrice = ethers.utils.parseEther("0.5");
-        //         await optimisticOracle.mock.getRequest.returns(request);
+            it("reportPayouts reverts if OO returns malformed data", async function () {
+                // Mock Optimistic Oracle returns invalid data
+                const request = getMockRequest();
+                request.resolvedPrice = BigNumber.from(21233);
+                await optimisticOracle.mock.getRequest.returns(request);
 
-        //         expect(await umaBinaryAdapter.reportPayouts(questionID))
-        //             .to.emit(conditionalTokens, "ConditionResolution")
-        //             .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [1, 1]);
-        //     });
+                await expect(umaBinaryAdapter.reportPayouts(questionID)).to.be.revertedWith(
+                    "Adapter/invalid-resolution-data",
+                );
+            });
 
-        //     it("reportPayouts emits ConditionResolved if resolution data exists", async function () {
-        //         const conditionID = await conditionalTokens.getConditionId(umaBinaryAdapter.address, questionID, 2);
+            it("reportPayouts reverts if question is paused", async function () {
+                await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID);
 
-        //         expect(await umaBinaryAdapter.reportPayouts(questionID))
-        //             .to.emit(conditionalTokens, "ConditionResolution")
-        //             .withArgs(conditionID, umaBinaryAdapter.address, questionID, 2, [1, 0]);
-        //     });
+                await expect(umaBinaryAdapter.reportPayouts(questionID)).to.be.revertedWith("Adapter/paused");
+            });
 
-        //     it("reportPayouts emits QuestionResolved if resolution data exists", async function () {
-        //         expect(await umaBinaryAdapter.reportPayouts(questionID))
-        //             .to.emit(umaBinaryAdapter, "QuestionResolved")
-        //             .withArgs(questionID, false);
+            it("should allow emergency reporting by the admin", async function () {
+                // Verify admin resolution timestamp was set to zero upon question initialization
+                const questionData = await umaBinaryAdapter.questions(questionID);
 
-        //         // Verify resolved flag on the QuestionData struct has been updated
-        //         const questionData = await umaBinaryAdapter.questions(questionID);
-        //         expect(await questionData.requestTimestamp).gt(0);
-        //         expect(await questionData.resolved).eq(true);
-        //     });
+                expect(await questionData.adminResolutionTimestamp).to.eq(0);
 
-        //     it("reportPayouts reverts if OO returns malformed data", async function () {
-        //         // Mock Optimistic Oracle returns invalid data
-        //         const request = getMockRequest();
-        //         request.resolvedPrice = BigNumber.from(21233);
-        //         await optimisticOracle.mock.getRequest.returns(request);
+                // Verify emergency resolution flag check returns false
+                expect(await umaBinaryAdapter.isQuestionFlaggedForEmergencyResolution(questionID)).eq(false);
 
-        //         await expect(umaBinaryAdapter.reportPayouts(questionID)).to.be.revertedWith(
-        //             "Adapter::reportPayouts: Invalid resolution data",
-        //         );
-        //     });
+                // flag question for resolution
+                expect(await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID))
+                    .to.emit(umaBinaryAdapter, "QuestionFlaggedForAdminResolution")
+                    .withArgs(questionID);
 
-        //     it("reportPayouts reverts if question is paused", async function () {
-        //         await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID);
+                // flag question for resolution should fail second time
+                expect(umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID)).to.be.revertedWith(
+                    "Adapter/already-flagged",
+                );
 
-        //         await expect(umaBinaryAdapter.reportPayouts(questionID)).to.be.revertedWith(
-        //             "Adapter::getExpectedPayouts: Question is paused",
-        //         );
-        //     });
+                // Verify admin resolution timestamp was set
+                expect((await umaBinaryAdapter.questions(questionID)).adminResolutionTimestamp).gt(0);
 
-        //     it("should allow emergency reporting by the admin", async function () {
-        //         // Verify admin resolution timestamp was set to zero upon question initialization
-        //         const questionData = await umaBinaryAdapter.questions(questionID);
+                // Verify emergency resolution flag check returns true
+                expect(await umaBinaryAdapter.isQuestionFlaggedForEmergencyResolution(questionID)).eq(true);
 
-        //         expect(await questionData.adminResolutionTimestamp).to.eq(0);
+                // fast forward the chain to after the emergencySafetyPeriod
+                await hardhatIncreaseTime(emergencySafetyPeriod + 1000);
 
-        //         // Verify emergency resolution flag check returns false
-        //         expect(await umaBinaryAdapter.isQuestionFlaggedForEmergencyResolution(questionID)).eq(false);
+                // YES conditional payout
+                const payouts = [1, 0];
+                expect(await umaBinaryAdapter.emergencyReportPayouts(questionID, payouts))
+                    .to.emit(umaBinaryAdapter, "QuestionResolved")
+                    .withArgs(questionID, true);
 
-        //         // flag question for resolution
-        //         expect(await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID))
-        //             .to.emit(umaBinaryAdapter, "QuestionFlaggedForAdminResolution")
-        //             .withArgs(questionID);
+                // Verify resolved flag on the QuestionData struct has been updated
+                expect((await umaBinaryAdapter.questions(questionID)).resolved).eq(true);
+            });
 
-        //         // flag question for resolution should fail second time
-        //         expect(umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID)).to.be.revertedWith(
-        //             "Adapter::emergencyReportPayouts: questionID is already flagged for emergency resolution",
-        //         );
+            it("should allow emergency reporting even if the question is paused", async function () {
+                // Pause question
+                await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID);
 
-        //         // Verify admin resolution timestamp was set
-        //         expect((await umaBinaryAdapter.questions(questionID)).adminResolutionTimestamp).gt(0);
+                // flag for emergency resolution
+                await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID);
 
-        //         // Verify emergency resolution flag check returns true
-        //         expect(await umaBinaryAdapter.isQuestionFlaggedForEmergencyResolution(questionID)).eq(true);
+                // fast forward the chain to after the emergencySafetyPeriod
+                await hardhatIncreaseTime(emergencySafetyPeriod + 1000);
 
-        //         // fast forward the chain to after the emergencySafetyPeriod
-        //         await hardhatIncreaseTime(emergencySafetyPeriod + 1000);
+                // YES conditional payout
+                const payouts = [1, 0];
+                expect(await umaBinaryAdapter.emergencyReportPayouts(questionID, payouts))
+                    .to.emit(umaBinaryAdapter, "QuestionResolved")
+                    .withArgs(questionID, true);
 
-        //         // YES conditional payout
-        //         const payouts = [1, 0];
-        //         expect(await umaBinaryAdapter.emergencyReportPayouts(questionID, payouts))
-        //             .to.emit(umaBinaryAdapter, "QuestionResolved")
-        //             .withArgs(questionID, true);
+                // Verify resolved flag on the QuestionData struct has been updated
+                const questionData = await umaBinaryAdapter.questions(questionID);
+                expect(await questionData.resolved).eq(true);
+            });
 
-        //         // Verify resolved flag on the QuestionData struct has been updated
-        //         expect((await umaBinaryAdapter.questions(questionID)).resolved).eq(true);
-        //     });
+            it("should revert if emergencyReport is called before the question is flagged for emergency resolution", async function () {
+                // YES conditional payout
+                const payouts = [1, 0];
+                await expect(umaBinaryAdapter.emergencyReportPayouts(questionID, payouts)).to.be.revertedWith(
+                    "Adapter/not-flagged",
+                );
+            });
 
-        //     it("should allow emergency reporting even if the question is paused", async function () {
-        //         // Pause question
-        //         await umaBinaryAdapter.connect(this.signers.admin).pauseQuestion(questionID);
+            it("should revert if emergencyReport is called before the safety period", async function () {
+                // flag for emergency resolution
+                await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID);
 
-        //         // flag for emergency resolution
-        //         await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID);
+                // YES conditional payout
+                const payouts = [1, 0];
+                await expect(umaBinaryAdapter.emergencyReportPayouts(questionID, payouts)).to.be.revertedWith(
+                    "Adapter/safety-period-not-passed",
+                );
+            });
 
-        //         // fast forward the chain to after the emergencySafetyPeriod
-        //         await hardhatIncreaseTime(emergencySafetyPeriod + 1000);
+            it("should revert if emergencyReport is called with invalid payout", async function () {
+                // flag for emergency resolution
+                await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID);
 
-        //         // YES conditional payout
-        //         const payouts = [1, 0];
-        //         expect(await umaBinaryAdapter.emergencyReportPayouts(questionID, payouts))
-        //             .to.emit(umaBinaryAdapter, "QuestionResolved")
-        //             .withArgs(questionID, true);
+                // fast forward the chain to post-emergencySafetyPeriod
+                await hardhatIncreaseTime(emergencySafetyPeriod + 1000);
 
-        //         // Verify resolved flag on the QuestionData struct has been updated
-        //         const questionData = await umaBinaryAdapter.questions(questionID);
-        //         expect(await questionData.resolved).eq(true);
-        //     });
+                // invalid conditional payout
+                const nonBinaryPayoutVector = [0, 0, 0, 0, 1, 2, 3, 4, 5];
+                await expect(
+                    umaBinaryAdapter.emergencyReportPayouts(questionID, nonBinaryPayoutVector),
+                ).to.be.revertedWith("Adapter/non-binary-payouts");
+            });
 
-        //     it("should revert if emergencyReport is called before the question is flagged for emergency resolution", async function () {
-        //         // YES conditional payout
-        //         const payouts = [1, 0];
-        //         await expect(umaBinaryAdapter.emergencyReportPayouts(questionID, payouts)).to.be.revertedWith(
-        //             "Adapter::emergencyReportPayouts: questionID is not flagged for emergency resolution",
-        //         );
-        //     });
-
-        //     it("should revert if emergencyReport is called before the safety period", async function () {
-        //         // flag for emergency resolution
-        //         await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID);
-
-        //         // YES conditional payout
-        //         const payouts = [1, 0];
-        //         await expect(umaBinaryAdapter.emergencyReportPayouts(questionID, payouts)).to.be.revertedWith(
-        //             "Adapter::emergencyReportPayouts: safety period has not passed",
-        //         );
-        //     });
-
-        //     it("should revert if emergencyReport is called with invalid payout", async function () {
-        //         // flag for emergency resolution
-        //         await umaBinaryAdapter.flagQuestionForEmergencyResolution(questionID);
-
-        //         // fast forward the chain to post-emergencySafetyPeriod
-        //         await hardhatIncreaseTime(emergencySafetyPeriod + 1000);
-
-        //         // invalid conditional payout
-        //         const nonBinaryPayoutVector = [0, 0, 0, 0, 1, 2, 3, 4, 5];
-        //         await expect(
-        //             umaBinaryAdapter.emergencyReportPayouts(questionID, nonBinaryPayoutVector),
-        //         ).to.be.revertedWith("Adapter::emergencyReportPayouts: payouts must be binary");
-        //     });
-
-        //     it("should revert if emergencyReport is called from a non-admin", async function () {
-        //         await expect(
-        //             umaBinaryAdapter.connect(this.signers.tester).emergencyReportPayouts(questionID, [1, 0]),
-        //         ).to.be.revertedWith("Adapter/not-authorized");
-        //     });
-        // });
+            it("should revert if emergencyReport is called from a non-admin", async function () {
+                await expect(
+                    umaBinaryAdapter.connect(this.signers.tester).emergencyReportPayouts(questionID, [1, 0]),
+                ).to.be.revertedWith("Adapter/not-authorized");
+            });
+        });
 
         // describe("Early Resolution scenarios", function () {
         //     let conditionalTokens: Contract;

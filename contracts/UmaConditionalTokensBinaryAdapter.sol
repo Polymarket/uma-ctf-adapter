@@ -200,7 +200,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     }
 
     /// @notice Settle the question
-    /// Settling a question means:
+    /// Settling a question means that:
     /// 1. There is an undisputed price available from the OO and so the question can move on to resolution
     /// 2. The question has been disputed, and a new price request needs to be sent out for the question
     /// @param questionID - The unique questionID of the question
@@ -229,7 +229,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         require(!questionData.paused, "Adapter/paused");
 
         // Fetches resolution data from OO
-        int256 resolutionData = getExpectedResolutionData(questionData);
+        int256 resolutionData = _getResolutionData(questionData);
 
         // Payouts: [YES, NO]
         uint256[] memory payouts = new uint256[](2);
@@ -273,6 +273,18 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         questionData.resolved = true;
         ctf.reportPayouts(questionID, payouts);
         emit QuestionResolved(questionID, false);
+    }
+
+    /// @notice Checks if a question is initialized
+    /// @param questionID - The unique questionID
+    function isQuestionInitialized(bytes32 questionID) public view returns (bool) {
+        return questions[questionID].ancillaryData.length > 0;
+    }
+
+    /// @notice Checks if a question has been flagged for emergency resolution
+    /// @param questionID - The unique questionID
+    function isQuestionFlaggedForEmergencyResolution(bytes32 questionID) public view returns (bool) {
+        return questions[questionID].adminResolutionTimestamp > 0;
     }
 
     /*///////////////////////////////////////////////////////////////////
@@ -340,12 +352,6 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         }
     }
 
-    /// @notice Prepares the question on the CTF
-    /// @param questionID - The unique questionID
-    function _prepareQuestion(bytes32 questionID) internal {
-        ctf.prepareCondition(address(this), questionID, 2);
-    }
-
     /// @notice Settles the question
     function _settle(bytes32 questionID, QuestionData storage questionData) internal {
         // Get the price from the OO
@@ -402,7 +408,9 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         emit QuestionReset(questionID);
     }
 
-    function getExpectedResolutionData(QuestionData storage questionData) internal view returns (int256) {
+    /// @notice Gets resolution data for the question from the OO
+    /// @param questionData - The parameters of the question
+    function _getResolutionData(QuestionData storage questionData) internal view returns (int256) {
         return
             optimisticOracle
                 .getRequest(
@@ -412,6 +420,12 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
                     questionData.ancillaryData
                 )
                 .resolvedPrice;
+    }
+
+    /// @notice Prepares the question on the CTF
+    /// @param questionID - The unique questionID
+    function _prepareQuestion(bytes32 questionID) internal {
+        ctf.prepareCondition(address(this), questionID, 2);
     }
 
     /*////////////////////////////////////////////////////////////////////
@@ -503,17 +517,5 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         QuestionData storage questionData = questions[questionID];
         questionData.paused = false;
         emit QuestionUnpaused(questionID);
-    }
-
-    /// @notice Utility function that verifies if a question is initialized
-    /// @param questionID - The unique questionID
-    function isQuestionInitialized(bytes32 questionID) public view returns (bool) {
-        return questions[questionID].ancillaryData.length > 0;
-    }
-
-    /// @notice
-    /// @param questionID - The unique questionID
-    function isQuestionFlaggedForEmergencyResolution(bytes32 questionID) public view returns (bool) {
-        return questions[questionID].adminResolutionTimestamp > 0;
     }
 }
