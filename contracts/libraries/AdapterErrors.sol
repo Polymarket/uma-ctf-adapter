@@ -4,9 +4,8 @@ pragma solidity ^0.8.10;
 /// @title AdapterErrors
 /// @notice Errors for the CTF Adapter
 library AdapterErrors {
-    
     string public constant NotInitialized = "Adapter/not-initialized";
-    
+
     string public constant NotFlagged = "Adapter/not-flagged";
 
     string public constant NotSettled = "Adapter/not-settled";

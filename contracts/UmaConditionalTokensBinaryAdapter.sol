@@ -18,7 +18,6 @@ import { OptimisticOracleV2Interface } from "./interfaces/OptimisticOracleV2Inte
 /// @title UmaCtfAdapter
 /// @notice Enables resolution of CTF markets via UMA's Optimistic Oracle
 contract UmaCtfAdapter is Auth, ReentrancyGuard {
-    
     /*///////////////////////////////////////////////////////////////////
                             IMMUTABLES 
     //////////////////////////////////////////////////////////////////*/
@@ -420,7 +419,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     ) internal {
         // If non-zero reward, pay for the price request by transferring rewardToken from the caller
         if (reward > 0) {
-            if(caller != address(this)){
+            if (caller != address(this)) {
                 TransferHelper.safeTransferFrom(rewardToken, caller, address(this), reward);
             }
 
