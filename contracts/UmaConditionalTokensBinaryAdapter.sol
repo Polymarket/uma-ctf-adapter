@@ -4,19 +4,21 @@ pragma solidity ^0.8.10;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+import { Auth } from "./mixins/Auth.sol";
+
 import { UmaConstants } from "./libraries/UmaConstants.sol";
+import { AdapterErrors } from "./libraries/AdapterErrors.sol";
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 
 import { FinderInterface } from "./interfaces/FinderInterface.sol";
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
-import { OptimisticOracleV2Interface } from "./interfaces/OptimisticOracleV2Interface.sol";
 import { AddressWhitelistInterface } from "./interfaces/AddressWhitelistInterface.sol";
-
-import { Auth } from "./mixins/Auth.sol";
+import { OptimisticOracleV2Interface } from "./interfaces/OptimisticOracleV2Interface.sol";
 
 /// @title UmaCtfAdapter
 /// @notice Enables resolution of CTF markets via UMA's Optimistic Oracle
 contract UmaCtfAdapter is Auth, ReentrancyGuard {
+    
     /*///////////////////////////////////////////////////////////////////
                             IMMUTABLES 
     //////////////////////////////////////////////////////////////////*/
@@ -29,10 +31,6 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
 
     /// @notice Collateral Whitelist
     AddressWhitelistInterface public immutable collateralWhitelist;
-
-    /*///////////////////////////////////////////////////////////////////
-                            CONSTANTS 
-    //////////////////////////////////////////////////////////////////*/
 
     /// @notice Time period after which an authorized user can emergency resolve a condition
     uint256 public constant emergencySafetyPeriod = 2 days;
@@ -135,11 +133,11 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         uint256 reward,
         uint256 proposalBond
     ) external {
-        require(!isQuestionInitialized(questionID), "Adapter/already-initialized");
-        require(collateralWhitelist.isOnWhitelist(rewardToken), "Adapter/unsupported-token");
+        require(!isQuestionInitialized(questionID), AdapterErrors.AlreadyInitialized);
+        require(collateralWhitelist.isOnWhitelist(rewardToken), AdapterErrors.UnsupportedToken);
         require(
             ancillaryData.length > 0 && ancillaryData.length <= UmaConstants.AncillaryDataLimit,
-            "Adapter/invalid-ancillary-data"
+            AdapterErrors.InvalidAncillaryData
         );
 
         uint256 requestTimestamp = block.timestamp;
@@ -205,15 +203,14 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /// 2. The question has been disputed, and a new price request needs to be sent out for the question
     /// @param questionID - The unique questionID of the question
     function settle(bytes32 questionID) external nonReentrant {
-        require(readyToSettle(questionID), "Adapter/not-ready-to-settle");
+        require(readyToSettle(questionID), AdapterErrors.NotReadyToSettle);
 
         QuestionData storage questionData = questions[questionID];
-        require(!questionData.paused, "Adapter/paused");
-        require(questionData.requestTimestamp != block.timestamp, "Adapter/same-block-init-settle");
+        require(!questionData.paused, AdapterErrors.Paused);
 
         // If the question is disputed, reset the question
         if (_isDisputed(questionData)) {
-            _reset(questionID, questionData);
+            return _reset(questionID, questionData);
         }
 
         return _settle(questionID, questionData);
@@ -222,11 +219,11 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /// @notice Retrieves the expected payout of a settled question
     /// @param questionID - The unique questionID of the question
     function getExpectedPayouts(bytes32 questionID) public view returns (uint256[] memory) {
-        require(isQuestionInitialized(questionID), "Adapter/not-initialized");
+        require(isQuestionInitialized(questionID), AdapterErrors.NotInitialized);
         QuestionData storage questionData = questions[questionID];
 
-        require(questionData.settled > 0, "Adapter/not-settled");
-        require(!questionData.paused, "Adapter/paused");
+        require(questionData.settled > 0, AdapterErrors.NotSettled);
+        require(!questionData.paused, AdapterErrors.Paused);
 
         // Fetches resolution data from OO
         int256 resolutionData = _getResolutionData(questionData);
@@ -237,7 +234,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         // Valid prices are 0, 0.5 and 1
         require(
             resolutionData == 0 || resolutionData == 0.5 ether || resolutionData == 1 ether,
-            "Adapter/invalid-resolution-data"
+            AdapterErrors.InvalidData
         );
 
         if (resolutionData == 0) {
@@ -261,10 +258,10 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     function reportPayouts(bytes32 questionID) external {
         QuestionData storage questionData = questions[questionID];
 
-        require(!questionData.resolved, "Adapter/already-resolved");
+        require(!questionData.resolved, AdapterErrors.AlreadyResolved);
 
         // TODO: revisit assumption on same block settle and report
-        require(block.number > questionData.settled, "Adapter/same-block-settle-report");
+        require(block.number > questionData.settled, AdapterErrors.SameBlockSettleReport);
 
         // Payouts: [YES, NO]
         // getExpectedPayouts verifies that questionID is settled and can be resolved
@@ -285,6 +282,97 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /// @param questionID - The unique questionID
     function isQuestionFlaggedForEmergencyResolution(bytes32 questionID) public view returns (bool) {
         return questions[questionID].adminResolutionTimestamp > 0;
+    }
+
+    /*////////////////////////////////////////////////////////////////////
+                            AUTHORIZED FUNCTIONS 
+    ///////////////////////////////////////////////////////////////////*/
+
+    /// @notice Allows an authorized user to update a question
+    /// This will remove the old question data from the Adapter and send a new price request to the OO.
+    /// Note: the previous price request will still exist on the OO, will not be considered by the Adapter
+    /// @param questionID             - The unique questionID of the question
+    /// @param ancillaryData          - Data used to resolve a question
+    /// @param rewardToken            - ERC20 token address used for payment of rewards and fees
+    /// @param reward                 - Reward offered to a successful proposer
+    /// @param proposalBond           - Bond required to be posted by a price proposer and disputer
+    function updateQuestion(
+        bytes32 questionID,
+        bytes memory ancillaryData,
+        address rewardToken,
+        uint256 reward,
+        uint256 proposalBond
+    ) external auth {
+        require(isQuestionInitialized(questionID), AdapterErrors.NotInitialized);
+        require(collateralWhitelist.isOnWhitelist(rewardToken), AdapterErrors.UnsupportedToken);
+        require(
+            ancillaryData.length > 0 && ancillaryData.length <= UmaConstants.AncillaryDataLimit,
+            AdapterErrors.InvalidAncillaryData
+        );
+        require(questions[questionID].settled == 0, AdapterErrors.AlreadySettled);
+
+        uint256 requestTimestamp = block.timestamp;
+
+        // Update question parameters in storage
+        _saveQuestion(questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
+
+        // Request a price from the OO
+        _requestPrice(
+            msg.sender,
+            UmaConstants.YesOrNoIdentifier,
+            requestTimestamp,
+            ancillaryData,
+            rewardToken,
+            reward,
+            proposalBond
+        );
+
+        emit QuestionUpdated(questionID, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
+    }
+
+    /// @notice Flags a market for emergency resolution
+    /// @param questionID - The unique questionID of the question
+    function flagQuestionForEmergencyResolution(bytes32 questionID) external auth {
+        require(isQuestionInitialized(questionID), AdapterErrors.NotInitialized);
+        require(!isQuestionFlaggedForEmergencyResolution(questionID), AdapterErrors.AlreadyFlagged);
+
+        questions[questionID].adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
+        emit QuestionFlaggedForAdminResolution(questionID);
+    }
+
+    /// @notice Allows an authorized user to report payouts in an emergency
+    /// @param questionID - The unique questionID of the question
+    /// @param payouts - Array of position payouts for the referenced question
+    function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external auth {
+        require(isQuestionInitialized(questionID), AdapterErrors.NotInitialized);
+        require(isQuestionFlaggedForEmergencyResolution(questionID), AdapterErrors.NotFlagged);
+        require(block.timestamp > questions[questionID].adminResolutionTimestamp, AdapterErrors.SafetyPeriodNotPassed);
+        require(payouts.length == 2, AdapterErrors.NonBinaryPayouts);
+
+        QuestionData storage questionData = questions[questionID];
+
+        questionData.resolved = true;
+        ctf.reportPayouts(questionID, payouts);
+        emit QuestionResolved(questionID, true);
+    }
+
+    /// @notice Allows an authorized user to pause market resolution in an emergency
+    /// @param questionID - The unique questionID of the question
+    function pauseQuestion(bytes32 questionID) external auth {
+        require(isQuestionInitialized(questionID), AdapterErrors.NotInitialized);
+        QuestionData storage questionData = questions[questionID];
+
+        questionData.paused = true;
+        emit QuestionPaused(questionID);
+    }
+
+    /// @notice Allows an authorized user to unpause market resolution in an emergency
+    /// @param questionID - The unique questionID of the question
+    function unPauseQuestion(bytes32 questionID) external auth {
+        require(isQuestionInitialized(questionID), AdapterErrors.NotInitialized);
+        QuestionData storage questionData = questions[questionID];
+        questionData.paused = false;
+        emit QuestionUnpaused(questionID);
     }
 
     /*///////////////////////////////////////////////////////////////////
@@ -332,7 +420,9 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     ) internal {
         // If non-zero reward, pay for the price request by transferring rewardToken from the caller
         if (reward > 0) {
-            TransferHelper.safeTransferFrom(rewardToken, caller, address(this), reward);
+            if(caller != address(this)){
+                TransferHelper.safeTransferFrom(rewardToken, caller, address(this), reward);
+            }
 
             // Approve the OO as spender on the reward token from the Adapter
             if (IERC20(rewardToken).allowance(address(this), address(optimisticOracle)) < reward) {
@@ -396,7 +486,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
 
         // Send out a new price request with the new request timestamp
         _requestPrice(
-            msg.sender,
+            address(this), // Note: the Adapter itself should pay for re-requesting prices from the OO
             UmaConstants.YesOrNoIdentifier,
             requestTimestamp,
             questionData.ancillaryData,
@@ -426,96 +516,5 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /// @param questionID - The unique questionID
     function _prepareQuestion(bytes32 questionID) internal {
         ctf.prepareCondition(address(this), questionID, 2);
-    }
-
-    /*////////////////////////////////////////////////////////////////////
-                            AUTHORIZED FUNCTIONS 
-    ///////////////////////////////////////////////////////////////////*/
-
-    /// @notice Allows an authorized user to update a question
-    /// This will remove the old question data from the Adapter and send a new price request to the OO.
-    /// Note: the previous price request will still exist on the OO, will not be considered by the Adapter
-    /// @param questionID             - The unique questionID of the question
-    /// @param ancillaryData          - Data used to resolve a question
-    /// @param rewardToken            - ERC20 token address used for payment of rewards and fees
-    /// @param reward                 - Reward offered to a successful proposer
-    /// @param proposalBond           - Bond required to be posted by a price proposer and disputer
-    function updateQuestion(
-        bytes32 questionID,
-        bytes memory ancillaryData,
-        address rewardToken,
-        uint256 reward,
-        uint256 proposalBond
-    ) external auth {
-        require(isQuestionInitialized(questionID), "Adapter/not-initialized");
-        require(collateralWhitelist.isOnWhitelist(rewardToken), "Adapter/unsupported-token");
-        require(
-            ancillaryData.length > 0 && ancillaryData.length <= UmaConstants.AncillaryDataLimit,
-            "Adapter/invalid-ancillary-data"
-        );
-        require(questions[questionID].settled == 0, "Adapter/already-settled");
-
-        uint256 requestTimestamp = block.timestamp;
-
-        // Update question parameters in storage
-        _saveQuestion(questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
-
-        // Request a price from the OO
-        _requestPrice(
-            msg.sender,
-            UmaConstants.YesOrNoIdentifier,
-            requestTimestamp,
-            ancillaryData,
-            rewardToken,
-            reward,
-            proposalBond
-        );
-
-        emit QuestionUpdated(questionID, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
-    }
-
-    /// @notice Flags a market for emergency resolution
-    /// @param questionID - The unique questionID of the question
-    function flagQuestionForEmergencyResolution(bytes32 questionID) external auth {
-        require(isQuestionInitialized(questionID), "Adapter/not-initialized");
-        require(!isQuestionFlaggedForEmergencyResolution(questionID), "Adapter/already-flagged");
-
-        questions[questionID].adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
-        emit QuestionFlaggedForAdminResolution(questionID);
-    }
-
-    /// @notice Allows an authorized user to report payouts in an emergency
-    /// @param questionID - The unique questionID of the question
-    /// @param payouts - Array of position payouts for the referenced question
-    function emergencyReportPayouts(bytes32 questionID, uint256[] calldata payouts) external auth {
-        require(isQuestionInitialized(questionID), "Adapter/not-initialized");
-        require(isQuestionFlaggedForEmergencyResolution(questionID), "Adapter/not-flagged");
-        require(block.timestamp > questions[questionID].adminResolutionTimestamp, "Adapter/safety-period-not-passed");
-        require(payouts.length == 2, "Adapter/non-binary-payouts");
-
-        QuestionData storage questionData = questions[questionID];
-
-        questionData.resolved = true;
-        ctf.reportPayouts(questionID, payouts);
-        emit QuestionResolved(questionID, true);
-    }
-
-    /// @notice Allows an authorized user to pause market resolution in an emergency
-    /// @param questionID - The unique questionID of the question
-    function pauseQuestion(bytes32 questionID) external auth {
-        require(isQuestionInitialized(questionID), "Adapter/not-initialized");
-        QuestionData storage questionData = questions[questionID];
-
-        questionData.paused = true;
-        emit QuestionPaused(questionID);
-    }
-
-    /// @notice Allows an authorized user to unpause market resolution in an emergency
-    /// @param questionID - The unique questionID of the question
-    function unPauseQuestion(bytes32 questionID) external auth {
-        require(isQuestionInitialized(questionID), "Adapter/not-initialized");
-        QuestionData storage questionData = questions[questionID];
-        questionData.paused = false;
-        emit QuestionUnpaused(questionID);
     }
 }

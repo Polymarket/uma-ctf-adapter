@@ -37,15 +37,6 @@ export function createAncillaryData(title: string, description: string): Uint8Ar
     return ethers.utils.toUtf8Bytes(`q: ${title}d: ${description}`);
 }
 
-export async function prepareCondition(
-    conditionalTokens: Contract,
-    oracle: string,
-    title: string,
-    description: string,
-): Promise<void> {
-    const questionID = createQuestionID(title, description);
-    await conditionalTokens.prepareCondition(oracle, questionID, 2);
-}
 
 export async function initializeQuestion(
     adapter: Contract,
@@ -116,14 +107,6 @@ export function getMockRequest(): Request {
         reward: 0,
         finalFee: 1,
     };
-}
-
-export async function takeSnapshot(): Promise<string> {
-    return ethers.provider.send("evm_snapshot", []);
-}
-
-export async function revertToSnapshot(snapshot: string): Promise<void> {
-    await ethers.provider.send("evm_revert", [snapshot]);
 }
 
 export async function hardhatIncreaseTime(secondsToIncrease: number): Promise<void> {
