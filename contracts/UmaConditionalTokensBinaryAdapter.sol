@@ -258,8 +258,6 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         QuestionData storage questionData = questions[questionID];
 
         require(!questionData.resolved, AdapterErrors.AlreadyResolved);
-
-        // TODO: revisit assumption on same block settle and report
         require(block.number > questionData.settled, AdapterErrors.SameBlockSettleReport);
 
         // Payouts: [YES, NO]
@@ -443,6 +441,8 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     }
 
     /// @notice Settles the question
+    /// @param questionID   - The unique questionID
+    /// @param questionData - The question parameters
     function _settle(bytes32 questionID, QuestionData storage questionData) internal {
         // Get the price from the OO
         int256 price = optimisticOracle.settleAndGetPrice(
@@ -457,6 +457,8 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         emit QuestionSettled(questionID, price);
     }
 
+    /// @notice Checks if the request of a question is disputed
+    /// @param questionData - The question parameters
     function _isDisputed(QuestionData storage questionData) internal view returns (bool) {
         return
             optimisticOracle
@@ -486,7 +488,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
 
         // Send out a new price request with the new request timestamp
         _requestPrice(
-            address(this), // Note: the Adapter itself should pay for re-requesting prices from the OO
+            address(this),
             UmaConstants.YesOrNoIdentifier,
             requestTimestamp,
             questionData.ancillaryData,

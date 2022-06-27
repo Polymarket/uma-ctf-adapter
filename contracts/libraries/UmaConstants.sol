@@ -7,15 +7,12 @@ library UmaConstants {
     /// @notice Unique query identifier for the Optimistic Oracle
     bytes32 public constant YesOrNoIdentifier = "YES_OR_NO_QUERY";
 
-    /// @notice TODO natspec
-    bytes32 public constant OptimisticOracle = "OptimisticOracle";
-
-    /// @notice TODO natspec
+    /// @notice Unique identifier for the Optimistic Oracle V2
     bytes32 public constant OptimisticOracleV2 = "OptimisticOracleV2";
 
-    /// @notice TODO natspec
+    /// @notice Unique identifier for the Collateral Whitelist
     bytes32 public constant CollateralWhitelist = "CollateralWhitelist";
 
-    /// @notice TODO natspec
+    /// @notice Maximum ancillary data length
     uint256 public constant AncillaryDataLimit = 8139;
 }

@@ -113,11 +113,11 @@ describe("", function () {
             });
 
             it("correctly sets up contracts", async function () {
-                const returnedCtf = await umaCtfAdapter.ctf();
-                expect(ctf.address).eq(returnedCtf);
+                const expectedCtf = await umaCtfAdapter.ctf();
+                expect(ctf.address).eq(expectedCtf);
 
-                const returnedOptimisticOracle = await umaCtfAdapter.optimisticOracle();
-                expect(optimisticOracle.address).eq(returnedOptimisticOracle);
+                const expectedOptimisticOracle = await umaCtfAdapter.optimisticOracle();
+                expect(optimisticOracle.address).eq(expectedOptimisticOracle);
             });
         });
 
@@ -358,7 +358,7 @@ describe("", function () {
                 expect(readyToSettle).to.eq(false);
             });
 
-            it("should revert if not readyToSettle", async function () {
+            it("settle should revert if not readyToSettle", async function () {
                 const title = ethers.utils.randomBytes(5).toString();
                 const desc = ethers.utils.randomBytes(10).toString();
 
@@ -562,7 +562,6 @@ describe("", function () {
                     connect: this.signers.admin,
                 });
 
-                // TODO: case to be made that it's fine for settle and report to happen in the same block, revisit that assumption
                 await expect(griefer.settleAndReport(questionID)).to.be.revertedWith(
                     "Adapter/same-block-settle-report",
                 );
@@ -672,7 +671,8 @@ describe("", function () {
                 ).to.be.revertedWith("Adapter/unsupported-token");
 
                 await whitelist.mock.isOnWhitelist.returns(true);
-                // reverts if invalid ancillary data
+
+                // reverts if invalid ancillary data invalid
                 await expect(
                     umaCtfAdapter
                         .connect(this.signers.admin)
@@ -684,6 +684,24 @@ describe("", function () {
                             newProposalBond,
                         ),
                 ).to.be.revertedWith("Adapter/invalid-ancillary-data");
+
+                await optimisticOracle.mock.hasPrice.returns(true);
+                await optimisticOracle.mock.getRequest.returns(getMockRequest());
+                await optimisticOracle.mock.settleAndGetPrice.returns(1);
+                await (await umaCtfAdapter.settle(questionID)).wait();
+
+                // reverts if the question is already settled
+                await expect(
+                    umaCtfAdapter
+                        .connect(this.signers.admin)
+                        .updateQuestion(
+                            questionID,
+                            ethers.utils.randomBytes(10),
+                            testRewardToken.address,
+                            newReward,
+                            newProposalBond,
+                        ),
+                ).to.be.revertedWith("Adapter/already-settled");
             });
         });
 
@@ -724,12 +742,19 @@ describe("", function () {
                 await (await umaCtfAdapter.settle(questionID)).wait();
             });
 
+            it("readyToSettle returns false if question is already resolved", async function () {
+                await (await umaCtfAdapter.reportPayouts(questionID)).wait();
+                expect(await umaCtfAdapter.readyToSettle(questionID)).to.be.eq(false);
+            });
+
             it("should correctly report [1,0] when YES", async function () {
                 const conditionID = await ctf.getConditionId(umaCtfAdapter.address, questionID, 2);
 
                 expect(await umaCtfAdapter.reportPayouts(questionID))
                     .to.emit(ctf, "ConditionResolution")
-                    .withArgs(conditionID, umaCtfAdapter.address, questionID, 2, [1, 0]);
+                    .withArgs(conditionID, umaCtfAdapter.address, questionID, 2, [1, 0])
+                    .and.to.emit(umaCtfAdapter, "QuestionResolved")
+                    .withArgs(questionID, false);
             });
 
             it("should correctly report [0,1] when NO", async function () {
@@ -740,7 +765,9 @@ describe("", function () {
 
                 expect(await umaCtfAdapter.reportPayouts(questionID))
                     .to.emit(ctf, "ConditionResolution")
-                    .withArgs(conditionID, umaCtfAdapter.address, questionID, 2, [0, 1]);
+                    .withArgs(conditionID, umaCtfAdapter.address, questionID, 2, [0, 1])
+                    .and.to.emit(umaCtfAdapter, "QuestionResolved")
+                    .withArgs(questionID, false);
             });
 
             it("should correctly report [1,1] when UNKNOWN", async function () {
@@ -752,26 +779,16 @@ describe("", function () {
 
                 expect(await umaCtfAdapter.reportPayouts(questionID))
                     .to.emit(ctf, "ConditionResolution")
-                    .withArgs(conditionID, umaCtfAdapter.address, questionID, 2, [1, 1]);
-            });
-
-            it("reportPayouts emits ConditionResolved if resolution data exists", async function () {
-                const conditionID = await ctf.getConditionId(umaCtfAdapter.address, questionID, 2);
-
-                expect(await umaCtfAdapter.reportPayouts(questionID))
-                    .to.emit(ctf, "ConditionResolution")
-                    .withArgs(conditionID, umaCtfAdapter.address, questionID, 2, [1, 0]);
-            });
-
-            it("reportPayouts emits QuestionResolved if resolution data exists", async function () {
-                expect(await umaCtfAdapter.reportPayouts(questionID))
-                    .to.emit(umaCtfAdapter, "QuestionResolved")
+                    .withArgs(conditionID, umaCtfAdapter.address, questionID, 2, [1, 1])
+                    .and.to.emit(umaCtfAdapter, "QuestionResolved")
                     .withArgs(questionID, false);
+            });
 
-                // Verify resolved flag on the QuestionData struct has been updated
-                const questionData = await umaCtfAdapter.questions(questionID);
-                expect(await questionData.requestTimestamp).gt(0);
-                expect(await questionData.resolved).eq(true);
+            it("reportPayouts reverts if the question has been previously resolved", async function () {
+                await (await umaCtfAdapter.reportPayouts(questionID)).wait();
+
+                // Attempt to report payouts again
+                await expect(umaCtfAdapter.reportPayouts(questionID)).to.be.revertedWith("Adapter/already-resolved");
             });
 
             it("reportPayouts reverts if OO returns malformed data", async function () {
@@ -847,7 +864,7 @@ describe("", function () {
 
                 // Verify resolved flag on the QuestionData struct has been updated
                 const questionData = await umaCtfAdapter.questions(questionID);
-                expect(await questionData.resolved).eq(true);
+                expect(questionData.resolved).eq(true);
             });
 
             it("should revert if emergencyReport is called before the question is flagged", async function () {
@@ -891,7 +908,6 @@ describe("", function () {
         });
 
         describe("Invalid proposal scenarios", function () {
-            let ctf: MockConditionalTokens;
             let optimisticOracle: MockContract;
             let testRewardToken: TestERC20;
             let umaCtfAdapter: UmaCtfAdapter;
@@ -900,7 +916,6 @@ describe("", function () {
 
             before(async function () {
                 const deployment = await setup();
-                ctf = deployment.ctf;
                 optimisticOracle = deployment.optimisticOracle;
                 testRewardToken = deployment.testRewardToken;
                 umaCtfAdapter = deployment.umaCtfAdapter;
