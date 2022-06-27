@@ -420,6 +420,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         // If non-zero reward, pay for the price request by transferring rewardToken from the caller
         if (reward > 0) {
             if (caller != address(this)) {
+                // If caller is the Adapter itself, do not transfer the reward. Pay for the request from the Adapter's balances
                 TransferHelper.safeTransferFrom(rewardToken, caller, address(this), reward);
             }
 
