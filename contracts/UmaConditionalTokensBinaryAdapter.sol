@@ -5,6 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import { Auth } from "./mixins/Auth.sol";
+import { BulletinBoard } from "./mixins/BulletinBoard.sol";
 
 import { UmaConstants } from "./libraries/UmaConstants.sol";
 import { AdapterErrors } from "./libraries/AdapterErrors.sol";
@@ -17,7 +18,7 @@ import { OptimisticOracleV2Interface } from "./interfaces/OptimisticOracleV2Inte
 
 /// @title UmaCtfAdapter
 /// @notice Enables resolution of CTF markets via UMA's Optimistic Oracle
-contract UmaCtfAdapter is Auth, ReentrancyGuard {
+contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
     /*///////////////////////////////////////////////////////////////////
                             IMMUTABLES 
     //////////////////////////////////////////////////////////////////*/
