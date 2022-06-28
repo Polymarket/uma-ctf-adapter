@@ -147,16 +147,8 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         // Prepare the question on the CTF
         _prepareQuestion(questionID);
 
-        // Request a price for the question from the Optimistic oracle
-        _requestPrice(
-            msg.sender,
-            UmaConstants.YesOrNoIdentifier,
-            requestTimestamp,
-            ancillaryData,
-            rewardToken,
-            reward,
-            proposalBond
-        );
+        // Request a price for the question from the OO
+        _requestPrice(msg.sender, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
 
         emit QuestionInitialized(questionID, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
     }
@@ -314,15 +306,7 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         _saveQuestion(questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
 
         // Request a price from the OO
-        _requestPrice(
-            msg.sender,
-            UmaConstants.YesOrNoIdentifier,
-            requestTimestamp,
-            ancillaryData,
-            rewardToken,
-            reward,
-            proposalBond
-        );
+        _requestPrice(msg.sender, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
 
         emit QuestionUpdated(questionID, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
     }
@@ -400,7 +384,6 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /// @notice Request a price from the Optimistic Oracle
     /// Transfers reward token from the requestor if non-zero reward is specified
     /// @param caller           - Address of the caller
-    /// @param priceIdentifier  - Bytes32 identifier for the OO
     /// @param requestTimestamp - Timestamp used in the OO request
     /// @param ancillaryData    - Data used to resolve a question
     /// @param rewardToken      - Address of the reward token
@@ -408,7 +391,6 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /// @param bond             - Bond amount used, denominated in rewardToken
     function _requestPrice(
         address caller,
-        bytes32 priceIdentifier,
         uint256 requestTimestamp,
         bytes memory ancillaryData,
         address rewardToken,
@@ -429,14 +411,20 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         }
 
         // Send a price request to the Optimistic oracle
-        optimisticOracle.requestPrice(priceIdentifier, requestTimestamp, ancillaryData, IERC20(rewardToken), reward);
+        optimisticOracle.requestPrice(
+            UmaConstants.YesOrNoIdentifier,
+            requestTimestamp,
+            ancillaryData,
+            IERC20(rewardToken),
+            reward
+        );
 
         // Ensure the price request is event based
-        optimisticOracle.setEventBased(priceIdentifier, requestTimestamp, ancillaryData);
+        optimisticOracle.setEventBased(UmaConstants.YesOrNoIdentifier, requestTimestamp, ancillaryData);
 
         // Update the proposal bond on the Optimistic oracle if necessary
         if (bond > 0) {
-            optimisticOracle.setBond(priceIdentifier, requestTimestamp, ancillaryData, bond);
+            optimisticOracle.setBond(UmaConstants.YesOrNoIdentifier, requestTimestamp, ancillaryData, bond);
         }
     }
 
@@ -489,7 +477,6 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         // Send out a new price request with the new request timestamp
         _requestPrice(
             address(this),
-            UmaConstants.YesOrNoIdentifier,
             requestTimestamp,
             questionData.ancillaryData,
             questionData.rewardToken,
