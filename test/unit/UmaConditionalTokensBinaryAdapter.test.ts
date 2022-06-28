@@ -1016,5 +1016,52 @@ describe("", function () {
                 expect(await questionData.resolved).eq(true);
             });
         });
+
+        describe("Withdraw scenarios", function () {
+            let testRewardToken: TestERC20;
+            let umaCtfAdapter: UmaCtfAdapter;
+
+            before(async function () {
+                const deployment = await setup();
+                testRewardToken = deployment.testRewardToken;
+                umaCtfAdapter = deployment.umaCtfAdapter;
+            });
+
+            it("successfully withdraws tokens from the Adapter if authed", async function () {
+                // Mock a refund on dispute, by sending tokens to the adapter
+                const refund = ethers.utils.parseEther("10");
+                await (
+                    await testRewardToken.connect(this.signers.admin).transfer(umaCtfAdapter.address, refund)
+                ).wait();
+
+                const to = ethers.Wallet.createRandom();
+                const balance = await testRewardToken.balanceOf(to.address);
+
+                // Withdraw tokens
+                expect(await umaCtfAdapter.withdrawTokens(testRewardToken.address, to.address, refund))
+                    .to.emit(umaCtfAdapter, "TokensWithdrawn")
+                    .withArgs(testRewardToken.address, to.address, refund)
+                    .and.to.emit(testRewardToken.address, "Transfer")
+                    .withArgs(umaCtfAdapter.address, this.signers.admin.address, refund);
+
+                // Verify chain state after withdrawing
+                const balancePost = await testRewardToken.balanceOf(to.address);
+                expect(balancePost.sub(balance)).to.eq(refund);
+            });
+
+            it("reverts withdrawTokens if not authed", async function () {
+                // Mock a refund on dispute, by sending tokens to the adapter
+                const refund = ethers.utils.parseEther("10");
+                await (
+                    await testRewardToken.connect(this.signers.admin).transfer(umaCtfAdapter.address, refund)
+                ).wait();
+
+                await expect(
+                    umaCtfAdapter
+                        .connect(this.signers.tester)
+                        .withdrawTokens(testRewardToken.address, ethers.Wallet.createRandom().address, refund),
+                ).to.be.revertedWith("Adapter/not-authorized");
+            });
+        });
     });
 });

@@ -101,6 +101,9 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /// @notice Emitted when a question is resolved
     event QuestionResolved(bytes32 indexed questionID, bool indexed emergencyReport);
 
+    /// @notice Emitted when tokens are withdrawn from the Adapter
+    event TokensWithdrawn(address token, address to, uint256 value);
+
     constructor(address _ctf, address _finder) {
         ctf = IConditionalTokens(_ctf);
         optimisticOracle = OptimisticOracleV2Interface(
@@ -354,6 +357,15 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
         QuestionData storage questionData = questions[questionID];
         questionData.paused = false;
         emit QuestionUnpaused(questionID);
+    }
+
+    /// @notice Allows an authorized user to withdraw tokens left over on the contract
+    /// @param token    - The contract address of the token to be withdrawn
+    /// @param to       - The destination address
+    /// @param value    - The amount to be withdrawn
+    function withdrawTokens(address token, address to, uint256 value) external auth {
+        TransferHelper.safeTransfer(token, to, value);
+        emit TokensWithdrawn(token, to, value);
     }
 
     /*///////////////////////////////////////////////////////////////////
