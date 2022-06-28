@@ -363,7 +363,11 @@ contract UmaCtfAdapter is Auth, ReentrancyGuard {
     /// @param token    - The contract address of the token to be withdrawn
     /// @param to       - The destination address
     /// @param value    - The amount to be withdrawn
-    function withdrawTokens(address token, address to, uint256 value) external auth {
+    function withdrawTokens(
+        address token,
+        address to,
+        uint256 value
+    ) external auth {
         TransferHelper.safeTransfer(token, to, value);
         emit TokensWithdrawn(token, to, value);
     }
