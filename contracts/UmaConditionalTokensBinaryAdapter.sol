@@ -205,7 +205,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, Reen
     /// @notice Resolves the underlying CTF market
     /// @param questionID   - The unique questionID of the question
     /// @param questionData - The question data parameters
-    function _reportPayouts(
+    function _resolve(
         bytes32 questionID,
         int256 price,
         QuestionData storage questionData
@@ -392,14 +392,15 @@ contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, Reen
     /// @param questionID   - The unique questionID
     /// @param questionData - The question data parameters
     function _settle(bytes32 questionID, QuestionData storage questionData) internal {
-        // Get the price from the OO
+        // Settles the price on the OO
         int256 price = optimisticOracle.settleAndGetPrice(
             UmaConstants.YesOrNoIdentifier,
             questionData.requestTimestamp,
             questionData.ancillaryData
         );
 
-        _reportPayouts(questionID, price, questionData);
+        // Resolve the underlying market with the OO price
+        _resolve(questionID, price, questionData);
     }
 
     /// @notice Reset the question by updating the requestTimestamp field and sending a new price request to the OO
