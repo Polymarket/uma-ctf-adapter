@@ -7,24 +7,7 @@ on:
         branches: "*"
 
 jobs:
-    lint-contracts-typescript:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v2
-              with:
-                  persist-credentials: false
-            - name: Install node
-              uses: actions/setup-node@v1
-              with:
-                  node-version: 16
-            - name: Install dependencies
-              run: yarn
-            - name: Typechain
-              run: yarn typechain
-            - name: Lint Typescript
-              run: yarn lint:ts
-    lint-contracts-solidity:
+    lint:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
@@ -38,9 +21,4 @@ jobs:
             - name: Install dependencies
               run: yarn
             - name: Lint Solidity
-              run: yarn lint:sol
-
-env:
-    MNEMONIC: "test test test test test test test test test test test test"
-    INFURA_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-    MATICVIGIL_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+              run: yarn lint

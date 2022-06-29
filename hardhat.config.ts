@@ -49,7 +49,15 @@ const config: HardhatUserConfig = {
             {
                 version: "0.8.10",
                 settings: {
-                    // https://hardhat.org/hardhat-network/#solidity-optimizer-support
+                    optimizer: {
+                        enabled: true,
+                        runs: 1000,
+                    },
+                },
+            },
+            {
+                version: "0.8.0",
+                settings: {
                     optimizer: {
                         enabled: true,
                         runs: 1000,

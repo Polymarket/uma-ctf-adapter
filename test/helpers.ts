@@ -2,19 +2,27 @@ import { MockContract } from "ethereum-waffle";
 import { BigNumber, Contract, Signer } from "ethers";
 import { deployments, ethers, waffle } from "hardhat";
 
+export interface RequestSettings {
+    eventBased: boolean;
+    refundOnDispute: boolean;
+    callbackOnPriceProposed: boolean;
+    callbackOnPriceDisputed: boolean;
+    callbackOnPriceSettled: boolean;
+    bond: number;
+    customLiveness: number;
+}
+
 export interface Request {
     proposer: string;
     disputer: string;
     currency: string;
     settled: boolean;
-    refundOnDispute: boolean;
+    requestSettings: RequestSettings;
     proposedPrice: number | BigNumber;
     resolvedPrice: BigNumber;
     expirationTime: number;
     reward: number;
     finalFee: number;
-    bond: number;
-    customLiveness: number;
 }
 
 export function createQuestionID(title: string, description: string): string {
@@ -29,15 +37,6 @@ export function createAncillaryData(title: string, description: string): Uint8Ar
     return ethers.utils.toUtf8Bytes(`q: ${title}d: ${description}`);
 }
 
-export async function prepareCondition(
-    conditionalTokens: Contract,
-    oracle: string,
-    title: string,
-    description: string,
-): Promise<void> {
-    const questionID = createQuestionID(title, description);
-    await conditionalTokens.prepareCondition(oracle, questionID, 2);
-}
 
 export async function initializeQuestion(
     adapter: Contract,
@@ -46,27 +45,10 @@ export async function initializeQuestion(
     rewardAddress: string,
     reward: BigNumber,
     proposalBond: BigNumber,
-    resolutionTime?: number,
-    earlyExpiryEnabled?: boolean,
 ): Promise<string> {
     const questionID = createQuestionID(title, description);
-    const defaultResolutionTime = Math.floor(new Date().getTime() / 1000) + 1000;
-
-    const resTime = resolutionTime != null ? resolutionTime : defaultResolutionTime;
     const ancillaryData = createAncillaryData(title, description);
-    const earlyExpiry = earlyExpiryEnabled === undefined ? false : earlyExpiryEnabled;
-    await (
-        await adapter.initializeQuestion(
-            questionID,
-            ancillaryData,
-            resTime,
-            rewardAddress,
-            reward,
-            proposalBond,
-            earlyExpiry,
-        )
-    ).wait();
-
+    await (await adapter.initializeQuestion(questionID, ancillaryData, rewardAddress, reward, proposalBond)).wait();
     return questionID;
 }
 
@@ -102,29 +84,29 @@ export async function deployMock(contractName: string, connect?: Signer): Promis
 
 export function getMockRequest(): Request {
     const randAddress = ethers.Wallet.createRandom().address;
+    const settings: RequestSettings = {
+        eventBased: true,
+        refundOnDispute: true,
+        callbackOnPriceProposed: false,
+        callbackOnPriceDisputed: false,
+        callbackOnPriceSettled: false,
+        bond: 1,
+        customLiveness: 1,
+    };
+
     return {
         proposer: randAddress,
-        disputer: randAddress,
+        disputer: ethers.constants.AddressZero,
         currency: randAddress,
         settled: false,
-        refundOnDispute: false,
+        requestSettings: settings,
         proposedPrice: 1,
         // resolved prices must be scaled by 1e18
         resolvedPrice: ethers.utils.parseEther("1"),
         expirationTime: 1,
         reward: 0,
         finalFee: 1,
-        bond: 1,
-        customLiveness: 1,
     };
-}
-
-export async function takeSnapshot(): Promise<string> {
-    return ethers.provider.send("evm_snapshot", []);
-}
-
-export async function revertToSnapshot(snapshot: string): Promise<void> {
-    await ethers.provider.send("evm_revert", [snapshot]);
 }
 
 export async function hardhatIncreaseTime(secondsToIncrease: number): Promise<void> {

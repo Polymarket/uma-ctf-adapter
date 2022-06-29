@@ -1,7 +1,7 @@
 {
     "name": "@polymarket/uma-ctf-binary-adapter",
-    "description": "Contracts to resolve Polymarket prediction markets via UMA",
-    "version": "1.0.1",
+    "description": "Contracts to resolve Polymarket prediction markets via UMA's Optimistic Oracle",
+    "version": "2.0.0",
     "contributors": [
         {
             "name": "Jonathan Amenechi",
@@ -13,8 +13,6 @@
         }
     ],
     "devDependencies": {
-        "@commitlint/cli": "^9.1.2",
-        "@commitlint/config-conventional": "^9.1.2",
         "@ethersproject/abstract-signer": "^5.0.6",
         "@ethersproject/bignumber": "^5.0.8",
         "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
@@ -75,13 +73,11 @@
     "license": "MIT",
     "scripts": {
         "clean": "hardhat clean",
+        "lint": "solhint --config ./.solhint.json --max-warnings 0 \"contracts/**/*.sol\"",
         "compile": "hardhat compile",
-        "coverage": "hardhat coverage --solcoverjs ./.solcover.js --temp artifacts --testfiles \"./test/**/*.ts\"",
-        "lint": "yarn run lint:sol && yarn run lint:ts && yarn run prettier:list-different",
-        "lint:sol": "solhint --config ./.solhint.json --max-warnings 0 \"contracts/**/*.sol\"",
-        "lint:ts": "eslint --config ./.eslintrc.yaml --ignore-path ./.eslintignore .",
-        "test": "hardhat test",
         "typechain": "hardhat typechain",
+        "test": "hardhat test",
+        "coverage": "hardhat coverage --solcoverjs ./.solcover.js --temp artifacts --testfiles \"./test/**/*.ts\"",
         "deploy": "hardhat deploy"
     }
 }
