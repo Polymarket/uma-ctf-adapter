@@ -169,6 +169,7 @@ describe("", function () {
                 const returnedQuestionData = await umaCtfAdapter.questions(questionID);
 
                 // Verify question data stored
+                expect(returnedQuestionData.creator).eq(this.signers.admin.address);
                 expect(returnedQuestionData.ancillaryData).eq(ancillaryDataHexlified);
                 expect(returnedQuestionData.requestTimestamp).gt(0);
                 expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
@@ -205,6 +206,7 @@ describe("", function () {
                 const returnedQuestionData = await umaCtfAdapter.questions(questionID);
 
                 // Verify question data stored
+                expect(returnedQuestionData.creator).eq(this.signers.admin.address);
                 expect(returnedQuestionData.ancillaryData).eq(ancillaryDataHexlified);
                 expect(returnedQuestionData.requestTimestamp).gt(0);
                 expect(returnedQuestionData.rewardToken).eq(testRewardToken.address);
@@ -566,143 +568,6 @@ describe("", function () {
                     "Adapter/same-block-settle-report",
                 );
             });
-
-            it("should correctly update the question", async function () {
-                const title = ethers.utils.randomBytes(10).toString();
-                const desc = ethers.utils.randomBytes(20).toString();
-                const ancillaryData = createAncillaryData(title, desc);
-
-                const questionID = await initializeQuestion(
-                    umaCtfAdapter,
-                    title,
-                    desc,
-                    testRewardToken.address,
-                    ethers.constants.Zero,
-                    ethers.constants.Zero,
-                );
-
-                const newReward = ethers.utils.parseEther("1");
-                const newProposalBond = ethers.utils.parseEther("100.0");
-                const callerBalance = await testRewardToken.balanceOf(this.signers.admin.address);
-
-                // Updating a question will kick off a new price request to the Optimistic Oracle
-                // Note: the original price request stil exists, but it will not be considered in the resolution of the question
-                // Important to note that the reward for the original request will not be refunded
-                expect(
-                    await umaCtfAdapter
-                        .connect(this.signers.admin)
-                        .updateQuestion(questionID, ancillaryData, testRewardToken.address, newReward, newProposalBond),
-                )
-                    .to.emit(umaCtfAdapter, "QuestionUpdated") // Emit QuestionUpdated from the Adapter
-                    .and.to.emit(testRewardToken, "Transfer") // Transfer the new price request reward from caller to the Adapter
-                    .withArgs(this.signers.admin.address, umaCtfAdapter.address, newReward);
-
-                const questionData = await umaCtfAdapter.questions(questionID);
-
-                // Verify updated properties on the question data
-                expect(questionData.reward.toString()).to.eq(newReward.toString());
-                expect(questionData.proposalBond).to.eq(newProposalBond.toString());
-
-                // Verify flags on the question data
-                expect(questionData.settled).to.eq(0);
-                expect(questionData.resolved).to.eq(false);
-                expect(questionData.requestTimestamp).to.gt(0);
-                expect(questionData.paused).to.eq(false);
-
-                // Verify new price request was paid for
-                const callerBalancePost = await testRewardToken.balanceOf(this.signers.admin.address);
-                expect(callerBalance.sub(callerBalancePost).toString()).to.eq(newReward.toString());
-            });
-
-            it("update reverts if not initialized", async function () {
-                await expect(
-                    umaCtfAdapter
-                        .connect(this.signers.admin)
-                        .updateQuestion(
-                            HashZero,
-                            ethers.utils.randomBytes(10),
-                            testRewardToken.address,
-                            ethers.constants.Zero,
-                            ethers.constants.Zero,
-                        ),
-                ).to.be.revertedWith("Adapter/not-initialized");
-            });
-
-            it("update revert scenarios", async function () {
-                const title = ethers.utils.randomBytes(5).toString();
-                const desc = ethers.utils.randomBytes(10).toString();
-                const questionID = await initializeQuestion(
-                    umaCtfAdapter,
-                    title,
-                    desc,
-                    testRewardToken.address,
-                    ethers.constants.Zero,
-                    ethers.constants.Zero,
-                );
-
-                const newReward = ethers.utils.parseEther("1");
-                const newProposalBond = ethers.utils.parseEther("100.0");
-
-                // Update reverts if not an admin
-                await expect(
-                    umaCtfAdapter
-                        .connect(this.signers.tester)
-                        .updateQuestion(
-                            questionID,
-                            ethers.utils.randomBytes(10),
-                            testRewardToken.address,
-                            newReward,
-                            newProposalBond,
-                        ),
-                ).to.be.revertedWith("Adapter/not-authorized");
-
-                // reverts if unsupported token
-                await whitelist.mock.isOnWhitelist.returns(false);
-                await expect(
-                    umaCtfAdapter
-                        .connect(this.signers.admin)
-                        .updateQuestion(
-                            questionID,
-                            ethers.utils.randomBytes(10),
-                            ethers.Wallet.createRandom().address,
-                            newReward,
-                            newProposalBond,
-                        ),
-                ).to.be.revertedWith("Adapter/unsupported-token");
-
-                await whitelist.mock.isOnWhitelist.returns(true);
-
-                // reverts if invalid ancillary data invalid
-                await expect(
-                    umaCtfAdapter
-                        .connect(this.signers.admin)
-                        .updateQuestion(
-                            questionID,
-                            ethers.utils.randomBytes(0),
-                            testRewardToken.address,
-                            newReward,
-                            newProposalBond,
-                        ),
-                ).to.be.revertedWith("Adapter/invalid-ancillary-data");
-
-                await optimisticOracle.mock.hasPrice.returns(true);
-                await optimisticOracle.mock.getRequest.returns(getMockRequest());
-                await optimisticOracle.mock.settleAndGetPrice.returns(1);
-                await (await umaCtfAdapter.settle(questionID)).wait();
-
-                // reverts if the question is already settled
-                await expect(
-                    umaCtfAdapter
-                        .connect(this.signers.admin)
-                        .updateQuestion(
-                            questionID,
-                            ethers.utils.randomBytes(10),
-                            testRewardToken.address,
-                            newReward,
-                            newProposalBond,
-                        ),
-                ).to.be.revertedWith("Adapter/already-settled");
-            });
         });
 
         describe("Resolution scenarios", function () {
@@ -977,6 +842,7 @@ describe("", function () {
                 expect(requestTimestamp).to.be.gt(originalRequestTimestamp);
 
                 // But all other question data is the same
+                expect(questionData.creator).to.be.eq(questionDataUpdated.creator);
                 expect(questionData.ancillaryData).to.be.eq(questionDataUpdated.ancillaryData);
                 expect(questionData.reward).to.be.eq(questionDataUpdated.reward);
                 expect(questionData.rewardToken).to.be.eq(questionDataUpdated.rewardToken);
@@ -1017,50 +883,54 @@ describe("", function () {
             });
         });
 
-        describe("Withdraw scenarios", function () {
+        describe("Ancillary data update scenarios", function () {
             let testRewardToken: TestERC20;
             let umaCtfAdapter: UmaCtfAdapter;
+            let questionID: string;
 
             before(async function () {
                 const deployment = await setup();
                 testRewardToken = deployment.testRewardToken;
                 umaCtfAdapter = deployment.umaCtfAdapter;
+
+                // Initialize the question
+                questionID = await initializeQuestion(
+                    umaCtfAdapter,
+                    ethers.utils.randomBytes(5).toString(),
+                    ethers.utils.randomBytes(10).toString(),
+                    testRewardToken.address,
+                    ethers.utils.parseEther("10.0"),
+                    ethers.utils.parseEther("1000.0"),
+                );
             });
 
-            it("successfully withdraws tokens from the Adapter if authed", async function () {
-                // Mock a refund on dispute, by sending tokens to the adapter
-                const refund = ethers.utils.parseEther("10");
-                await (
-                    await testRewardToken.connect(this.signers.admin).transfer(umaCtfAdapter.address, refund)
-                ).wait();
+            it("posts an ancillary data update for a questionID", async function () {
+                const newAncillaryData = ethers.utils.randomBytes(20);
 
-                const to = ethers.Wallet.createRandom();
-                const balance = await testRewardToken.balanceOf(to.address);
+                // Post an update
+                expect(await umaCtfAdapter.connect(this.signers.admin).postUpdate(questionID, newAncillaryData))
+                    .to.emit(umaCtfAdapter, "AncillaryDataUpdated")
+                    .withArgs(questionID, this.signers.admin.address, newAncillaryData);
 
-                // Withdraw tokens
-                expect(await umaCtfAdapter.withdrawTokens(testRewardToken.address, to.address, refund))
-                    .to.emit(umaCtfAdapter, "TokensWithdrawn")
-                    .withArgs(testRewardToken.address, to.address, refund)
-                    .and.to.emit(testRewardToken.address, "Transfer")
-                    .withArgs(umaCtfAdapter.address, this.signers.admin.address, refund);
+                // Verify chain state
+                const updates = await umaCtfAdapter.getUpdates(questionID, this.signers.admin.address);
+                expect(updates.length).to.eq(1);
+                expect(updates[0].update).to.eq(ethers.utils.hexlify(newAncillaryData));
 
-                // Verify chain state after withdrawing
-                const balancePost = await testRewardToken.balanceOf(to.address);
-                expect(balancePost.sub(balance)).to.eq(refund);
+                // Verify result when fetching a non-existent questionID
+                const result = await umaCtfAdapter.getUpdates(HashZero, this.signers.admin.address);
+                expect(result.length).to.eq(0);
             });
 
-            it("reverts withdrawTokens if not authed", async function () {
-                // Mock a refund on dispute, by sending tokens to the adapter
-                const refund = ethers.utils.parseEther("10");
-                await (
-                    await testRewardToken.connect(this.signers.admin).transfer(umaCtfAdapter.address, refund)
-                ).wait();
+            it("successfully retrieves the latest ancillary data update", async function () {
+                // Verify chain state
+                const update = await umaCtfAdapter.getLatestUpdate(questionID, this.signers.admin.address);
+                expect(update.update).to.not.eq(null);
 
-                await expect(
-                    umaCtfAdapter
-                        .connect(this.signers.tester)
-                        .withdrawTokens(testRewardToken.address, ethers.Wallet.createRandom().address, refund),
-                ).to.be.revertedWith("Adapter/not-authorized");
+                // Verify result when fetching a non-existent questionID
+                const nonExistentUpdate = await umaCtfAdapter.getLatestUpdate(HashZero, this.signers.admin.address);
+                expect(nonExistentUpdate.timestamp).to.eq(0);
+                expect(nonExistentUpdate.update).to.eq("0x");
             });
         });
     });

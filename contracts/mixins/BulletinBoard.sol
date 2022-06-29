@@ -36,10 +36,7 @@ abstract contract BulletinBoard {
     function getLatestUpdate(bytes32 questionID, address owner) external view returns (AncillaryDataUpdate memory) {
         AncillaryDataUpdate[] memory currentUpdates = getUpdates(questionID, owner);
         if (currentUpdates.length == 0) {
-            return AncillaryDataUpdate({
-                timestamp: 0,
-                update: ""
-            });
+            return AncillaryDataUpdate({ timestamp: 0, update: "" });
         }
         return currentUpdates[currentUpdates.length - 1];
     }

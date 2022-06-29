@@ -53,6 +53,8 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
         bool paused;
         /// @notice ERC20 token address used for payment of rewards, proposal bonds and fees
         address rewardToken;
+        /// @notice The address of the question creator
+        address creator;
         /// @notice Data used to resolve a condition
         bytes ancillaryData;
     }
@@ -68,16 +70,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
     event QuestionInitialized(
         bytes32 indexed questionID,
         uint256 indexed requestTimestamp,
-        bytes ancillaryData,
-        address rewardToken,
-        uint256 reward,
-        uint256 proposalBond
-    );
-
-    /// @notice Emitted when a questionID is updated
-    event QuestionUpdated(
-        bytes32 indexed questionID,
-        uint256 requestTimestamp,
+        address indexed creator,
         bytes ancillaryData,
         address rewardToken,
         uint256 reward,
@@ -128,7 +121,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
     /// @param ancillaryData - Data used to resolve a question
     /// @param rewardToken   - ERC20 token address used for payment of rewards and fees
     /// @param reward        - Reward offered to a successful proposer
-    /// @param proposalBond  - Bond required to be posted by a price proposer and disputer
+    /// @param proposalBond  - Bond required to be posted by OO proposers/disputers. If 0, the default OO bond is used.
     function initializeQuestion(
         bytes32 questionID,
         bytes memory ancillaryData,
@@ -146,7 +139,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
         uint256 requestTimestamp = block.timestamp;
 
         // Save the question parameters in storage
-        _saveQuestion(questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
+        _saveQuestion(msg.sender, questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
 
         // Prepare the question on the CTF
         _prepareQuestion(questionID);
@@ -154,7 +147,15 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
         // Request a price for the question from the OO
         _requestPrice(msg.sender, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
 
-        emit QuestionInitialized(questionID, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
+        emit QuestionInitialized(
+            questionID,
+            requestTimestamp,
+            msg.sender,
+            ancillaryData,
+            rewardToken,
+            reward,
+            proposalBond
+        );
     }
 
     /// @notice Checks whether a questionID is ready to be settled
@@ -281,40 +282,6 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
                             AUTHORIZED FUNCTIONS 
     ///////////////////////////////////////////////////////////////////*/
 
-    /// @notice Allows an authorized user to update a question
-    /// This will remove the old question data from the Adapter and send a new price request to the OO.
-    /// Note: the previous price request will still exist on the OO, will not be considered by the Adapter
-    /// @param questionID             - The unique questionID of the question
-    /// @param ancillaryData          - Data used to resolve a question
-    /// @param rewardToken            - ERC20 token address used for payment of rewards and fees
-    /// @param reward                 - Reward offered to a successful proposer
-    /// @param proposalBond           - Bond required to be posted by a price proposer and disputer
-    function updateQuestion(
-        bytes32 questionID,
-        bytes memory ancillaryData,
-        address rewardToken,
-        uint256 reward,
-        uint256 proposalBond
-    ) external auth {
-        require(isQuestionInitialized(questionID), AdapterErrors.NotInitialized);
-        require(collateralWhitelist.isOnWhitelist(rewardToken), AdapterErrors.UnsupportedToken);
-        require(
-            ancillaryData.length > 0 && ancillaryData.length <= UmaConstants.AncillaryDataLimit,
-            AdapterErrors.InvalidAncillaryData
-        );
-        require(questions[questionID].settled == 0, AdapterErrors.AlreadySettled);
-
-        uint256 requestTimestamp = block.timestamp;
-
-        // Update question parameters in storage
-        _saveQuestion(questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
-
-        // Request a price from the OO
-        _requestPrice(msg.sender, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
-
-        emit QuestionUpdated(questionID, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
-    }
-
     /// @notice Flags a market for emergency resolution
     /// @param questionID - The unique questionID of the question
     function flagQuestionForEmergencyResolution(bytes32 questionID) external auth {
@@ -360,24 +327,12 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
         emit QuestionUnpaused(questionID);
     }
 
-    /// @notice Allows an authorized user to withdraw tokens left over on the contract
-    /// @param token    - The contract address of the token to be withdrawn
-    /// @param to       - The destination address
-    /// @param value    - The amount to be withdrawn
-    function withdrawTokens(
-        address token,
-        address to,
-        uint256 value
-    ) external auth {
-        TransferHelper.safeTransfer(token, to, value);
-        emit TokensWithdrawn(token, to, value);
-    }
-
     /*///////////////////////////////////////////////////////////////////
                             INTERNAL FUNCTIONS 
     //////////////////////////////////////////////////////////////////*/
 
     function _saveQuestion(
+        address creator,
         bytes32 questionID,
         bytes memory ancillaryData,
         uint256 requestTimestamp,
@@ -386,6 +341,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
         uint256 proposalBond
     ) internal {
         questions[questionID] = QuestionData({
+            creator: creator,
             requestTimestamp: requestTimestamp,
             ancillaryData: ancillaryData,
             rewardToken: rewardToken,
@@ -483,6 +439,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
 
         // Update the question parameters in storage with the new request timestamp
         _saveQuestion(
+            questionData.creator,
             questionID,
             questionData.ancillaryData,
             requestTimestamp,
