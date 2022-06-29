@@ -16,8 +16,6 @@ library AdapterErrors {
 
     string public constant AlreadyInitialized = "Adapter/already-initialized";
 
-    string public constant SameBlockSettleReport = "Adapter/same-block-settle-report";
-
     string public constant UnsupportedToken = "Adapter/unsupported-token";
 
     string public constant InvalidAncillaryData = "Adapter/invalid-ancillary-data";
@@ -33,4 +31,6 @@ library AdapterErrors {
     string public constant Paused = "Adapter/paused";
 
     string public constant InvalidData = "Adapter/invalid-resolution-data";
+
+    string public constant PriceUnavailable = "Adapter/price-unavailable";
 }

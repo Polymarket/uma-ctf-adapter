@@ -14,11 +14,12 @@ import { TransferHelper } from "./libraries/TransferHelper.sol";
 import { FinderInterface } from "./interfaces/FinderInterface.sol";
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { AddressWhitelistInterface } from "./interfaces/AddressWhitelistInterface.sol";
+import { OptimisticCallbackInterface } from "./interfaces/OptimisticCallbackInterface.sol";
 import { OptimisticOracleV2Interface } from "./interfaces/OptimisticOracleV2Interface.sol";
 
 /// @title UmaCtfAdapter
 /// @notice Enables resolution of CTF markets via UMA's Optimistic Oracle
-contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
+contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, ReentrancyGuard {
     /*///////////////////////////////////////////////////////////////////
                             IMMUTABLES 
     //////////////////////////////////////////////////////////////////*/
@@ -43,8 +44,6 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
         uint256 reward;
         /// @notice Additional bond required by Optimistic oracle proposers and disputers
         uint256 proposalBond;
-        /// @notice Flag marking the block number when a question was settled
-        uint256 settled;
         /// @notice Admin Resolution timestamp, set when a market is flagged for admin resolution
         uint256 adminResolutionTimestamp;
         /// @notice Flag marking whether a question is resolved
@@ -89,14 +88,11 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
     /// @notice Emitted when a question is reset
     event QuestionReset(bytes32 indexed questionID);
 
-    /// @notice Emitted when a question is settled
-    event QuestionSettled(bytes32 indexed questionID, int256 indexed settledPrice);
-
     /// @notice Emitted when a question is resolved
-    event QuestionResolved(bytes32 indexed questionID, bool indexed emergencyReport, uint256[] payouts);
+    event QuestionResolved(bytes32 indexed questionID, int256 indexed settledPrice, uint256[] payouts);
 
-    /// @notice Emitted when tokens are withdrawn from the Adapter
-    event TokensWithdrawn(address token, address to, uint256 value);
+    /// @notice Emitted when a question is emergency resolved
+    event QuestionEmergencyResolved(bytes32 indexed questionID, uint256[] payouts);
 
     constructor(address _ctf, address _finder) {
         ctf = IConditionalTokens(_ctf);
@@ -117,26 +113,25 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
     /// If a reward is provided, the caller must have approved the Adapter as spender and have enough rewardToken
     /// to pay for the price request.
     /// Prepares the condition using the Adapter as the oracle and a fixed outcome slot count = 2.
-    /// @param questionID    - The unique questionID of the question
     /// @param ancillaryData - Data used to resolve a question
     /// @param rewardToken   - ERC20 token address used for payment of rewards and fees
     /// @param reward        - Reward offered to a successful proposer
     /// @param proposalBond  - Bond required to be posted by OO proposers/disputers. If 0, the default OO bond is used.
     function initializeQuestion(
-        bytes32 questionID,
         bytes memory ancillaryData,
         address rewardToken,
         uint256 reward,
         uint256 proposalBond
-    ) external nonReentrant {
+    ) external nonReentrant returns (bytes32) {
+        uint256 requestTimestamp = block.timestamp;
+        bytes32 questionID = getQuestionID(requestTimestamp, ancillaryData);
+
         require(!isQuestionInitialized(questionID), AdapterErrors.AlreadyInitialized);
         require(collateralWhitelist.isOnWhitelist(rewardToken), AdapterErrors.UnsupportedToken);
         require(
             ancillaryData.length > 0 && ancillaryData.length <= UmaConstants.AncillaryDataLimit,
             AdapterErrors.InvalidAncillaryData
         );
-
-        uint256 requestTimestamp = block.timestamp;
 
         // Save the question parameters in storage
         _saveQuestion(msg.sender, questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
@@ -156,6 +151,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
             reward,
             proposalBond
         );
+        return questionID;
     }
 
     /// @notice Checks whether a questionID is ready to be settled
@@ -167,103 +163,81 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
 
         QuestionData storage questionData = questions[questionID];
 
-        // Ensure question has not been resolved
-        if (questionData.resolved) {
-            return false;
-        }
-
-        // Ensure question has not been settled
-        if (questionData.settled != 0) {
-            return false;
-        }
-
-        // If the question is disputed by the DVM, do not wait for DVM resolution
-        // instead, immediately flag the question as ready to be settled
-        if (_isDisputed(questionData)) {
-            return true;
-        }
-
         // Check that the OO has an available price
-        return
-            optimisticOracle.hasPrice(
-                address(this),
-                UmaConstants.YesOrNoIdentifier,
-                questionData.requestTimestamp,
-                questionData.ancillaryData
-            );
+        return _hasPrice(questionData);
     }
 
-    /// @notice Settle the question
-    /// Settling a question means that:
-    /// 1. There is an undisputed price available from the OO and so the question can move on to resolution
-    /// 2. The question has been disputed, and a new price request needs to be sent out for the question
+    /// @notice Settle a question
+    /// Pulls price information from the OO and resolves the underlying CTF market.
+    /// Is only available after price information is available on the OO
     /// @param questionID - The unique questionID of the question
-    function settle(bytes32 questionID) external nonReentrant {
+    function settle(bytes32 questionID) external {
         require(readyToSettle(questionID), AdapterErrors.NotReadyToSettle);
 
         QuestionData storage questionData = questions[questionID];
         require(!questionData.paused, AdapterErrors.Paused);
-
-        // If the question is disputed, reset the question
-        if (_isDisputed(questionData)) {
-            return _reset(questionID, questionData);
-        }
+        require(!questionData.resolved, AdapterErrors.AlreadyResolved);
 
         return _settle(questionID, questionData);
     }
 
-    /// @notice Retrieves the expected payout of a settled question
+    /// @notice Retrieves the expected payout array of the question
     /// @param questionID - The unique questionID of the question
     function getExpectedPayouts(bytes32 questionID) public view returns (uint256[] memory) {
         require(isQuestionInitialized(questionID), AdapterErrors.NotInitialized);
         QuestionData storage questionData = questions[questionID];
-
-        require(questionData.settled > 0, AdapterErrors.NotSettled);
+        require(_hasPrice(questionData), AdapterErrors.PriceUnavailable);
         require(!questionData.paused, AdapterErrors.Paused);
 
-        // Fetches resolution data from OO
-        int256 resolutionData = _getResolutionData(questionData);
+        // Fetches price from OO
+        int256 price = optimisticOracle
+            .getRequest(
+                address(this),
+                UmaConstants.YesOrNoIdentifier,
+                questionData.requestTimestamp,
+                questionData.ancillaryData
+            )
+            .resolvedPrice;
 
-        // Payouts: [YES, NO]
-        uint256[] memory payouts = new uint256[](2);
-
-        // Valid prices are 0, 0.5 and 1
-        require(
-            resolutionData == 0 || resolutionData == 0.5 ether || resolutionData == 1 ether,
-            AdapterErrors.InvalidData
-        );
-
-        if (resolutionData == 0) {
-            // NO: Report [Yes, No] as [0, 1]
-            payouts[0] = 0;
-            payouts[1] = 1;
-        } else if (resolutionData == 0.5 ether) {
-            // UNKNOWN: Report [Yes, No] as [1, 1], 50/50
-            payouts[0] = 1;
-            payouts[1] = 1;
-        } else {
-            // YES: Report [Yes, No] as [1, 0]
-            payouts[0] = 1;
-            payouts[1] = 0;
-        }
-        return payouts;
+        return _constructPayoutArray(price);
     }
 
-    /// @notice Resolves a question
-    /// @param questionID - The unique questionID of the question
-    function reportPayouts(bytes32 questionID) external {
+    /// @notice Resolves the underlying CTF market
+    /// @param questionID   - The unique questionID of the question
+    /// @param questionData - The question data parameters
+    function _reportPayouts(
+        bytes32 questionID,
+        int256 price,
+        QuestionData storage questionData
+    ) internal {
+        // Construct the payout array for the question
+        uint256[] memory payouts = _constructPayoutArray(price);
+
+        // Set resolved flag
+        questionData.resolved = true;
+
+        // Resolve the underlying CTF market
+        ctf.reportPayouts(questionID, payouts);
+
+        emit QuestionResolved(questionID, price, payouts);
+    }
+
+    /// @notice Callback which is executed when there is a dispute on an OO price request originating from the Adapter
+    /// Resets the question and sends out a new price request to the OO
+    /// @param timestamp        - Timestamp of the request
+    /// @param ancillaryData    - Ancillary data of the request
+    function priceDisputed(
+        bytes32,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        uint256
+    ) external {
+        require(msg.sender == address(optimisticOracle), "Adapter/invalid-callback-caller");
+        bytes32 questionID = getQuestionID(timestamp, ancillaryData);
         QuestionData storage questionData = questions[questionID];
 
-        require(!questionData.resolved, AdapterErrors.AlreadyResolved);
-        require(block.number > questionData.settled, AdapterErrors.SameBlockSettleReport);
-
-        // Payouts: [YES, NO]
-        // getExpectedPayouts verifies that questionID is settled and can be resolved
-        uint256[] memory payouts = getExpectedPayouts(questionID);
-
-        questionData.resolved = true;
-        ctf.reportPayouts(questionID, payouts);
-        emit QuestionResolved(questionID, false, payouts);
+        // Upon dispute, immediately reset the question, sending out a new price request
+        _reset(questionID, questionData);
     }
 
     /// @notice Checks if a question is initialized
@@ -276,6 +250,10 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
     /// @param questionID - The unique questionID
     function isQuestionFlaggedForEmergencyResolution(bytes32 questionID) public view returns (bool) {
         return questions[questionID].adminResolutionTimestamp > 0;
+    }
+
+    function getQuestionID(uint256 timestamp, bytes memory ancillaryData) public view returns (bytes32) {
+        return keccak256(abi.encode(address(this), UmaConstants.YesOrNoIdentifier, timestamp, ancillaryData));
     }
 
     /*////////////////////////////////////////////////////////////////////
@@ -305,7 +283,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
 
         questionData.resolved = true;
         ctf.reportPayouts(questionID, payouts);
-        emit QuestionResolved(questionID, true, payouts);
+        emit QuestionEmergencyResolved(questionID, payouts);
     }
 
     /// @notice Allows an authorized user to pause market resolution in an emergency
@@ -349,7 +327,6 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
             proposalBond: proposalBond,
             resolved: false,
             paused: false,
-            settled: 0,
             adminResolutionTimestamp: 0
         });
     }
@@ -395,6 +372,16 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
         // Ensure the price request is event based
         optimisticOracle.setEventBased(UmaConstants.YesOrNoIdentifier, requestTimestamp, ancillaryData);
 
+        // Ensure that the dispute callback is set
+        optimisticOracle.setCallbacks(
+            UmaConstants.YesOrNoIdentifier,
+            requestTimestamp,
+            ancillaryData,
+            false, // DO NOT set callback on priceProposed
+            true, // DO set callback on priceDisputed
+            false // DO NOT set callback on priceSettled
+        );
+
         // Update the proposal bond on the Optimistic oracle if necessary
         if (bond > 0) {
             optimisticOracle.setBond(UmaConstants.YesOrNoIdentifier, requestTimestamp, ancillaryData, bond);
@@ -403,7 +390,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
 
     /// @notice Settles the question
     /// @param questionID   - The unique questionID
-    /// @param questionData - The question parameters
+    /// @param questionData - The question data parameters
     function _settle(bytes32 questionID, QuestionData storage questionData) internal {
         // Get the price from the OO
         int256 price = optimisticOracle.settleAndGetPrice(
@@ -412,32 +399,15 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
             questionData.ancillaryData
         );
 
-        // Set the settled block number
-        questionData.settled = block.number;
-
-        emit QuestionSettled(questionID, price);
+        _reportPayouts(questionID, price, questionData);
     }
 
-    /// @notice Checks if the request of a question is disputed
-    /// @param questionData - The question parameters
-    function _isDisputed(QuestionData storage questionData) internal view returns (bool) {
-        return
-            optimisticOracle
-                .getRequest(
-                    address(this),
-                    UmaConstants.YesOrNoIdentifier,
-                    questionData.requestTimestamp,
-                    questionData.ancillaryData
-                )
-                .disputer != address(0);
-    }
-
-    /// @notice Reset the question by updating the requestTimestamp field and sending out a new price request to the OO
+    /// @notice Reset the question by updating the requestTimestamp field and sending a new price request to the OO
     /// @param questionID - The unique questionID
     function _reset(bytes32 questionID, QuestionData storage questionData) internal {
         uint256 requestTimestamp = block.timestamp;
 
-        // Update the question parameters in storage with the new request timestamp
+        // Update the question parameters in storage with a new request timestamp
         _saveQuestion(
             questionData.creator,
             questionID,
@@ -457,22 +427,40 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
             questionData.reward,
             questionData.proposalBond
         );
-
-        emit QuestionReset(questionID);
     }
 
-    /// @notice Gets resolution data for the question from the OO
-    /// @param questionData - The parameters of the question
-    function _getResolutionData(QuestionData storage questionData) internal view returns (int256) {
+    function _hasPrice(QuestionData storage questionData) internal view returns (bool) {
         return
-            optimisticOracle
-                .getRequest(
-                    address(this),
-                    UmaConstants.YesOrNoIdentifier,
-                    questionData.requestTimestamp,
-                    questionData.ancillaryData
-                )
-                .resolvedPrice;
+            optimisticOracle.hasPrice(
+                address(this),
+                UmaConstants.YesOrNoIdentifier,
+                questionData.requestTimestamp,
+                questionData.ancillaryData
+            );
+    }
+
+    function _constructPayoutArray(int256 price) internal pure returns (uint256[] memory) {
+        // Payouts: [YES, NO]
+        uint256[] memory payouts = new uint256[](2);
+
+        // Valid prices are 0, 0.5 and 1
+        require(price == 0 || price == 0.5 ether || price == 1 ether, AdapterErrors.InvalidData);
+
+        if (price == 0) {
+            // NO: Report [Yes, No] as [0, 1]
+            payouts[0] = 0;
+            payouts[1] = 1;
+        } else if (price == 0.5 ether) {
+            // UNKNOWN: Report [Yes, No] as [1, 1], 50/50
+            payouts[0] = 1;
+            payouts[1] = 1;
+        } else {
+            // YES: Report [Yes, No] as [1, 0]
+            payouts[0] = 1;
+            payouts[1] = 0;
+        }
+
+        return payouts;
     }
 
     /// @notice Prepares the question on the CTF
