@@ -918,7 +918,7 @@ describe("", function () {
                 expect(updates[0].update).to.eq(ethers.utils.hexlify(newAncillaryData));
 
                 // Verify result when fetching a non-existent questionID
-                const result = await umaCtfAdapter.getUpdates(HashZero, this.signers.admin.address);
+                const result = await umaCtfAdapter.getUpdates(HashZero, ethers.Wallet.createRandom().address);
                 expect(result.length).to.eq(0);
             });
 

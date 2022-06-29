@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 /// @title Bulletin Board
-/// @notice A registry containing ancillary data updates for questions
+/// @notice A registry containing ancillary data updates
 abstract contract BulletinBoard {
     struct AncillaryDataUpdate {
         uint256 timestamp;
@@ -16,6 +16,7 @@ abstract contract BulletinBoard {
     event AncillaryDataUpdated(bytes32 indexed questionID, address indexed owner, bytes update);
 
     /// @notice Post an update for the question
+    /// Anyone can post an update for any questionID, but users should only consider updates posted by the question creator
     /// @param questionID   - The unique questionID
     /// @param update       - The update for the question
     function postUpdate(bytes32 questionID, bytes memory update) external {

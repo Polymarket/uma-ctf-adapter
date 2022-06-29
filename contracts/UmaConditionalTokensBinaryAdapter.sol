@@ -128,7 +128,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
         address rewardToken,
         uint256 reward,
         uint256 proposalBond
-    ) external {
+    ) external nonReentrant {
         require(!isQuestionInitialized(questionID), AdapterErrors.AlreadyInitialized);
         require(collateralWhitelist.isOnWhitelist(rewardToken), AdapterErrors.UnsupportedToken);
         require(
@@ -168,7 +168,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
         QuestionData storage questionData = questions[questionID];
 
         // Ensure question has not been resolved
-        if (questionData.resolved == true) {
+        if (questionData.resolved) {
             return false;
         }
 
