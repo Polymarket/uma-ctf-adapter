@@ -619,7 +619,7 @@ describe("", function () {
                     .to.emit(ctf, "ConditionResolution")
                     .withArgs(conditionID, umaCtfAdapter.address, questionID, 2, [1, 0])
                     .and.to.emit(umaCtfAdapter, "QuestionResolved")
-                    .withArgs(questionID, false);
+                    .withArgs(questionID, false, [1, 0]);
             });
 
             it("should correctly report [0,1] when NO", async function () {
@@ -632,7 +632,7 @@ describe("", function () {
                     .to.emit(ctf, "ConditionResolution")
                     .withArgs(conditionID, umaCtfAdapter.address, questionID, 2, [0, 1])
                     .and.to.emit(umaCtfAdapter, "QuestionResolved")
-                    .withArgs(questionID, false);
+                    .withArgs(questionID, false, [0, 1]);
             });
 
             it("should correctly report [1,1] when UNKNOWN", async function () {
@@ -646,7 +646,7 @@ describe("", function () {
                     .to.emit(ctf, "ConditionResolution")
                     .withArgs(conditionID, umaCtfAdapter.address, questionID, 2, [1, 1])
                     .and.to.emit(umaCtfAdapter, "QuestionResolved")
-                    .withArgs(questionID, false);
+                    .withArgs(questionID, false, [1, 1]);
             });
 
             it("reportPayouts reverts if the question has been previously resolved", async function () {
@@ -705,7 +705,7 @@ describe("", function () {
                 const payouts = [1, 0];
                 expect(await umaCtfAdapter.emergencyReportPayouts(questionID, payouts))
                     .to.emit(umaCtfAdapter, "QuestionResolved")
-                    .withArgs(questionID, true);
+                    .withArgs(questionID, true, payouts);
 
                 // Verify resolved flag on the QuestionData struct has been updated
                 expect((await umaCtfAdapter.questions(questionID)).resolved).eq(true);
@@ -725,7 +725,7 @@ describe("", function () {
                 const payouts = [1, 0];
                 expect(await umaCtfAdapter.emergencyReportPayouts(questionID, payouts))
                     .to.emit(umaCtfAdapter, "QuestionResolved")
-                    .withArgs(questionID, true);
+                    .withArgs(questionID, true, payouts);
 
                 // Verify resolved flag on the QuestionData struct has been updated
                 const questionData = await umaCtfAdapter.questions(questionID);
@@ -876,7 +876,7 @@ describe("", function () {
             it("should report payouts correctly", async function () {
                 expect(await umaCtfAdapter.reportPayouts(questionID))
                     .to.emit(umaCtfAdapter, "QuestionResolved")
-                    .withArgs(questionID, false);
+                    .withArgs(questionID, false, [1, 0]);
 
                 const questionData = await umaCtfAdapter.questions(questionID);
                 expect(await questionData.resolved).eq(true);

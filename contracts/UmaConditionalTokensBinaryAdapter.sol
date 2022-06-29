@@ -93,7 +93,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
     event QuestionSettled(bytes32 indexed questionID, int256 indexed settledPrice);
 
     /// @notice Emitted when a question is resolved
-    event QuestionResolved(bytes32 indexed questionID, bool indexed emergencyReport);
+    event QuestionResolved(bytes32 indexed questionID, bool indexed emergencyReport, uint256[] payouts);
 
     /// @notice Emitted when tokens are withdrawn from the Adapter
     event TokensWithdrawn(address token, address to, uint256 value);
@@ -263,7 +263,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
 
         questionData.resolved = true;
         ctf.reportPayouts(questionID, payouts);
-        emit QuestionResolved(questionID, false);
+        emit QuestionResolved(questionID, false, payouts);
     }
 
     /// @notice Checks if a question is initialized
@@ -305,7 +305,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, ReentrancyGuard {
 
         questionData.resolved = true;
         ctf.reportPayouts(questionID, payouts);
-        emit QuestionResolved(questionID, true);
+        emit QuestionResolved(questionID, true, payouts);
     }
 
     /// @notice Allows an authorized user to pause market resolution in an emergency
