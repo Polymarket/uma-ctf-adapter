@@ -13,13 +13,13 @@ import { TransferHelper } from "./libraries/TransferHelper.sol";
 
 import { FinderInterface } from "./interfaces/FinderInterface.sol";
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
+import { SkinnyOptimisticRequester } from "./interfaces/SkinnyOptimisticRequester.sol";
 import { AddressWhitelistInterface } from "./interfaces/AddressWhitelistInterface.sol";
-import { OptimisticCallbackInterface } from "./interfaces/OptimisticCallbackInterface.sol";
 import { OptimisticOracleV2Interface } from "./interfaces/OptimisticOracleV2Interface.sol";
 
 /// @title UmaCtfAdapter
 /// @notice Enables resolution of CTF markets via UMA's Optimistic Oracle
-contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, ReentrancyGuard {
+contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, ReentrancyGuard {
     /*///////////////////////////////////////////////////////////////////
                             IMMUTABLES 
     //////////////////////////////////////////////////////////////////*/

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-/// @title Optimistic Callback Interface
+/// @title Skinny Optimistic Requester
 /// @notice Stripped down OptimisticRequester interface, exposing only the priceDisputed function
-interface OptimisticCallbackInterface {
+interface SkinnyOptimisticRequester {
     /// @notice Callback for disputes.
     /// @param identifier price identifier being requested.
     /// @param timestamp timestamp of the price being requested.
