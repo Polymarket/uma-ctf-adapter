@@ -1,6 +1,7 @@
 import { MockContract } from "ethereum-waffle";
 import { BigNumber, Contract, Signer } from "ethers";
 import { deployments, ethers, waffle } from "hardhat";
+import { JsonRpcSigner } from "@ethersproject/providers";
 
 export interface RequestSettings {
     eventBased: boolean;
@@ -23,14 +24,6 @@ export interface Request {
     expirationTime: number;
     reward: number;
     finalFee: number;
-}
-
-export function createQuestionID(title: string, description: string): string {
-    return ethers.utils.solidityKeccak256(["string", "string"], [title, description]);
-}
-
-export function createRandomQuestionID(): string {
-    return createQuestionID(ethers.utils.randomBytes(5).toString(), ethers.utils.randomBytes(10).toString());
 }
 
 export function createAncillaryData(title: string, description: string): Uint8Array {
@@ -111,4 +104,15 @@ export function getMockRequest(): Request {
 export async function hardhatIncreaseTime(secondsToIncrease: number): Promise<void> {
     await ethers.provider.send("evm_increaseTime", [secondsToIncrease]);
     await ethers.provider.send("evm_mine", []);
+}
+
+export async function hardhatImpersonate(address: string): Promise<void> {
+    await ethers.provider.send("hardhat_impersonateAccount", [address]);
+    await ethers.provider.send("hardhat_setBalance", [address, "0x100000000000000000000000000"]);
+}
+
+export async function getSignerForAddress(address: string): Promise<JsonRpcSigner> {
+    await hardhatImpersonate(address);
+    const signer = await ethers.provider.getSigner(address);
+    return signer;
 }

@@ -129,7 +129,6 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
         uint256 proposalBond
     ) external nonReentrant returns (bytes32) {
         bytes32 questionID = getQuestionID(ancillaryData);
-
         require(!isInitialized(questionID), AdapterErrors.AlreadyInitialized);
         require(collateralWhitelist.isOnWhitelist(rewardToken), AdapterErrors.UnsupportedToken);
         require(
@@ -209,8 +208,9 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
 
         return _constructPayoutArray(price);
     }
-
-    /// @notice Callback which is executed when there is a dispute on an OO price request originating from the Adapter
+    
+    /// @notice OO callback which is executed when there is a dispute on an OO price request
+    /// originating from the Adapter.
     /// Resets the question and sends out a new price request to the OO
     /// @param ancillaryData    - Ancillary data of the request
     function priceDisputed(
