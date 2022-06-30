@@ -110,6 +110,11 @@ describe("", function () {
                 await expect(
                     umaCtfAdapter.connect(this.signers.tester).rely(this.signers.tester.address),
                 ).to.be.revertedWith("Adapter/not-authorized");
+
+                // Attempt to deauthorize without being authorized
+                await expect(
+                    umaCtfAdapter.connect(this.signers.tester).deny(this.signers.tester.address),
+                ).to.be.revertedWith("Adapter/not-authorized");
             });
 
             it("correctly sets up contracts", async function () {
@@ -373,6 +378,12 @@ describe("", function () {
 
             it("pause should revert if question is not initialized", async function () {
                 await expect(umaCtfAdapter.connect(this.signers.admin).pauseQuestion(HashZero)).to.be.revertedWith(
+                    "Adapter/not-initialized",
+                );
+            });
+
+            it("unpause should revert if question is not initialized", async function () {
+                await expect(umaCtfAdapter.connect(this.signers.admin).unpauseQuestion(HashZero)).to.be.revertedWith(
                     "Adapter/not-initialized",
                 );
             });
