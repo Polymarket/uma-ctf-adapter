@@ -203,7 +203,6 @@ contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, Reen
         return _constructPayoutArray(price);
     }
 
-
     /// @notice Callback which is executed when there is a dispute on an OO price request originating from the Adapter
     /// Resets the question and sends out a new price request to the OO
     /// @param timestamp        - Timestamp of the request
