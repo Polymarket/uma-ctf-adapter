@@ -208,7 +208,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
 
         return _constructPayoutArray(price);
     }
-    
+
     /// @notice OO callback which is executed when there is a dispute on an OO price request
     /// originating from the Adapter.
     /// Resets the question and sends out a new price request to the OO
