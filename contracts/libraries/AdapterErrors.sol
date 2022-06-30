@@ -8,9 +8,7 @@ library AdapterErrors {
 
     string public constant NotFlagged = "Adapter/not-flagged";
 
-    string public constant NotSettled = "Adapter/not-settled";
-
-    string public constant NotReadyToSettle = "Adapter/not-ready-to-settle";
+    string public constant NotReadyToResolve = "Adapter/not-ready-to-resolve";
 
     string public constant AlreadyResolved = "Adapter/already-resolved";
 
@@ -19,8 +17,6 @@ library AdapterErrors {
     string public constant UnsupportedToken = "Adapter/unsupported-token";
 
     string public constant InvalidAncillaryData = "Adapter/invalid-ancillary-data";
-
-    string public constant AlreadySettled = "Adapter/already-settled";
 
     string public constant AlreadyFlagged = "Adapter/already-flagged";
 
