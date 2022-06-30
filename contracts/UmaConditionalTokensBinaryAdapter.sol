@@ -127,7 +127,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
         address rewardToken,
         uint256 reward,
         uint256 proposalBond
-    ) external nonReentrant returns (bytes32) {
+    ) external returns (bytes32) {
         bytes32 questionID = getQuestionID(ancillaryData);
         require(!isInitialized(questionID), AdapterErrors.AlreadyInitialized);
         require(collateralWhitelist.isOnWhitelist(rewardToken), AdapterErrors.UnsupportedToken);
@@ -357,7 +357,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
         // Ensure the price request is event based
         optimisticOracle.setEventBased(UmaConstants.YesOrNoIdentifier, requestTimestamp, ancillaryData);
 
-        // Ensure that the dispute callback is set
+        // Ensure that the dispute callback flag is set
         optimisticOracle.setCallbacks(
             UmaConstants.YesOrNoIdentifier,
             requestTimestamp,

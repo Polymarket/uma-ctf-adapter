@@ -383,7 +383,7 @@ describe("", function () {
             });
 
             it("unpause should revert if question is not initialized", async function () {
-                await expect(umaCtfAdapter.connect(this.signers.admin).unpauseQuestion(HashZero)).to.be.revertedWith(
+                await expect(umaCtfAdapter.connect(this.signers.admin).unPauseQuestion(HashZero)).to.be.revertedWith(
                     "Adapter/not-initialized",
                 );
             });
