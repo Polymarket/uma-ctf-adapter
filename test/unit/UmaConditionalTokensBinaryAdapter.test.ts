@@ -680,7 +680,9 @@ describe("", function () {
                         reward,
                     ),
                 )
-                    .to.emit(umaCtfAdapter, "QuestionReset")
+                    .to.emit(testRewardToken, "Transfer") // Transfer refunded reward from Adapter to OO
+                    .withArgs(umaCtfAdapter.address, optimisticOracle.address, reward)
+                    .to.emit(umaCtfAdapter, "QuestionReset") // Reset the question
                     .withArgs(questionID);
 
                 // Verify chain state after resetting the question
