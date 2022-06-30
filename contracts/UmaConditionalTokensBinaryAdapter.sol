@@ -194,7 +194,6 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
         require(isInitialized(questionID), AdapterErrors.NotInitialized);
         QuestionData storage questionData = questions[questionID];
         require(_hasPrice(questionData), AdapterErrors.PriceUnavailable);
-        require(!questionData.paused, AdapterErrors.Paused);
 
         // Fetches price from OO
         int256 price = optimisticOracle
@@ -206,7 +205,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
             )
             .resolvedPrice;
 
-        return _constructPayoutArray(price);
+        return _constructPayouts(price);
     }
 
     /// @notice OO callback which is executed when there is a dispute on an OO price request
@@ -415,7 +414,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
         );
 
         // Construct the payout array for the question
-        uint256[] memory payouts = _constructPayoutArray(price);
+        uint256[] memory payouts = _constructPayouts(price);
 
         // Set resolved flag
         questionData.resolved = true;
@@ -438,10 +437,9 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
 
     /// @notice Construct the payout array given the price
     /// @param price - The price retrieved from the OO
-    function _constructPayoutArray(int256 price) internal pure returns (uint256[] memory) {
+    function _constructPayouts(int256 price) internal pure returns (uint256[] memory) {
         // Payouts: [YES, NO]
         uint256[] memory payouts = new uint256[](2);
-
         // Valid prices are 0, 0.5 and 1
         require(price == 0 || price == 0.5 ether || price == 1 ether, AdapterErrors.InvalidData);
 

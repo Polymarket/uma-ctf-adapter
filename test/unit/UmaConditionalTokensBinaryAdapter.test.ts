@@ -502,9 +502,7 @@ describe("", function () {
             });
 
             it("should correctly report [0,1] when NO", async function () {
-                const request = getMockRequest();
-                request.resolvedPrice = ethers.constants.Zero;
-                await optimisticOracle.mock.getRequest.returns(request);
+                await optimisticOracle.mock.settleAndGetPrice.returns(0);
 
                 expect(await umaCtfAdapter.resolve(questionID))
                     .to.emit(ctf, "ConditionResolution")
@@ -514,15 +512,23 @@ describe("", function () {
             });
 
             it("should correctly report [1,1] when UNKNOWN", async function () {
-                const request = getMockRequest();
-                request.resolvedPrice = ethers.utils.parseEther("0.5");
-                await optimisticOracle.mock.getRequest.returns(request);
+                await optimisticOracle.mock.settleAndGetPrice.returns(ethers.utils.parseEther("0.5"));
 
                 expect(await umaCtfAdapter.resolve(questionID))
                     .to.emit(ctf, "ConditionResolution")
                     .withArgs(conditionID, umaCtfAdapter.address, questionID, 2, [1, 1])
                     .and.to.emit(umaCtfAdapter, "QuestionResolved")
                     .withArgs(questionID, 0.5, [1, 1]);
+            });
+
+            it("should revert if flagged by non-admin", async function () {
+                await expect(umaCtfAdapter.connect(this.signers.tester).flag(questionID)).to.be.revertedWith(
+                    "Adapter/not-authorized",
+                );
+            });
+
+            it("should revert if flagging a non-initialized question", async function () {
+                await expect(umaCtfAdapter.flag(HashZero)).to.be.revertedWith("Adapter/not-initialized");
             });
 
             it("should allow emergency resolve by the admin", async function () {
@@ -582,7 +588,7 @@ describe("", function () {
                 expect(questionData.resolved).eq(true);
             });
 
-            it("should revert if emergencyReport is called before the question is flagged", async function () {
+            it("should revert if emergencyResolve is called before the question is flagged", async function () {
                 // YES conditional payout
                 const payouts = [1, 0];
                 await expect(umaCtfAdapter.emergencyResolve(questionID, payouts)).to.be.revertedWith(
@@ -590,7 +596,7 @@ describe("", function () {
                 );
             });
 
-            it("should revert if emergencyReport is called before the safety period", async function () {
+            it("should revert if emergencyResolve is called before the safety period", async function () {
                 // flag for emergency resolution
                 await umaCtfAdapter.flag(questionID);
 
@@ -601,7 +607,7 @@ describe("", function () {
                 );
             });
 
-            it("should revert if emergencyReport is called with invalid payout", async function () {
+            it("should revert if emergencyResolve is called with invalid payout", async function () {
                 // flag for emergency resolution
                 await umaCtfAdapter.flag(questionID);
 
@@ -615,10 +621,16 @@ describe("", function () {
                 );
             });
 
-            it("should revert if emergencyReport is called from a non-admin", async function () {
+            it("should revert if emergencyResolve is called from a non-admin", async function () {
                 await expect(
                     umaCtfAdapter.connect(this.signers.tester).emergencyResolve(questionID, [1, 0]),
                 ).to.be.revertedWith("Adapter/not-authorized");
+            });
+
+            it("should revert if emergencyResolve is called on a non-initialized questionID", async function () {
+                await expect(umaCtfAdapter.emergencyResolve(HashZero, [1, 0])).to.be.revertedWith(
+                    "Adapter/not-initialized",
+                );
             });
         });
 
@@ -647,6 +659,14 @@ describe("", function () {
                 ).wait();
 
                 questionID = await umaCtfAdapter.getQuestionID(ancillaryData);
+            });
+
+            it("reverts if a non-OO address calls priceDisputed", async function () {
+                await expect(
+                    umaCtfAdapter
+                        .connect(this.signers.tester)
+                        .priceDisputed(HashZero, 0, ethers.utils.randomBytes(10), 10),
+                ).to.be.revertedWith("Adapter/not-oo");
             });
 
             it("sends out a new price request if an invalid proposal is proposed", async function () {
