@@ -42,7 +42,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, Reen
         uint256 requestTimestamp;
         /// @notice Reward offered to a successful proposer
         uint256 reward;
-        /// @notice Additional bond required by Optimistic oracle proposers and disputers
+        /// @notice Additional bond required by Optimistic oracle proposers/disputers
         uint256 proposalBond;
         /// @notice Admin Resolution timestamp, set when a market is flagged for admin resolution
         uint256 adminResolutionTimestamp;
@@ -60,6 +60,11 @@ contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, Reen
 
     /// @notice Mapping of questionID to QuestionData
     mapping(bytes32 => QuestionData) public questions;
+
+    modifier onlyOptimisticOracle() {
+        require(msg.sender == address(optimisticOracle), "Adapter/not-oo");
+        _;
+    }
 
     /*///////////////////////////////////////////////////////////////////
                             EVENTS 
@@ -83,7 +88,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, Reen
     event QuestionUnpaused(bytes32 indexed questionID);
 
     /// @notice Emitted when a question is flagged by an admin for emergency resolution
-    event QuestionFlaggedForAdminResolution(bytes32 indexed questionID);
+    event QuestionFlagged(bytes32 indexed questionID);
 
     /// @notice Emitted when a question is reset
     event QuestionReset(bytes32 indexed questionID);
@@ -131,6 +136,8 @@ contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, Reen
             ancillaryData.length > 0 && ancillaryData.length <= UmaConstants.AncillaryDataLimit,
             AdapterErrors.InvalidAncillaryData
         );
+
+        uint256 requestTimestamp = block.timestamp;
 
         // Save the question parameters in storage
         _saveQuestion(msg.sender, questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
@@ -205,15 +212,13 @@ contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, Reen
 
     /// @notice Callback which is executed when there is a dispute on an OO price request originating from the Adapter
     /// Resets the question and sends out a new price request to the OO
-    /// @param timestamp        - Timestamp of the request
     /// @param ancillaryData    - Ancillary data of the request
     function priceDisputed(
         bytes32,
         uint256,
         bytes memory ancillaryData,
         uint256
-    ) external {
-        require(msg.sender == address(optimisticOracle), "Adapter/invalid-callback-caller");
+    ) external onlyOptimisticOracle {
         bytes32 questionID = getQuestionID(ancillaryData);
         QuestionData storage questionData = questions[questionID];
 
@@ -248,12 +253,12 @@ contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, Reen
         require(!isFlagged(questionID), AdapterErrors.AlreadyFlagged);
 
         questions[questionID].adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
-        emit QuestionFlaggedForAdminResolution(questionID);
+        emit QuestionFlagged(questionID);
     }
 
     /// @notice Allows an authorized user to resolve a CTF market in an emergency
-    /// @param questionID - The unique questionID of the question
-    /// @param payouts - Array of position payouts for the referenced question
+    /// @param questionID   - The unique questionID of the question
+    /// @param payouts      - Array of position payouts for the referenced question
     function emergencyResolve(bytes32 questionID, uint256[] calldata payouts) external auth {
         require(isInitialized(questionID), AdapterErrors.NotInitialized);
         require(isFlagged(questionID), AdapterErrors.NotFlagged);
@@ -314,25 +319,25 @@ contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, Reen
 
     /// @notice Request a price from the Optimistic Oracle
     /// Transfers reward token from the requestor if non-zero reward is specified
-    /// @param caller           - Address of the caller
+    /// @param requestor        - Address of the requestor
     /// @param requestTimestamp - Timestamp used in the OO request
     /// @param ancillaryData    - Data used to resolve a question
     /// @param rewardToken      - Address of the reward token
     /// @param reward           - Reward amount, denominated in rewardToken
     /// @param bond             - Bond amount used, denominated in rewardToken
     function _requestPrice(
-        address caller,
+        address requestor,
         uint256 requestTimestamp,
         bytes memory ancillaryData,
         address rewardToken,
         uint256 reward,
         uint256 bond
     ) internal {
-        // If non-zero reward, pay for the price request by transferring rewardToken from the caller
+        // If non-zero reward, pay for the price request by transferring rewardToken from the requestor
         if (reward > 0) {
-            if (caller != address(this)) {
-                // If caller is the Adapter itself, do not transfer the reward. Pay for the request from the Adapter's balances
-                TransferHelper.safeTransferFrom(rewardToken, caller, address(this), reward);
+            if (requestor != address(this)) {
+                // If requestor is the Adapter itself, do not transfer the reward. Pay for the request from the Adapter's balances
+                TransferHelper.safeTransferFrom(rewardToken, requestor, address(this), reward);
             }
 
             // Approve the OO as spender on the reward token from the Adapter
@@ -394,6 +399,8 @@ contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, Reen
             questionData.reward,
             questionData.proposalBond
         );
+
+        emit QuestionReset(questionID);
     }
 
     /// @notice Resolves the underlying CTF market

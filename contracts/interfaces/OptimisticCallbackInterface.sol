@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 /// @title Optimistic Callback Interface
-/// @notice
+/// @notice Stripped down OptimisticRequester interface, exposing only the priceDisputed function
 interface OptimisticCallbackInterface {
     /// @notice Callback for disputes.
     /// @param identifier price identifier being requested.

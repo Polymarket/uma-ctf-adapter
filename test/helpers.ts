@@ -37,7 +37,6 @@ export function createAncillaryData(title: string, description: string): Uint8Ar
     return ethers.utils.toUtf8Bytes(`q: ${title}d: ${description}`);
 }
 
-
 export async function initializeQuestion(
     adapter: Contract,
     title: string,
@@ -46,10 +45,10 @@ export async function initializeQuestion(
     reward: BigNumber,
     proposalBond: BigNumber,
 ): Promise<string> {
-    const questionID = createQuestionID(title, description);
     const ancillaryData = createAncillaryData(title, description);
-    await (await adapter.initializeQuestion(questionID, ancillaryData, rewardAddress, reward, proposalBond)).wait();
-    return questionID;
+    await (await adapter.initializeQuestion(ancillaryData, rewardAddress, reward, proposalBond)).wait();
+    const expectedQuestionID = await adapter.getQuestionID(ancillaryData);
+    return expectedQuestionID;
 }
 
 export async function deploy<T extends Contract>(
