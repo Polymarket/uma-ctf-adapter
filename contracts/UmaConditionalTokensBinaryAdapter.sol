@@ -209,12 +209,12 @@ contract UmaCtfAdapter is Auth, BulletinBoard, OptimisticCallbackInterface, Reen
     /// @param ancillaryData    - Ancillary data of the request
     function priceDisputed(
         bytes32,
-        uint256 timestamp,
+        uint256,
         bytes memory ancillaryData,
         uint256
     ) external {
         require(msg.sender == address(optimisticOracle), "Adapter/invalid-callback-caller");
-        bytes32 questionID = getQuestionID(timestamp, ancillaryData);
+        bytes32 questionID = getQuestionID(ancillaryData);
         QuestionData storage questionData = questions[questionID];
 
         // Upon dispute, immediately reset the question, sending out a new price request
