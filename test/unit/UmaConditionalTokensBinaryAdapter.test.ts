@@ -746,6 +746,29 @@ describe("", function () {
                     .to.emit(umaCtfAdapter, "QuestionResolved")
                     .withArgs(questionID, 1, [1, 0]);
             });
+
+            it("allows an admin to reset a question", async function () {
+                const data = ethers.utils.randomBytes(30);
+                const qID = await umaCtfAdapter.getQuestionID(data);
+                await (
+                    await umaCtfAdapter.initializeQuestion(data, testRewardToken.address, ONE_ETHER, ONE_ETHER)
+                ).wait();
+
+                // If the priceDisputed callback fails, an admin can reset the question
+                expect(await umaCtfAdapter.connect(this.signers.admin).reset(qID))
+                    .to.emit(umaCtfAdapter, "QuestionReset")
+                    .withArgs(qID);
+
+                // Reverts if not authed
+                await expect(umaCtfAdapter.connect(this.signers.tester).reset(qID)).to.be.revertedWith(
+                    "Adapter/not-authorized",
+                );
+
+                // reverts if not initialized
+                await expect(umaCtfAdapter.connect(this.signers.admin).reset(HashZero)).to.be.revertedWith(
+                    "Adapter/not-initialized",
+                );
+            });
         });
 
         describe("Ancillary data update scenarios", function () {

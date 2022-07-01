@@ -29,4 +29,6 @@ library AdapterErrors {
     string public constant InvalidData = "Adapter/invalid-resolution-data";
 
     string public constant PriceUnavailable = "Adapter/price-unavailable";
+
+    string public constant NotOptimisticOracle = "Adapter/not-oo";
 }

@@ -62,7 +62,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
     mapping(bytes32 => QuestionData) public questions;
 
     modifier onlyOptimisticOracle() {
-        require(msg.sender == address(optimisticOracle), "Adapter/not-oo");
+        require(msg.sender == address(optimisticOracle), AdapterErrors.NotOptimisticOracle);
         _;
     }
 
@@ -253,6 +253,17 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
 
         questions[questionID].adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
         emit QuestionFlagged(questionID);
+    }
+
+    /// @notice Allows an authorized user to reset a question, sending out a new price request to the OO.
+    /// Failsafe to be used if the priceDisputed callback reverts during execution.
+    /// @param questionID - The unique questionID
+    function reset(bytes32 questionID) external auth {
+        require(isInitialized(questionID), AdapterErrors.NotInitialized);
+        QuestionData storage questionData = questions[questionID];
+        require(!questionData.resolved, AdapterErrors.AlreadyResolved);
+
+        _reset(questionID, questionData);
     }
 
     /// @notice Allows an authorized user to resolve a CTF market in an emergency
