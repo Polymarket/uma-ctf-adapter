@@ -13,7 +13,7 @@ import {
     getMockRequest,
     getSignerForAddress,
 } from "../helpers";
-import { DESC, QUESTION_TITLE, emergencySafetyPeriod, MAX_ANCILLARY_DATA, ONE_ETHER } from "./constants";
+import { emergencySafetyPeriod, MAX_ANCILLARY_DATA, ONE_ETHER } from "./constants";
 
 const setup = deployments.createFixture(async () => {
     const signers = await hre.ethers.getSigners();
@@ -412,8 +412,8 @@ describe("", function () {
                 // initialize question
                 questionID = await initializeQuestion(
                     umaCtfAdapter,
-                    QUESTION_TITLE,
-                    DESC,
+                    "This is a mock question title?",
+                    "This is a binary market on the mock question title. p1: 0, p2: 1. Where p2 corresponds to YES, p1 to a NO",
                     testRewardToken.address,
                     ethers.constants.Zero,
                     bond,
