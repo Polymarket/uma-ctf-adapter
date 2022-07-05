@@ -345,8 +345,8 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
     ) internal {
         // If non-zero reward, pay for the price request by transferring rewardToken from the requestor
         if (reward > 0) {
+            // If requestor is the Adapter itself, pay for the request from the Adapter's balances
             if (requestor != address(this)) {
-                // If requestor is the Adapter itself, do not transfer the reward. Pay for the request from the Adapter's balances
                 TransferHelper.safeTransferFrom(rewardToken, requestor, address(this), reward);
             }
 

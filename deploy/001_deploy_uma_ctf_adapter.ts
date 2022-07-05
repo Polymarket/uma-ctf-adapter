@@ -9,7 +9,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const conditionalTokens = await deployments.get("ConditionalTokens");
     const finder = await deployments.get("Finder");
 
-    await deployments.deploy("UmaConditionalTokensBinaryAdapter", {
+    await deployments.deploy("UmaCtfAdapter", {
         from: deployer,
         args: [conditionalTokens.address, finder.address],
     });
