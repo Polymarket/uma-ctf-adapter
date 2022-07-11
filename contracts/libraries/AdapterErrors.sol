@@ -18,7 +18,7 @@ library AdapterErrors {
 
     string public constant InvalidAncillaryData = "Adapter/invalid-ancillary-data";
 
-    string public constant AlreadyFlagged = "Adapter/already-flagged";
+    string public constant Flagged = "Adapter/flagged";
 
     string public constant SafetyPeriodNotPassed = "Adapter/safety-period-not-passed";
 

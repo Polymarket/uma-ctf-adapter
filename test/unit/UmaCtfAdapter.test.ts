@@ -465,6 +465,11 @@ describe("", function () {
                 await expect(umaCtfAdapter.resolve(questionID)).to.be.revertedWith("Adapter/paused");
             });
 
+            it("resolve reverts if question is flagged", async function () {
+                await umaCtfAdapter.connect(this.signers.admin).flag(questionID);
+                await expect(umaCtfAdapter.resolve(questionID)).to.be.revertedWith("Adapter/flagged");
+            });
+
             it("resolve reverts if OO returns malformed data", async function () {
                 // Mock Optimistic Oracle returns invalid data
                 await optimisticOracle.mock.settleAndGetPrice.returns(BigNumber.from(21233));
@@ -557,7 +562,7 @@ describe("", function () {
                     .withArgs(questionID);
 
                 // flag question for resolution should fail second time
-                expect(umaCtfAdapter.flag(questionID)).to.be.revertedWith("Adapter/already-flagged");
+                expect(umaCtfAdapter.flag(questionID)).to.be.revertedWith("Adapter/flagged");
 
                 // Verify admin resolution timestamp was set
                 expect((await umaCtfAdapter.questions(questionID)).adminResolutionTimestamp).gt(0);

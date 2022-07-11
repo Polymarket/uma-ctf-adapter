@@ -181,6 +181,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
 
         QuestionData storage questionData = questions[questionID];
 
+        require(!(questionData.adminResolutionTimestamp > 0), AdapterErrors.Flagged);
         require(!questionData.paused, AdapterErrors.Paused);
         require(!questionData.resolved, AdapterErrors.AlreadyResolved);
 
@@ -249,7 +250,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
     /// @param questionID - The unique questionID of the question
     function flag(bytes32 questionID) external auth {
         require(isInitialized(questionID), AdapterErrors.NotInitialized);
-        require(!isFlagged(questionID), AdapterErrors.AlreadyFlagged);
+        require(!isFlagged(questionID), AdapterErrors.Flagged);
 
         questions[questionID].adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
         emit QuestionFlagged(questionID);
