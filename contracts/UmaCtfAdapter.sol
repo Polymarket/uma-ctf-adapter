@@ -8,7 +8,6 @@ import { Auth } from "./mixins/Auth.sol";
 import { BulletinBoard } from "./mixins/BulletinBoard.sol";
 
 import { UmaConstants } from "./libraries/UmaConstants.sol";
-import { AdapterErrors } from "./libraries/AdapterErrors.sol";
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 
 import { IUmaCtfAdapter } from "./interfaces/IUmaCtfAdapter.sol";

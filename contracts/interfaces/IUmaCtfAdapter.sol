@@ -57,5 +57,4 @@ interface IUmaCtfAdapter is IUmaCtfAdapterEE {
     function flag(bytes32) external;
 
     function reset(bytes32) external;
-
 }
