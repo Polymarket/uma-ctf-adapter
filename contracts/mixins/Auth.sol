@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity 0.8.15;
 
 /// @title Auth
 /// @notice Provides access control modifiers
@@ -24,12 +24,13 @@ abstract contract Auth {
         emit DeauthorizedUser(usr);
     }
 
+    error NotAuthorized();
     event AuthorizedUser(address indexed usr);
     event DeauthorizedUser(address indexed usr);
 
     /// @notice - Authorization modifier
     modifier auth() {
-        require(wards[msg.sender] == 1, "Adapter/not-authorized");
+        if (wards[msg.sender] != 1) revert NotAuthorized();
         _;
     }
 }

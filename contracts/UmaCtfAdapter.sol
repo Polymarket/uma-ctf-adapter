@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity 0.8.15;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -11,6 +11,7 @@ import { UmaConstants } from "./libraries/UmaConstants.sol";
 import { AdapterErrors } from "./libraries/AdapterErrors.sol";
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 
+import { IUmaCtfAdapter } from "./interfaces/IUmaCtfAdapter.sol";
 import { FinderInterface } from "./interfaces/FinderInterface.sol";
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { SkinnyOptimisticRequester } from "./interfaces/SkinnyOptimisticRequester.sol";
@@ -19,7 +20,12 @@ import { OptimisticOracleV2Interface } from "./interfaces/OptimisticOracleV2Inte
 
 /// @title UmaCtfAdapter
 /// @notice Enables resolution of CTF markets via UMA's Optimistic Oracle
-contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, ReentrancyGuard {
+contract UmaCtfAdapter is
+IUmaCtfAdapter,
+Auth,
+BulletinBoard,
+SkinnyOptimisticRequester,
+ReentrancyGuard {
     /*///////////////////////////////////////////////////////////////////
                             IMMUTABLES 
     //////////////////////////////////////////////////////////////////*/
@@ -62,42 +68,9 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
     mapping(bytes32 => QuestionData) public questions;
 
     modifier onlyOptimisticOracle() {
-        require(msg.sender == address(optimisticOracle), AdapterErrors.NotOptimisticOracle);
+        if (msg.sender != address(optimisticOracle)) revert NotOptimisticOracle();
         _;
     }
-
-    /*///////////////////////////////////////////////////////////////////
-                            EVENTS 
-    //////////////////////////////////////////////////////////////////*/
-
-    /// @notice Emitted when a questionID is initialized
-    event QuestionInitialized(
-        bytes32 indexed questionID,
-        uint256 indexed requestTimestamp,
-        address indexed creator,
-        bytes ancillaryData,
-        address rewardToken,
-        uint256 reward,
-        uint256 proposalBond
-    );
-
-    /// @notice Emitted when a question is paused by an authorized user
-    event QuestionPaused(bytes32 indexed questionID);
-
-    /// @notice Emitted when a question is unpaused by an authorized user
-    event QuestionUnpaused(bytes32 indexed questionID);
-
-    /// @notice Emitted when a question is flagged by an admin for emergency resolution
-    event QuestionFlagged(bytes32 indexed questionID);
-
-    /// @notice Emitted when a question is reset
-    event QuestionReset(bytes32 indexed questionID);
-
-    /// @notice Emitted when a question is resolved
-    event QuestionResolved(bytes32 indexed questionID, int256 indexed settledPrice, uint256[] payouts);
-
-    /// @notice Emitted when a question is emergency resolved
-    event QuestionEmergencyResolved(bytes32 indexed questionID, uint256[] payouts);
 
     constructor(address _ctf, address _finder) {
         ctf = IConditionalTokens(_ctf);
@@ -127,18 +100,19 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
         address rewardToken,
         uint256 reward,
         uint256 proposalBond
-    ) external returns (bytes32) {
-        bytes32 questionID = getQuestionID(ancillaryData);
-        require(!isInitialized(questionID), AdapterErrors.AlreadyInitialized);
-        require(collateralWhitelist.isOnWhitelist(rewardToken), AdapterErrors.UnsupportedToken);
-        require(
-            ancillaryData.length > 0 && ancillaryData.length <= UmaConstants.AncillaryDataLimit,
-            AdapterErrors.InvalidAncillaryData
-        );
+    ) external returns (bytes32 questionID) {
+        questionID = getQuestionID(ancillaryData);
+        
+        if (isInitialized(questionID)) revert Initialized();
+        if (!collateralWhitelist.isOnWhitelist(rewardToken)) revert UnsupportedToken();
+        if (
+            ancillaryData.length == 0 || 
+            ancillaryData.length > UmaConstants.AncillaryDataLimit
+        ) revert InvalidAncillaryData();
 
         uint256 requestTimestamp = block.timestamp;
 
-        // Save the question parameters in storage
+        // Persist the question parameters in storage
         _saveQuestion(msg.sender, questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
 
         // Prepare the question on the CTF
@@ -156,7 +130,6 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
             reward,
             proposalBond
         );
-        return questionID;
     }
 
     /// @notice Checks whether a questionID is ready to be resolved
@@ -177,12 +150,12 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
     /// Is only available after price information is available on the OO
     /// @param questionID - The unique questionID of the question
     function resolve(bytes32 questionID) external {
-        require(readyToResolve(questionID), AdapterErrors.NotReadyToResolve);
+        if (!readyToResolve(questionID)) revert NotReadyToResolve();
 
         QuestionData storage questionData = questions[questionID];
 
-        require(!questionData.paused, AdapterErrors.Paused);
-        require(!questionData.resolved, AdapterErrors.AlreadyResolved);
+        if (questionData.paused) revert Paused();
+        if (!questionData.resolved) revert Resolved();
 
         // Resolve the underlying market
         return _resolve(questionID, questionData);
@@ -191,9 +164,10 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
     /// @notice Retrieves the expected payout array of the question
     /// @param questionID - The unique questionID of the question
     function getExpectedPayouts(bytes32 questionID) public view returns (uint256[] memory) {
-        require(isInitialized(questionID), AdapterErrors.NotInitialized);
+        if (!isInitialized(questionID)) revert NotInitialized();
         QuestionData storage questionData = questions[questionID];
-        require(_hasPrice(questionData), AdapterErrors.PriceUnavailable);
+        
+        if (!_hasPrice(questionData)) revert PriceNotAvailable();
 
         // Fetches price from OO
         int256 price = optimisticOracle
@@ -248,8 +222,8 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
     /// @notice Flags a market for emergency resolution
     /// @param questionID - The unique questionID of the question
     function flag(bytes32 questionID) external auth {
-        require(isInitialized(questionID), AdapterErrors.NotInitialized);
-        require(!isFlagged(questionID), AdapterErrors.AlreadyFlagged);
+        if (!isInitialized(questionID)) revert NotInitialized();
+        if (isFlagged(questionID)) revert Flagged();
 
         questions[questionID].adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
         emit QuestionFlagged(questionID);
@@ -259,9 +233,9 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
     /// Failsafe to be used if the priceDisputed callback reverts during execution.
     /// @param questionID - The unique questionID
     function reset(bytes32 questionID) external auth {
-        require(isInitialized(questionID), AdapterErrors.NotInitialized);
+        if (!isInitialized(questionID)) revert NotInitialized();
         QuestionData storage questionData = questions[questionID];
-        require(!questionData.resolved, AdapterErrors.AlreadyResolved);
+        if (questionData.resolved) revert Resolved();
 
         _reset(questionID, questionData);
     }
@@ -270,10 +244,10 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
     /// @param questionID   - The unique questionID of the question
     /// @param payouts      - Array of position payouts for the referenced question
     function emergencyResolve(bytes32 questionID, uint256[] calldata payouts) external auth {
-        require(isInitialized(questionID), AdapterErrors.NotInitialized);
-        require(isFlagged(questionID), AdapterErrors.NotFlagged);
-        require(block.timestamp > questions[questionID].adminResolutionTimestamp, AdapterErrors.SafetyPeriodNotPassed);
-        require(payouts.length == 2, AdapterErrors.NonBinaryPayouts);
+        if (!isInitialized(questionID)) revert NotInitialized();
+        if (!isFlagged(questionID)) revert NotFlagged();
+        if (block.timestamp <= questions[questionID].adminResolutionTimestamp) revert SafetyPeriodNotPassed();
+        if (payouts.length != 2) revert InvalidPayouts();
 
         QuestionData storage questionData = questions[questionID];
 
@@ -285,7 +259,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
     /// @notice Allows an authorized user to pause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
     function pauseQuestion(bytes32 questionID) external auth {
-        require(isInitialized(questionID), AdapterErrors.NotInitialized);
+        if (!isInitialized(questionID)) revert NotInitialized();
         QuestionData storage questionData = questions[questionID];
 
         questionData.paused = true;
@@ -295,7 +269,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
     /// @notice Allows an authorized user to unpause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
     function unPauseQuestion(bytes32 questionID) external auth {
-        require(isInitialized(questionID), AdapterErrors.NotInitialized);
+        if (!isInitialized(questionID)) revert NotInitialized();
         QuestionData storage questionData = questions[questionID];
         questionData.paused = false;
         emit QuestionUnpaused(questionID);
@@ -452,7 +426,7 @@ contract UmaCtfAdapter is Auth, BulletinBoard, SkinnyOptimisticRequester, Reentr
         // Payouts: [YES, NO]
         uint256[] memory payouts = new uint256[](2);
         // Valid prices are 0, 0.5 and 1
-        require(price == 0 || price == 0.5 ether || price == 1 ether, AdapterErrors.InvalidData);
+        if (price != 0 || price != 0.5 ether || price != 1 ether) revert InvalidResolutionData();
 
         if (price == 0) {
             // NO: Report [Yes, No] as [0, 1]
