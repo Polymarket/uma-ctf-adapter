@@ -154,7 +154,7 @@ ReentrancyGuard {
         QuestionData storage questionData = questions[questionID];
 
         if (questionData.paused) revert Paused();
-        if (!questionData.resolved) revert Resolved();
+        if (questionData.resolved) revert Resolved();
 
         // Resolve the underlying market
         return _resolve(questionID, questionData);
