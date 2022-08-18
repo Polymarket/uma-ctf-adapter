@@ -387,6 +387,30 @@ describe("", function () {
                     "NotInitialized",
                 );
             });
+
+            it("should correctly flag a question", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(
+                    umaCtfAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero,
+                );
+
+                expect(await umaCtfAdapter.connect(this.signers.admin).flag(questionID))
+                    .to.emit(umaCtfAdapter, "QuestionFlagged")
+                    .withArgs(questionID);
+
+                const questionData = await umaCtfAdapter.questions(questionID);
+
+                // Verify flagged
+                expect(questionData.adminResolutionTimestamp).to.gt(0);
+                // Flagging a question automatically pauses it
+                expect(questionData.paused).to.eq(true);
+            });
         });
 
         describe("Question Resolution scenarios", function () {
