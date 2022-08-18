@@ -109,12 +109,12 @@ describe("", function () {
                 // Attempt to authorize without being authorized
                 await expect(
                     umaCtfAdapter.connect(this.signers.tester).rely(this.signers.tester.address),
-                ).to.be.revertedWith("Adapter/not-authorized");
+                ).to.be.revertedWith("NotAuthorized");
 
                 // Attempt to deauthorize without being authorized
                 await expect(
                     umaCtfAdapter.connect(this.signers.tester).deny(this.signers.tester.address),
-                ).to.be.revertedWith("Adapter/not-authorized");
+                ).to.be.revertedWith("NotAuthorized");
             });
 
             it("correctly sets up contracts", async function () {
@@ -173,6 +173,8 @@ describe("", function () {
                     .to.emit(umaCtfAdapter, "QuestionInitialized")
                     .and.to.emit(ctf, "ConditionPreparation")
                     .withArgs(conditionID, umaCtfAdapter.address, expectedQuestionID, outcomeSlotCount);
+
+                expect(await umaCtfAdapter.isInitialized(expectedQuestionID)).to.eq(true);
 
                 const returnedQuestionData = await umaCtfAdapter.questions(expectedQuestionID);
 
@@ -247,7 +249,7 @@ describe("", function () {
                 // reinitialize the same questionID
                 await expect(
                     umaCtfAdapter.initializeQuestion(ancillaryData, testRewardToken.address, 0, 0),
-                ).to.be.revertedWith("Adapter/already-initialized");
+                ).to.be.revertedWith("Initialized");
             });
 
             it("should revert if the initializer does not have reward tokens or allowance", async function () {
@@ -278,14 +280,14 @@ describe("", function () {
                 // Reverts since the token isn't supported
                 await expect(
                     umaCtfAdapter.initializeQuestion(ancillaryData, unsupportedToken.address, 0, 0),
-                ).to.be.revertedWith("Adapter/unsupported-token");
+                ).to.be.revertedWith("UnsupportedToken");
             });
 
             it("should revert initialization if ancillary data is invalid", async function () {
                 // reverts if ancillary data length == 0 or > MAX_ANCILLARY_DATA
                 await expect(
                     umaCtfAdapter.initializeQuestion(ethers.utils.randomBytes(0), testRewardToken.address, 0, 0),
-                ).to.be.revertedWith("Adapter/invalid-ancillary-data");
+                ).to.be.revertedWith("InvalidAncillaryData");
 
                 await expect(
                     umaCtfAdapter.initializeQuestion(
@@ -294,7 +296,7 @@ describe("", function () {
                         0,
                         0,
                     ),
-                ).to.be.revertedWith("Adapter/invalid-ancillary-data");
+                ).to.be.revertedWith("InvalidAncillaryData");
             });
 
             // Pause tests
@@ -355,7 +357,7 @@ describe("", function () {
                 );
 
                 await expect(umaCtfAdapter.connect(this.signers.tester).pauseQuestion(questionID)).to.be.revertedWith(
-                    "Adapter/not-authorized",
+                    "NotAuthorized",
                 );
             });
 
@@ -372,20 +374,44 @@ describe("", function () {
                 );
 
                 await expect(umaCtfAdapter.connect(this.signers.tester).unPauseQuestion(questionID)).to.be.revertedWith(
-                    "Adapter/not-authorized",
+                    "NotAuthorized",
                 );
             });
 
             it("pause should revert if question is not initialized", async function () {
                 await expect(umaCtfAdapter.connect(this.signers.admin).pauseQuestion(HashZero)).to.be.revertedWith(
-                    "Adapter/not-initialized",
+                    "NotInitialized",
                 );
             });
 
             it("unpause should revert if question is not initialized", async function () {
                 await expect(umaCtfAdapter.connect(this.signers.admin).unPauseQuestion(HashZero)).to.be.revertedWith(
-                    "Adapter/not-initialized",
+                    "NotInitialized",
                 );
+            });
+
+            it("should correctly flag a question", async function () {
+                const title = ethers.utils.randomBytes(5).toString();
+                const desc = ethers.utils.randomBytes(10).toString();
+                const questionID = await initializeQuestion(
+                    umaCtfAdapter,
+                    title,
+                    desc,
+                    testRewardToken.address,
+                    ethers.constants.Zero,
+                    ethers.constants.Zero,
+                );
+
+                expect(await umaCtfAdapter.connect(this.signers.admin).flag(questionID))
+                    .to.emit(umaCtfAdapter, "QuestionFlagged")
+                    .withArgs(questionID);
+
+                const questionData = await umaCtfAdapter.questions(questionID);
+
+                // Verify flagged
+                expect(questionData.adminResolutionTimestamp).to.gt(0);
+                // Flagging a question automatically pauses it
+                expect(questionData.paused).to.eq(true);
             });
         });
 
@@ -449,44 +475,42 @@ describe("", function () {
             // Resolve revert cases
             it("resolve reverts if question is not initialized", async function () {
                 await expect(umaCtfAdapter.connect(this.signers.admin).resolve(HashZero)).to.be.revertedWith(
-                    "Adapter/not-ready-to-resolve",
+                    "NotReadyToResolve",
                 );
             });
 
             it("resolve reverts if price data is not available for the question", async function () {
                 await optimisticOracle.mock.hasPrice.returns(false);
                 await expect(umaCtfAdapter.connect(this.signers.admin).resolve(questionID)).to.be.revertedWith(
-                    "Adapter/not-ready-to-resolve",
+                    "NotReadyToResolve",
                 );
             });
 
             it("resolve reverts if question is paused", async function () {
                 await umaCtfAdapter.connect(this.signers.admin).pauseQuestion(questionID);
-                await expect(umaCtfAdapter.resolve(questionID)).to.be.revertedWith("Adapter/paused");
+                await expect(umaCtfAdapter.resolve(questionID)).to.be.revertedWith("Paused");
             });
 
             it("resolve reverts if OO returns malformed data", async function () {
                 // Mock Optimistic Oracle returns invalid data
                 await optimisticOracle.mock.settleAndGetPrice.returns(BigNumber.from(21233));
-                await expect(umaCtfAdapter.resolve(questionID)).to.be.revertedWith("Adapter/invalid-resolution-data");
+                await expect(umaCtfAdapter.resolve(questionID)).to.be.revertedWith("InvalidResolutionData");
             });
 
             it("resolve reverts if question is already resolved", async function () {
                 await (await umaCtfAdapter.connect(this.signers.admin).resolve(questionID)).wait();
                 await expect(umaCtfAdapter.connect(this.signers.admin).resolve(questionID)).to.be.revertedWith(
-                    "Adapter/already-resolved",
+                    "Resolved",
                 );
             });
 
             it("should revert calling expected payouts if the question is not initialized", async function () {
-                await expect(umaCtfAdapter.getExpectedPayouts(HashZero)).to.be.revertedWith("Adapter/not-initialized");
+                await expect(umaCtfAdapter.getExpectedPayouts(HashZero)).to.be.revertedWith("NotInitialized");
             });
 
             it("should revert calling expected payouts if the price does not exist on the OO", async function () {
                 await optimisticOracle.mock.hasPrice.returns(false);
-                await expect(umaCtfAdapter.getExpectedPayouts(questionID)).to.be.revertedWith(
-                    "Adapter/price-unavailable",
-                );
+                await expect(umaCtfAdapter.getExpectedPayouts(questionID)).to.be.revertedWith("PriceNotAvailable");
             });
 
             it("should return expected payouts correctly if the price exists on the OO", async function () {
@@ -534,12 +558,12 @@ describe("", function () {
 
             it("should revert if flagged by non-admin", async function () {
                 await expect(umaCtfAdapter.connect(this.signers.tester).flag(questionID)).to.be.revertedWith(
-                    "Adapter/not-authorized",
+                    "NotAuthorized",
                 );
             });
 
             it("should revert if flagging a non-initialized question", async function () {
-                await expect(umaCtfAdapter.flag(HashZero)).to.be.revertedWith("Adapter/not-initialized");
+                await expect(umaCtfAdapter.flag(HashZero)).to.be.revertedWith("NotInitialized");
             });
 
             it("should allow emergency resolve by the admin", async function () {
@@ -557,7 +581,7 @@ describe("", function () {
                     .withArgs(questionID);
 
                 // flag question for resolution should fail second time
-                expect(umaCtfAdapter.flag(questionID)).to.be.revertedWith("Adapter/already-flagged");
+                expect(umaCtfAdapter.flag(questionID)).to.be.revertedWith("Flagged");
 
                 // Verify admin resolution timestamp was set
                 expect((await umaCtfAdapter.questions(questionID)).adminResolutionTimestamp).gt(0);
@@ -602,9 +626,7 @@ describe("", function () {
             it("should revert if emergencyResolve is called before the question is flagged", async function () {
                 // YES conditional payout
                 const payouts = [1, 0];
-                await expect(umaCtfAdapter.emergencyResolve(questionID, payouts)).to.be.revertedWith(
-                    "Adapter/not-flagged",
-                );
+                await expect(umaCtfAdapter.emergencyResolve(questionID, payouts)).to.be.revertedWith("NotFlagged");
             });
 
             it("should revert if emergencyResolve is called before the safety period", async function () {
@@ -614,7 +636,7 @@ describe("", function () {
                 // YES conditional payout
                 const payouts = [1, 0];
                 await expect(umaCtfAdapter.emergencyResolve(questionID, payouts)).to.be.revertedWith(
-                    "Adapter/safety-period-not-passed",
+                    "SafetyPeriodNotPassed",
                 );
             });
 
@@ -628,20 +650,18 @@ describe("", function () {
                 // invalid conditional payout
                 const nonBinaryPayoutVector = [0, 0, 0, 0, 1, 2, 3, 4, 5];
                 await expect(umaCtfAdapter.emergencyResolve(questionID, nonBinaryPayoutVector)).to.be.revertedWith(
-                    "Adapter/non-binary-payouts",
+                    "InvalidPayouts",
                 );
             });
 
             it("should revert if emergencyResolve is called from a non-admin", async function () {
                 await expect(
                     umaCtfAdapter.connect(this.signers.tester).emergencyResolve(questionID, [1, 0]),
-                ).to.be.revertedWith("Adapter/not-authorized");
+                ).to.be.revertedWith("NotAuthorized");
             });
 
             it("should revert if emergencyResolve is called on a non-initialized questionID", async function () {
-                await expect(umaCtfAdapter.emergencyResolve(HashZero, [1, 0])).to.be.revertedWith(
-                    "Adapter/not-initialized",
-                );
+                await expect(umaCtfAdapter.emergencyResolve(HashZero, [1, 0])).to.be.revertedWith("NotInitialized");
             });
         });
 
@@ -677,7 +697,7 @@ describe("", function () {
                     umaCtfAdapter
                         .connect(this.signers.tester)
                         .priceDisputed(HashZero, 0, ethers.utils.randomBytes(10), 10),
-                ).to.be.revertedWith("Adapter/not-oo");
+                ).to.be.revertedWith("NotOptimisticOracle");
             });
 
             it("sends out a new price request if an invalid proposal is proposed", async function () {
@@ -760,13 +780,11 @@ describe("", function () {
                     .withArgs(qID);
 
                 // Reverts if not authed
-                await expect(umaCtfAdapter.connect(this.signers.tester).reset(qID)).to.be.revertedWith(
-                    "Adapter/not-authorized",
-                );
+                await expect(umaCtfAdapter.connect(this.signers.tester).reset(qID)).to.be.revertedWith("NotAuthorized");
 
                 // reverts if not initialized
                 await expect(umaCtfAdapter.connect(this.signers.admin).reset(HashZero)).to.be.revertedWith(
-                    "Adapter/not-initialized",
+                    "NotInitialized",
                 );
             });
         });
