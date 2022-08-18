@@ -95,13 +95,14 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
         uint256 reward,
         uint256 proposalBond
     ) external returns (bytes32 questionID) {
-        questionID = getQuestionID(ancillaryData);
-
-        if (isInitialized(questionID)) revert Initialized();
         if (!collateralWhitelist.isOnWhitelist(rewardToken)) revert UnsupportedToken();
         if (ancillaryData.length == 0 || ancillaryData.length > UmaConstants.AncillaryDataLimit)
             revert InvalidAncillaryData();
 
+        questionID = getQuestionID(ancillaryData);
+
+        if (_isInitialized(questions[questionID])) revert Initialized();
+        
         uint256 requestTimestamp = block.timestamp;
 
         // Persist the question parameters in storage
@@ -127,12 +128,13 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @notice Checks whether a questionID is ready to be resolved
     /// @param questionID - The unique questionID
     function readyToResolve(bytes32 questionID) public view returns (bool) {
-        if (!isInitialized(questionID)) {
+        return _readyToResolve(questions[questionID]);
+    }
+
+    function _readyToResolve(QuestionData storage questionData) internal view returns (bool) {
+        if (!_isInitialized(questionData)) {
             return false;
         }
-
-        QuestionData storage questionData = questions[questionID];
-
         // Check that the OO has an available price
         return _hasPrice(questionData);
     }
@@ -142,12 +144,11 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// Is only available after price information is available on the OO
     /// @param questionID - The unique questionID of the question
     function resolve(bytes32 questionID) external {
-        if (!readyToResolve(questionID)) revert NotReadyToResolve();
-
         QuestionData storage questionData = questions[questionID];
-
+        
         if (questionData.paused) revert Paused();
         if (questionData.resolved) revert Resolved();
+        if (!_readyToResolve(questionData)) revert NotReadyToResolve();
 
         // Resolve the underlying market
         return _resolve(questionID, questionData);
@@ -156,9 +157,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @notice Retrieves the expected payout array of the question
     /// @param questionID - The unique questionID of the question
     function getExpectedPayouts(bytes32 questionID) public view returns (uint256[] memory) {
-        if (!isInitialized(questionID)) revert NotInitialized();
         QuestionData storage questionData = questions[questionID];
-
+        
+        if (!_isInitialized(questionData)) revert NotInitialized();
         if (!_hasPrice(questionData)) revert PriceNotAvailable();
 
         // Fetches price from OO
@@ -194,13 +195,13 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @notice Checks if a question is initialized
     /// @param questionID - The unique questionID
     function isInitialized(bytes32 questionID) public view returns (bool) {
-        return questions[questionID].ancillaryData.length > 0;
+        return _isInitialized(questions[questionID]);
     }
 
     /// @notice Checks if a question has been flagged for emergency resolution
     /// @param questionID - The unique questionID
     function isFlagged(bytes32 questionID) public view returns (bool) {
-        return questions[questionID].adminResolutionTimestamp > 0;
+        return _isFlagged(questions[questionID]);
     }
 
     function getQuestionID(bytes memory ancillaryData) public view returns (bytes32) {
@@ -214,10 +215,16 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @notice Flags a market for emergency resolution
     /// @param questionID - The unique questionID of the question
     function flag(bytes32 questionID) external auth {
-        if (!isInitialized(questionID)) revert NotInitialized();
-        if (isFlagged(questionID)) revert Flagged();
+        QuestionData storage questionData = questions[questionID];
+        
+        if (!_isInitialized(questionData)) revert NotInitialized();
+        if (_isFlagged(questionData)) revert Flagged();
 
-        questions[questionID].adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
+        questionData.adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
+        
+        // Flagging a question pauses it by default 
+        questionData.paused = true;
+
         emit QuestionFlagged(questionID);
     }
 
@@ -225,8 +232,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// Failsafe to be used if the priceDisputed callback reverts during execution.
     /// @param questionID - The unique questionID
     function reset(bytes32 questionID) external auth {
-        if (!isInitialized(questionID)) revert NotInitialized();
         QuestionData storage questionData = questions[questionID];
+        if (!_isInitialized(questionData)) revert NotInitialized();
         if (questionData.resolved) revert Resolved();
 
         _reset(questionID, questionData);
@@ -236,13 +243,13 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @param questionID   - The unique questionID of the question
     /// @param payouts      - Array of position payouts for the referenced question
     function emergencyResolve(bytes32 questionID, uint256[] calldata payouts) external auth {
-        if (!isInitialized(questionID)) revert NotInitialized();
-        if (!isFlagged(questionID)) revert NotFlagged();
-        if (block.timestamp <= questions[questionID].adminResolutionTimestamp) revert SafetyPeriodNotPassed();
-        if (payouts.length != 2) revert InvalidPayouts();
-
         QuestionData storage questionData = questions[questionID];
 
+        if (payouts.length != 2) revert InvalidPayouts();
+        if (!_isInitialized(questionData)) revert NotInitialized();
+        if (!_isFlagged(questionData)) revert NotFlagged();
+        if (block.timestamp <= questionData.adminResolutionTimestamp) revert SafetyPeriodNotPassed();
+        
         questionData.resolved = true;
         ctf.reportPayouts(questionID, payouts);
         emit QuestionEmergencyResolved(questionID, payouts);
@@ -251,9 +258,10 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @notice Allows an authorized user to pause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
     function pauseQuestion(bytes32 questionID) external auth {
-        if (!isInitialized(questionID)) revert NotInitialized();
         QuestionData storage questionData = questions[questionID];
 
+        if (!_isInitialized(questionData)) revert NotInitialized();
+        
         questionData.paused = true;
         emit QuestionPaused(questionID);
     }
@@ -261,8 +269,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @notice Allows an authorized user to unpause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
     function unPauseQuestion(bytes32 questionID) external auth {
-        if (!isInitialized(questionID)) revert NotInitialized();
         QuestionData storage questionData = questions[questionID];
+        if (!_isInitialized(questionData)) revert NotInitialized();
+        
         questionData.paused = false;
         emit QuestionUnpaused(questionID);
     }
@@ -410,6 +419,14 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
                 questionData.requestTimestamp,
                 questionData.ancillaryData
             );
+    }
+
+    function _isFlagged(QuestionData storage questionData) internal view returns (bool) {
+        return questionData.adminResolutionTimestamp > 0;
+    }
+
+    function _isInitialized(QuestionData storage questionData) internal view returns (bool) {
+        return questionData.ancillaryData.length > 0;
     }
 
     /// @notice Construct the payout array given the price
