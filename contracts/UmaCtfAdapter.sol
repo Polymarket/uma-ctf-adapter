@@ -418,7 +418,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
         // Payouts: [YES, NO]
         uint256[] memory payouts = new uint256[](2);
         // Valid prices are 0, 0.5 and 1
-        if (price != 0 || price != 0.5 ether || price != 1 ether) revert InvalidResolutionData();
+        if (price != 0 && price != 0.5 ether && price != 1 ether) revert InvalidResolutionData();
 
         if (price == 0) {
             // NO: Report [Yes, No] as [0, 1]
