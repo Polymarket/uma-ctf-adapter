@@ -174,6 +174,8 @@ describe("", function () {
                     .and.to.emit(ctf, "ConditionPreparation")
                     .withArgs(conditionID, umaCtfAdapter.address, expectedQuestionID, outcomeSlotCount);
 
+                expect(await umaCtfAdapter.isInitialized(expectedQuestionID)).to.eq(true);
+
                 const returnedQuestionData = await umaCtfAdapter.questions(expectedQuestionID);
 
                 // Verify question data stored
