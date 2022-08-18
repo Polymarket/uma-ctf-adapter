@@ -19,12 +19,7 @@ import { OptimisticOracleV2Interface } from "./interfaces/OptimisticOracleV2Inte
 
 /// @title UmaCtfAdapter
 /// @notice Enables resolution of CTF markets via UMA's Optimistic Oracle
-contract UmaCtfAdapter is
-IUmaCtfAdapter,
-Auth,
-BulletinBoard,
-SkinnyOptimisticRequester,
-ReentrancyGuard {
+contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticRequester, ReentrancyGuard {
     /*///////////////////////////////////////////////////////////////////
                             IMMUTABLES 
     //////////////////////////////////////////////////////////////////*/
@@ -101,13 +96,11 @@ ReentrancyGuard {
         uint256 proposalBond
     ) external returns (bytes32 questionID) {
         questionID = getQuestionID(ancillaryData);
-        
+
         if (isInitialized(questionID)) revert Initialized();
         if (!collateralWhitelist.isOnWhitelist(rewardToken)) revert UnsupportedToken();
-        if (
-            ancillaryData.length == 0 || 
-            ancillaryData.length > UmaConstants.AncillaryDataLimit
-        ) revert InvalidAncillaryData();
+        if (ancillaryData.length == 0 || ancillaryData.length > UmaConstants.AncillaryDataLimit)
+            revert InvalidAncillaryData();
 
         uint256 requestTimestamp = block.timestamp;
 
@@ -165,7 +158,7 @@ ReentrancyGuard {
     function getExpectedPayouts(bytes32 questionID) public view returns (uint256[] memory) {
         if (!isInitialized(questionID)) revert NotInitialized();
         QuestionData storage questionData = questions[questionID];
-        
+
         if (!_hasPrice(questionData)) revert PriceNotAvailable();
 
         // Fetches price from OO

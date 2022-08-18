@@ -1,8 +1,7 @@
-// SPDX-License-Identifier: MIT 
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
 interface IUmaCtfAdapterEE {
-
     error NotInitialized();
     error NotFlagged();
     error NotReadyToResolve();
@@ -49,8 +48,12 @@ interface IUmaCtfAdapterEE {
 }
 
 interface IUmaCtfAdapter is IUmaCtfAdapterEE {
-
-    function initializeQuestion(bytes memory,address,uint256,uint256) external returns (bytes32);
+    function initializeQuestion(
+        bytes memory,
+        address,
+        uint256,
+        uint256
+    ) external returns (bytes32);
 
     function resolve(bytes32) external;
 
