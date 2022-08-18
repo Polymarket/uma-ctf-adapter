@@ -102,7 +102,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
         questionID = getQuestionID(ancillaryData);
 
         if (_isInitialized(questions[questionID])) revert Initialized();
-        
+
         uint256 requestTimestamp = block.timestamp;
 
         // Persist the question parameters in storage
@@ -145,7 +145,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @param questionID - The unique questionID of the question
     function resolve(bytes32 questionID) external {
         QuestionData storage questionData = questions[questionID];
-        
+
         if (questionData.paused) revert Paused();
         if (questionData.resolved) revert Resolved();
         if (!_readyToResolve(questionData)) revert NotReadyToResolve();
@@ -158,7 +158,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @param questionID - The unique questionID of the question
     function getExpectedPayouts(bytes32 questionID) public view returns (uint256[] memory) {
         QuestionData storage questionData = questions[questionID];
-        
+
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (!_hasPrice(questionData)) revert PriceNotAvailable();
 
@@ -216,13 +216,13 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @param questionID - The unique questionID of the question
     function flag(bytes32 questionID) external auth {
         QuestionData storage questionData = questions[questionID];
-        
+
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (_isFlagged(questionData)) revert Flagged();
 
         questionData.adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
-        
-        // Flagging a question pauses it by default 
+
+        // Flagging a question pauses it by default
         questionData.paused = true;
 
         emit QuestionFlagged(questionID);
@@ -249,7 +249,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (!_isFlagged(questionData)) revert NotFlagged();
         if (block.timestamp <= questionData.adminResolutionTimestamp) revert SafetyPeriodNotPassed();
-        
+
         questionData.resolved = true;
         ctf.reportPayouts(questionID, payouts);
         emit QuestionEmergencyResolved(questionID, payouts);
@@ -261,7 +261,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
         QuestionData storage questionData = questions[questionID];
 
         if (!_isInitialized(questionData)) revert NotInitialized();
-        
+
         questionData.paused = true;
         emit QuestionPaused(questionID);
     }
@@ -271,7 +271,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     function unPauseQuestion(bytes32 questionID) external auth {
         QuestionData storage questionData = questions[questionID];
         if (!_isInitialized(questionData)) revert NotInitialized();
-        
+
         questionData.paused = false;
         emit QuestionUnpaused(questionID);
     }
