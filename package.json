@@ -1,5 +1,5 @@
 {
-    "name": "@polymarket/uma-ctf-binary-adapter",
+    "name": "@polymarket/uma-ctf-adapter",
     "description": "Contracts to resolve Polymarket prediction markets via UMA's Optimistic Oracle",
     "version": "2.0.0",
     "contributors": [

@@ -2,6 +2,7 @@
 pragma solidity 0.8.15;
 
 interface IUmaCtfAdapterEE {
+    
     error NotInitialized();
     error NotFlagged();
     error NotReadyToResolve();
