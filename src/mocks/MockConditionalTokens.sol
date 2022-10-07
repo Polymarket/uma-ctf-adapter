@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.15;
 
-import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import { SafeMath } from "openzeppelin-contracts/utils/math/SafeMath.sol";
 import { CTHelpers } from "./CTHelpers.sol";
 
 contract MockConditionalTokens {
