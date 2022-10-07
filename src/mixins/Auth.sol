@@ -1,36 +1,39 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+import { IAuth } from "../interfaces/IAuth.sol";
+
 /// @title Auth
 /// @notice Provides access control modifiers
-abstract contract Auth {
+abstract contract Auth is IAuth {
     /// @notice Auth
-    mapping(address => uint256) public wards;
+    mapping(address => uint256) public admins;
 
-    constructor() {
-        wards[msg.sender] = 1;
-        emit AuthorizedUser(msg.sender);
+    modifier onlyAdmin() {
+        if (admins[msg.sender] != 1) revert NotAdmin();
+        _;
     }
 
-    /// @notice Authorizes a user
-    function rely(address usr) external auth {
-        wards[usr] = 1;
-        emit AuthorizedUser(usr);
+    constructor() {
+        admins[msg.sender] = 1;
+    }
+
+    /// @notice Adds an Admin
+    /// @param admin - The address of the admin
+    function addAdmin(address admin) external onlyAdmin {
+        admins[admin] = 1;
+        emit NewAdmin(msg.sender, admin);
     }
 
     /// @notice Deauthorizes a user
-    function deny(address usr) external auth {
-        wards[usr] = 0;
-        emit DeauthorizedUser(usr);
+    function removeAdmin(address admin) external onlyAdmin {
+        admins[admin] = 0;
+        emit RemovedAdmin(msg.sender, admin);
     }
 
-    error NotAuthorized();
-    event AuthorizedUser(address indexed usr);
-    event DeauthorizedUser(address indexed usr);
-
-    /// @notice - Authorization modifier
-    modifier auth() {
-        if (wards[msg.sender] != 1) revert NotAuthorized();
-        _;
+    /// @notice
+    function renounceAdmin() external onlyAdmin {
+        admins[msg.sender] = 0;
+        emit RemovedAdmin(msg.sender, msg.sender);
     }
 }

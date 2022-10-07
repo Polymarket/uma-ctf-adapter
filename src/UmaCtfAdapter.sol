@@ -13,13 +13,13 @@ import { TransferHelper } from "./libraries/TransferHelper.sol";
 import { IUmaCtfAdapter } from "./interfaces/IUmaCtfAdapter.sol";
 import { FinderInterface } from "./interfaces/FinderInterface.sol";
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
-import { SkinnyOptimisticRequester } from "./interfaces/SkinnyOptimisticRequester.sol";
+import { IOptimisticRequester } from "./interfaces/IOptimisticRequester.sol";
 import { AddressWhitelistInterface } from "./interfaces/AddressWhitelistInterface.sol";
-import { OptimisticOracleV2Interface } from "./interfaces/OptimisticOracleV2Interface.sol";
+import { IOptimisticOracleV2 } from "./interfaces/IOptimisticOracleV2.sol";
 
 /// @title UmaCtfAdapter
 /// @notice Enables resolution of CTF markets via UMA's Optimistic Oracle
-contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticRequester, ReentrancyGuard {
+contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticRequester, ReentrancyGuard {
     /*///////////////////////////////////////////////////////////////////
                             IMMUTABLES 
     //////////////////////////////////////////////////////////////////*/
@@ -28,7 +28,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     IConditionalTokens public immutable ctf;
 
     /// @notice Optimistic Oracle
-    OptimisticOracleV2Interface public immutable optimisticOracle;
+    IOptimisticOracleV2 public immutable optimisticOracle;
 
     /// @notice Collateral Whitelist
     AddressWhitelistInterface public immutable collateralWhitelist;
@@ -68,7 +68,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
 
     constructor(address _ctf, address _finder) {
         ctf = IConditionalTokens(_ctf);
-        optimisticOracle = OptimisticOracleV2Interface(
+        optimisticOracle = IOptimisticOracleV2(
             FinderInterface(_finder).getImplementationAddress(UmaConstants.OptimisticOracleV2)
         );
         collateralWhitelist = AddressWhitelistInterface(
@@ -81,7 +81,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     //////////////////////////////////////////////////////////////////*/
 
     /// @notice Initializes a question
-    /// Atomically adds the question to the Adapter, prepares it on the CTF and requests a price from the OO.
+    /// Atomically adds the question to the Adapter, prepares it on the ConditionalTokens Framework and requests a price from the OO.
     /// If a reward is provided, the caller must have approved the Adapter as spender and have enough rewardToken
     /// to pay for the price request.
     /// Prepares the condition using the Adapter as the oracle and a fixed outcome slot count = 2.
@@ -89,15 +89,14 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @param rewardToken   - ERC20 token address used for payment of rewards and fees
     /// @param reward        - Reward offered to a successful proposer
     /// @param proposalBond  - Bond required to be posted by OO proposers/disputers. If 0, the default OO bond is used.
-    function initializeQuestion(
-        bytes memory ancillaryData,
-        address rewardToken,
-        uint256 reward,
-        uint256 proposalBond
-    ) external returns (bytes32 questionID) {
+    function initialize(bytes memory ancillaryData, address rewardToken, uint256 reward, uint256 proposalBond)
+        external
+        returns (bytes32 questionID)
+    {
         if (!collateralWhitelist.isOnWhitelist(rewardToken)) revert UnsupportedToken();
-        if (ancillaryData.length == 0 || ancillaryData.length > UmaConstants.AncillaryDataLimit)
+        if (ancillaryData.length == 0 || ancillaryData.length > UmaConstants.AncillaryDataLimit) {
             revert InvalidAncillaryData();
+        }
 
         questionID = getQuestionID(ancillaryData);
 
@@ -115,14 +114,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
         _requestPrice(msg.sender, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
 
         emit QuestionInitialized(
-            questionID,
-            requestTimestamp,
-            msg.sender,
-            ancillaryData,
-            rewardToken,
-            reward,
-            proposalBond
-        );
+            questionID, requestTimestamp, msg.sender, ancillaryData, rewardToken, reward, proposalBond
+            );
     }
 
     /// @notice Checks whether a questionID is ready to be resolved
@@ -132,9 +125,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     }
 
     function _readyToResolve(QuestionData storage questionData) internal view returns (bool) {
-        if (!_isInitialized(questionData)) {
-            return false;
-        }
+        if (!_isInitialized(questionData)) return false;
         // Check that the OO has an available price
         return _hasPrice(questionData);
     }
@@ -163,14 +154,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
         if (!_hasPrice(questionData)) revert PriceNotAvailable();
 
         // Fetches price from OO
-        int256 price = optimisticOracle
-            .getRequest(
-                address(this),
-                UmaConstants.YesOrNoIdentifier,
-                questionData.requestTimestamp,
-                questionData.ancillaryData
-            )
-            .resolvedPrice;
+        int256 price = optimisticOracle.getRequest(
+            address(this), UmaConstants.YesOrNoIdentifier, questionData.requestTimestamp, questionData.ancillaryData
+        ).resolvedPrice;
 
         return _constructPayouts(price);
     }
@@ -179,12 +165,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// originating from the Adapter.
     /// Resets the question and sends out a new price request to the OO
     /// @param ancillaryData    - Ancillary data of the request
-    function priceDisputed(
-        bytes32,
-        uint256,
-        bytes memory ancillaryData,
-        uint256
-    ) external onlyOptimisticOracle {
+    function priceDisputed(bytes32, uint256, bytes memory ancillaryData, uint256) external onlyOptimisticOracle {
         bytes32 questionID = getQuestionID(ancillaryData);
         QuestionData storage questionData = questions[questionID];
 
@@ -214,7 +195,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
 
     /// @notice Flags a market for emergency resolution
     /// @param questionID - The unique questionID of the question
-    function flag(bytes32 questionID) external auth {
+    function flag(bytes32 questionID) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
 
         if (!_isInitialized(questionData)) revert NotInitialized();
@@ -231,7 +212,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @notice Allows an authorized user to reset a question, sending out a new price request to the OO.
     /// Failsafe to be used if the priceDisputed callback reverts during execution.
     /// @param questionID - The unique questionID
-    function reset(bytes32 questionID) external auth {
+    function reset(bytes32 questionID) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (questionData.resolved) revert Resolved();
@@ -242,7 +223,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     /// @notice Allows an authorized user to resolve a CTF market in an emergency
     /// @param questionID   - The unique questionID of the question
     /// @param payouts      - Array of position payouts for the referenced question
-    function emergencyResolve(bytes32 questionID, uint256[] calldata payouts) external auth {
+    function emergencyResolve(bytes32 questionID, uint256[] calldata payouts) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
 
         if (payouts.length != 2) revert InvalidPayouts();
@@ -257,7 +238,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
 
     /// @notice Allows an authorized user to pause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
-    function pauseQuestion(bytes32 questionID) external auth {
+    function pauseQuestion(bytes32 questionID) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
 
         if (!_isInitialized(questionData)) revert NotInitialized();
@@ -268,7 +249,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
 
     /// @notice Allows an authorized user to unpause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
-    function unPauseQuestion(bytes32 questionID) external auth {
+    function unPauseQuestion(bytes32 questionID) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
         if (!_isInitialized(questionData)) revert NotInitialized();
 
@@ -333,11 +314,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
 
         // Send a price request to the Optimistic oracle
         optimisticOracle.requestPrice(
-            UmaConstants.YesOrNoIdentifier,
-            requestTimestamp,
-            ancillaryData,
-            IERC20(rewardToken),
-            reward
+            UmaConstants.YesOrNoIdentifier, requestTimestamp, ancillaryData, IERC20(rewardToken), reward
         );
 
         // Ensure the price request is event based
@@ -354,9 +331,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
         );
 
         // Update the proposal bond on the Optimistic oracle if necessary
-        if (bond > 0) {
-            optimisticOracle.setBond(UmaConstants.YesOrNoIdentifier, requestTimestamp, ancillaryData, bond);
-        }
+        if (bond > 0) optimisticOracle.setBond(UmaConstants.YesOrNoIdentifier, requestTimestamp, ancillaryData, bond);
     }
 
     /// @notice Reset the question by updating the requestTimestamp field and sending a new price request to the OO
@@ -394,9 +369,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     function _resolve(bytes32 questionID, QuestionData storage questionData) internal {
         // Get the price from the OO
         int256 price = optimisticOracle.settleAndGetPrice(
-            UmaConstants.YesOrNoIdentifier,
-            questionData.requestTimestamp,
-            questionData.ancillaryData
+            UmaConstants.YesOrNoIdentifier, questionData.requestTimestamp, questionData.ancillaryData
         );
 
         // Construct the payout array for the question
@@ -412,13 +385,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, SkinnyOptimisticR
     }
 
     function _hasPrice(QuestionData storage questionData) internal view returns (bool) {
-        return
-            optimisticOracle.hasPrice(
-                address(this),
-                UmaConstants.YesOrNoIdentifier,
-                questionData.requestTimestamp,
-                questionData.ancillaryData
-            );
+        return optimisticOracle.hasPrice(
+            address(this), UmaConstants.YesOrNoIdentifier, questionData.requestTimestamp, questionData.ancillaryData
+        );
     }
 
     function _isFlagged(QuestionData storage questionData) internal view returns (bool) {

@@ -14,10 +14,7 @@ contract MockConditionalTokens {
     /// @param questionId An identifier for the question to be answered by the oracle.
     /// @param outcomeSlotCount The number of outcome slots which should be used for this condition. Must not exceed 256.
     event ConditionPreparation(
-        bytes32 indexed conditionId,
-        address indexed oracle,
-        bytes32 indexed questionId,
-        uint256 outcomeSlotCount
+        bytes32 indexed conditionId, address indexed oracle, bytes32 indexed questionId, uint256 outcomeSlotCount
     );
 
     event ConditionResolution(
@@ -33,11 +30,11 @@ contract MockConditionalTokens {
     /// Denominator is also used for checking if the condition has been resolved. If the denominator is non-zero, then the condition has been resolved.
     mapping(bytes32 => uint256) public payoutDenominator;
 
-    function getConditionId(
-        address oracle,
-        bytes32 questionId,
-        uint256 outcomeSlotCount
-    ) external pure returns (bytes32) {
+    function getConditionId(address oracle, bytes32 questionId, uint256 outcomeSlotCount)
+        external
+        pure
+        returns (bytes32)
+    {
         return CTHelpers.getConditionId(oracle, questionId, outcomeSlotCount);
     }
 
@@ -45,11 +42,7 @@ contract MockConditionalTokens {
     /// @param oracle The account assigned to report the result for the prepared condition.
     /// @param questionId An identifier for the question to be answered by the oracle.
     /// @param outcomeSlotCount The number of outcome slots which should be used for this condition. Must not exceed 256.
-    function prepareCondition(
-        address oracle,
-        bytes32 questionId,
-        uint256 outcomeSlotCount
-    ) external {
+    function prepareCondition(address oracle, bytes32 questionId, uint256 outcomeSlotCount) external {
         // Limit of 256 because we use a partition array that is a number of 256 bits.
         require(outcomeSlotCount <= 256, "too many outcome slots");
         require(outcomeSlotCount > 1, "there should be more than one outcome slot");

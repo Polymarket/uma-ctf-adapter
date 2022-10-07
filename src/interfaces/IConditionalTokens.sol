@@ -10,10 +10,7 @@ interface IConditionalTokens {
     /// @param questionId An identifier for the question to be answered by the oracle.
     /// @param outcomeSlotCount The number of outcome slots which should be used for this condition. Must not exceed 256.
     event ConditionPreparation(
-        bytes32 indexed conditionId,
-        address indexed oracle,
-        bytes32 indexed questionId,
-        uint256 outcomeSlotCount
+        bytes32 indexed conditionId, address indexed oracle, bytes32 indexed questionId, uint256 outcomeSlotCount
     );
 
     event ConditionResolution(
@@ -61,11 +58,7 @@ interface IConditionalTokens {
     /// @param oracle The account assigned to report the result for the prepared condition.
     /// @param questionId An identifier for the question to be answered by the oracle.
     /// @param outcomeSlotCount The number of outcome slots which should be used for this condition. Must not exceed 256.
-    function prepareCondition(
-        address oracle,
-        bytes32 questionId,
-        uint256 outcomeSlotCount
-    ) external;
+    function prepareCondition(address oracle, bytes32 questionId, uint256 outcomeSlotCount) external;
 
     /// @dev Called by the oracle for reporting results of conditions. Will set the payout vector for the condition with the ID ``keccak256(abi.encodePacked(oracle, questionId, outcomeSlotCount))``, where oracle is the message sender, questionId is one of the parameters of this function, and outcomeSlotCount is the length of the payouts parameter, which contains the payoutNumerators for each outcome slot of the condition.
     /// @param questionId The question ID the oracle is answering for
@@ -110,21 +103,19 @@ interface IConditionalTokens {
     /// @param oracle The account assigned to report the result for the prepared condition.
     /// @param questionId An identifier for the question to be answered by the oracle.
     /// @param outcomeSlotCount The number of outcome slots which should be used for this condition. Must not exceed 256.
-    function getConditionId(
-        address oracle,
-        bytes32 questionId,
-        uint256 outcomeSlotCount
-    ) external pure returns (bytes32);
+    function getConditionId(address oracle, bytes32 questionId, uint256 outcomeSlotCount)
+        external
+        pure
+        returns (bytes32);
 
     /// @dev Constructs an outcome collection ID from a parent collection and an outcome collection.
     /// @param parentCollectionId Collection ID of the parent outcome collection, or bytes32(0) if there's no parent.
     /// @param conditionId Condition ID of the outcome collection to combine with the parent outcome collection.
     /// @param indexSet Index set of the outcome collection to combine with the parent outcome collection.
-    function getCollectionId(
-        bytes32 parentCollectionId,
-        bytes32 conditionId,
-        uint256 indexSet
-    ) external view returns (bytes32);
+    function getCollectionId(bytes32 parentCollectionId, bytes32 conditionId, uint256 indexSet)
+        external
+        view
+        returns (bytes32);
 
     /// @dev Constructs a position ID from a collateral token and an outcome collection. These IDs are used as the ERC-1155 ID for this contract.
     /// @param collateralToken Collateral token which backs the position.

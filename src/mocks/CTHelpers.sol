@@ -15,11 +15,11 @@ library CTHelpers {
     /// @param oracle The account assigned to report the result for the prepared condition.
     /// @param questionId An identifier for the question to be answered by the oracle.
     /// @param outcomeSlotCount The number of outcome slots which should be used for this condition. Must not exceed 256.
-    function getConditionId(
-        address oracle,
-        bytes32 questionId,
-        uint256 outcomeSlotCount
-    ) internal pure returns (bytes32) {
+    function getConditionId(address oracle, bytes32 questionId, uint256 outcomeSlotCount)
+        internal
+        pure
+        returns (bytes32)
+    {
         return keccak256(abi.encodePacked(oracle, questionId, outcomeSlotCount));
     }
 
@@ -401,11 +401,11 @@ library CTHelpers {
     /// @param parentCollectionId Collection ID of the parent outcome collection, or bytes32(0) if there's no parent.
     /// @param conditionId Condition ID of the outcome collection to combine with the parent outcome collection.
     /// @param indexSet Index set of the outcome collection to combine with the parent outcome collection.
-    function getCollectionId(
-        bytes32 parentCollectionId,
-        bytes32 conditionId,
-        uint256 indexSet
-    ) internal view returns (bytes32) {
+    function getCollectionId(bytes32 parentCollectionId, bytes32 conditionId, uint256 indexSet)
+        internal
+        view
+        returns (bytes32)
+    {
         uint256 x1 = uint256(keccak256(abi.encodePacked(conditionId, indexSet)));
         bool odd = x1 >> 255 != 0;
         uint256 y1;
