@@ -2,7 +2,6 @@
 
 ![Github Actions](https://github.com/Polymarket/uma-conditional-tokens-adapter/workflows/Tests/badge.svg)
 ![Github Actions](https://github.com/Polymarket/uma-conditional-tokens-adapter/workflows/Lint/badge.svg)
-[![Coverage](https://coveralls.io/repos/github/Polymarket/uma-conditional-tokens-adapter/badge.svg?branch=main)](https://coveralls.io/github/Polymarket/uma-conditional-tokens-adapter?branch=main)
 
 ## Overview
 
