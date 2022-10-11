@@ -5,13 +5,7 @@ pragma solidity 0.8.15;
  * @title Provides addresses of the live contracts implementing certain interfaces.
  * @dev Examples are the Oracle or Store interfaces.
  */
-interface FinderInterface {
-    /**
-     * @notice Updates the address of the contract that implements `interfaceName`.
-     * @param interfaceName bytes32 encoding of the interface name that is either changed or registered.
-     * @param implementationAddress address of the deployed contract that implements the interface.
-     */
-    function changeImplementationAddress(bytes32 interfaceName, address implementationAddress) external;
+interface IFinder {
 
     /**
      * @notice Gets the address of the contract that implements the given `interfaceName`.

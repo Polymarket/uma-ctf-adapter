@@ -11,14 +11,14 @@ import { UmaConstants } from "./libraries/UmaConstants.sol";
 import { TransferHelper } from "./libraries/TransferHelper.sol";
 
 import { IUmaCtfAdapter } from "./interfaces/IUmaCtfAdapter.sol";
-import { FinderInterface } from "./interfaces/FinderInterface.sol";
+import { IFinder } from "./interfaces/IFinder.sol";
 import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { IOptimisticRequester } from "./interfaces/IOptimisticRequester.sol";
-import { AddressWhitelistInterface } from "./interfaces/AddressWhitelistInterface.sol";
+import { IAddressWhitelist } from "./interfaces/IAddressWhitelist.sol";
 import { IOptimisticOracleV2 } from "./interfaces/IOptimisticOracleV2.sol";
 
 /// @title UmaCtfAdapter
-/// @notice Enables resolution of CTF markets via UMA's Optimistic Oracle
+/// @notice Enables resolution of Polymarket CTF markets via UMA's Optimistic Oracle
 contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticRequester, ReentrancyGuard {
     /*///////////////////////////////////////////////////////////////////
                             IMMUTABLES 
@@ -31,9 +31,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     IOptimisticOracleV2 public immutable optimisticOracle;
 
     /// @notice Collateral Whitelist
-    AddressWhitelistInterface public immutable collateralWhitelist;
+    IAddressWhitelist public immutable collateralWhitelist;
 
-    /// @notice Time period after which an authorized user can emergency resolve a condition
+    /// @notice Time period after which an admin can emergency resolve a condition
     uint256 public constant emergencySafetyPeriod = 2 days;
 
     struct QuestionData {
@@ -69,10 +69,10 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     constructor(address _ctf, address _finder) {
         ctf = IConditionalTokens(_ctf);
         optimisticOracle = IOptimisticOracleV2(
-            FinderInterface(_finder).getImplementationAddress(UmaConstants.OptimisticOracleV2)
+            IFinder(_finder).getImplementationAddress(UmaConstants.OptimisticOracleV2)
         );
-        collateralWhitelist = AddressWhitelistInterface(
-            FinderInterface(_finder).getImplementationAddress(UmaConstants.CollateralWhitelist)
+        collateralWhitelist = IAddressWhitelist(
+            IFinder(_finder).getImplementationAddress(UmaConstants.CollateralWhitelist)
         );
     }
 
@@ -190,7 +190,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     }
 
     /*////////////////////////////////////////////////////////////////////
-                            AUTHORIZED FUNCTIONS 
+                            ADMIN ONLY FUNCTIONS 
     ///////////////////////////////////////////////////////////////////*/
 
     /// @notice Flags a market for emergency resolution
@@ -209,7 +209,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         emit QuestionFlagged(questionID);
     }
 
-    /// @notice Allows an authorized user to reset a question, sending out a new price request to the OO.
+    /// @notice Allows an admin to reset a question, sending out a new price request to the OO.
     /// Failsafe to be used if the priceDisputed callback reverts during execution.
     /// @param questionID - The unique questionID
     function reset(bytes32 questionID) external onlyAdmin {
@@ -220,7 +220,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         _reset(questionID, questionData);
     }
 
-    /// @notice Allows an authorized user to resolve a CTF market in an emergency
+    /// @notice Allows an admin to resolve a CTF market in an emergency
     /// @param questionID   - The unique questionID of the question
     /// @param payouts      - Array of position payouts for the referenced question
     function emergencyResolve(bytes32 questionID, uint256[] calldata payouts) external onlyAdmin {
@@ -236,7 +236,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         emit QuestionEmergencyResolved(questionID, payouts);
     }
 
-    /// @notice Allows an authorized user to pause market resolution in an emergency
+    /// @notice Allows an admin to pause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
     function pauseQuestion(bytes32 questionID) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
@@ -247,7 +247,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         emit QuestionPaused(questionID);
     }
 
-    /// @notice Allows an authorized user to unpause market resolution in an emergency
+    /// @notice Allows an admin to unpause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
     function unPauseQuestion(bytes32 questionID) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
