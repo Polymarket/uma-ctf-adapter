@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { AdapterHelper } from "./dev/AdapterHelper.sol";
+import { Data, AdapterHelper } from "./dev/AdapterHelper.sol";
 
 import { IAddressWhitelist } from "src/interfaces/IAddressWhitelist.sol";
 
@@ -44,5 +44,27 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         adapter.renounceAdmin();
         assertFalse(adapter.isAdmin(admin));
+    }
+
+    function testInitializeZeroRewardAndBond() public {
+        bytes memory ancillaryData = hex"569e599c2f623949c0d74d7bf006f8a4f68b911876d6437c1db4ad4c3eb21e68682fb8168b75eb23d3994383a40643d73d59";
+    
+        bytes32 expectedQuestionID = keccak256(ancillaryData);
+        vm.expectEmit(true, true, true, true);
+        emit QuestionInitialized(expectedQuestionID, block.timestamp, admin, ancillaryData, usdc, 0, 0);
+
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 0, 0);
+
+        assertTrue(adapter.isInitialized(expectedQuestionID));
+
+        Data memory data = getData(expectedQuestionID);
+        assertEq(block.timestamp, data.requestTimestamp);
+        assertEq(admin, data.creator);
+        assertEq(ancillaryData, data.ancillaryData);
+        assertEq(usdc, data.rewardToken);
+        assertEq(0, data.reward);
+        assertFalse(data.paused);
+        assertFalse(data.resolved);
     }
 }

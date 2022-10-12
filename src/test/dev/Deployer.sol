@@ -23,9 +23,22 @@ library Deployer {
         return deployment;
     }
 
-    function OptimisticOracleV2() public returns (address) {
-        address deployment = _deployCode("artifacts/OptimisticOracleV2.json");
+    function OptimisticOracleV2(uint256 liveness, address finder) public returns (address) {
+        bytes memory args = abi.encode(liveness, finder, address(0));
+        address deployment = _deployCode("artifacts/OptimisticOracleV2.json", args);
         vm.label(deployment, "OptimisticOracleV2");
+        return deployment;
+    }
+
+    function Store() public returns (address) {
+        address deployment = _deployCode("artifacts/Store.json");
+        vm.label(deployment, "Store");
+        return deployment;
+    }
+
+    function IdentifierWhitelist() public returns (address) {
+        address deployment = _deployCode("artifacts/IdentifierWhitelist.json");
+        vm.label(deployment, "IdentifierWhitelist");
         return deployment;
     }
 

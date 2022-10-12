@@ -15,7 +15,8 @@ import { IConditionalTokens } from "./interfaces/IConditionalTokens.sol";
 import { IOptimisticOracleV2 } from "./interfaces/IOptimisticOracleV2.sol";
 import { IOptimisticRequester } from "./interfaces/IOptimisticRequester.sol";
 
-import { IUmaCtfAdapter } from "./interfaces/IUmaCtfAdapter.sol";
+import { QuestionData, IUmaCtfAdapter } from "./interfaces/IUmaCtfAdapter.sol";
+
 
 /// @title UmaCtfAdapter
 /// @notice Enables resolution of Polymarket CTF markets via UMA's Optimistic Oracle
@@ -42,28 +43,6 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /// @notice Maximum ancillary data length
     uint256 public constant maxAncillaryData = 8139;
 
-    struct QuestionData {
-        /// @notice Request timestamp, set when a request is made to the Optimistic Oracle
-        /// @dev Used to identify the request and NOT used by the DVM to determine validity
-        uint256 requestTimestamp;
-        /// @notice Reward offered to a successful proposer
-        uint256 reward;
-        /// @notice Additional bond required by Optimistic oracle proposers/disputers
-        uint256 proposalBond;
-        /// @notice Admin Resolution timestamp, set when a market is flagged for admin resolution
-        uint256 adminResolutionTimestamp;
-        /// @notice Flag marking whether a question is resolved
-        bool resolved;
-        /// @notice Flag marking whether a question is paused
-        bool paused;
-        /// @notice ERC20 token address used for payment of rewards, proposal bonds and fees
-        address rewardToken;
-        /// @notice The address of the question creator
-        address creator;
-        /// @notice Data used to resolve a condition
-        bytes ancillaryData;
-    }
-
     /// @notice Mapping of questionID to QuestionData
     mapping(bytes32 => QuestionData) public questions;
 
@@ -74,8 +53,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
     constructor(address _ctf, address _finder) {
         ctf = IConditionalTokens(_ctf);
-        optimisticOracle = IOptimisticOracleV2(IFinder(_finder).getImplementationAddress("OptimisticOracleV2"));
-        collateralWhitelist = IAddressWhitelist(IFinder(_finder).getImplementationAddress("CollateralWhitelist"));
+        IFinder finder = IFinder(_finder);
+        optimisticOracle = IOptimisticOracleV2(finder.getImplementationAddress("OptimisticOracleV2"));
+        collateralWhitelist = IAddressWhitelist(finder.getImplementationAddress("CollateralWhitelist"));
     }
 
     /*///////////////////////////////////////////////////////////////////
@@ -98,7 +78,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (!collateralWhitelist.isOnWhitelist(rewardToken)) revert UnsupportedToken();
         if (ancillaryData.length == 0 || ancillaryData.length > maxAncillaryData) revert InvalidAncillaryData();
 
-        questionID = getQuestionID(ancillaryData);
+        questionID = keccak256(ancillaryData);
 
         if (_isInitialized(questions[questionID])) revert Initialized();
 
@@ -108,14 +88,14 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         _saveQuestion(msg.sender, questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
 
         // Prepare the question on the CTF
-        _prepareQuestion(questionID);
+        ctf.prepareCondition(address(this), questionID, 2);
 
         // Request a price for the question from the OO
         _requestPrice(msg.sender, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
 
         emit QuestionInitialized(
             questionID, requestTimestamp, msg.sender, ancillaryData, rewardToken, reward, proposalBond
-            );
+        );
     }
 
     /// @notice Checks whether a questionID is ready to be resolved
@@ -166,7 +146,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /// Resets the question and sends out a new price request to the OO
     /// @param ancillaryData    - Ancillary data of the request
     function priceDisputed(bytes32, uint256, bytes memory ancillaryData, uint256) external onlyOptimisticOracle {
-        bytes32 questionID = getQuestionID(ancillaryData);
+        bytes32 questionID = keccak256(ancillaryData);
         QuestionData storage questionData = questions[questionID];
 
         // Upon dispute, immediately reset the question, sending out a new price request
@@ -183,10 +163,6 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /// @param questionID - The unique questionID
     function isFlagged(bytes32 questionID) public view returns (bool) {
         return _isFlagged(questions[questionID]);
-    }
-
-    function getQuestionID(bytes memory ancillaryData) public view returns (bytes32) {
-        return keccak256(abi.encode(address(this), ancillaryData));
     }
 
     /*////////////////////////////////////////////////////////////////////
@@ -417,13 +393,6 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             payouts[0] = 1;
             payouts[1] = 0;
         }
-
         return payouts;
-    }
-
-    /// @notice Prepares the question on the CTF
-    /// @param questionID - The unique questionID
-    function _prepareQuestion(bytes32 questionID) internal {
-        ctf.prepareCondition(address(this), questionID, 2);
     }
 }

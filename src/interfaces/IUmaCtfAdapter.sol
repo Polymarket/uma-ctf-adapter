@@ -1,6 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+struct QuestionData {
+    /// @notice Request timestamp, set when a request is made to the Optimistic Oracle
+    /// @dev Used to identify the request and NOT used by the DVM to determine validity
+    uint256 requestTimestamp;
+    /// @notice Reward offered to a successful proposer
+    uint256 reward;
+    /// @notice Additional bond required by Optimistic oracle proposers/disputers
+    uint256 proposalBond;
+    /// @notice Admin Resolution timestamp, set when a market is flagged for admin resolution
+    uint256 adminResolutionTimestamp;
+    /// @notice Flag marking whether a question is resolved
+    bool resolved;
+    /// @notice Flag marking whether a question is paused
+    bool paused;
+    /// @notice ERC20 token address used for payment of rewards, proposal bonds and fees
+    address rewardToken;
+    /// @notice The address of the question creator
+    address creator;
+    /// @notice Data used to resolve a condition
+    bytes ancillaryData;
+}
+
 interface IUmaCtfAdapterEE {
     error NotInitialized();
     error NotFlagged();
