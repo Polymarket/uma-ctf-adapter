@@ -7,11 +7,14 @@ import { USDC } from "./USDC.sol";
 
 import { UmaCtfAdapter } from "src/UmaCtfAdapter.sol";
 import { IFinder } from "src/interfaces/IFinder.sol";
+
 import { IAddressWhitelist } from "src/interfaces/IAddressWhitelist.sol";
+
+import { IAuthEE } from "src/interfaces/IAuth.sol";
 
 import { console2 as console } from "forge-std/console2.sol";
 
-abstract contract AdapterHelper is TestHelper {
+abstract contract AdapterHelper is TestHelper, IAuthEE {
     address public admin = alice;
     UmaCtfAdapter public adapter;
     address public usdc;
@@ -38,5 +41,8 @@ abstract contract AdapterHelper is TestHelper {
         // Deploy adapter
         vm.prank(admin);
         adapter = new UmaCtfAdapter(ctf, finder);
+
+        // Mint USDC to Admin and approve on Adapter
+        dealAndApprove(usdc, admin, address(adapter), 1_000_000_000);
     }
 }

@@ -36,4 +36,8 @@ abstract contract Auth is IAuth {
         admins[msg.sender] = 0;
         emit RemovedAdmin(msg.sender, msg.sender);
     }
+
+    function isAdmin(address addr) external view returns (bool) {
+        return admins[addr] == 1;
+    }
 }

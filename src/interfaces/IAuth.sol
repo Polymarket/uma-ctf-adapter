@@ -12,6 +12,8 @@ interface IAuthEE {
 }
 
 interface IAuth is IAuthEE {
+    function isAdmin(address) external view returns (bool);
+
     function addAdmin(address) external;
 
     function removeAdmin(address) external;
