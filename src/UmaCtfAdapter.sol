@@ -69,10 +69,10 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     constructor(address _ctf, address _finder) {
         ctf = IConditionalTokens(_ctf);
         optimisticOracle = IOptimisticOracleV2(
-            IFinder(_finder).getImplementationAddress(UmaConstants.OptimisticOracleV2)
+            IFinder(_finder).getImplementationAddress("OptimisticOracleV2")
         );
         collateralWhitelist = IAddressWhitelist(
-            IFinder(_finder).getImplementationAddress(UmaConstants.CollateralWhitelist)
+            IFinder(_finder).getImplementationAddress("CollateralWhitelist")
         );
     }
 
