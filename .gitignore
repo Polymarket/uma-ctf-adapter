@@ -9,7 +9,6 @@ lib
 .env.*
 !.env.example
 
-artifacts
 cache
 coverage*
 .vscode
