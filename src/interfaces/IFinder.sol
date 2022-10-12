@@ -6,7 +6,6 @@ pragma solidity 0.8.15;
  * @dev Examples are the Oracle or Store interfaces.
  */
 interface IFinder {
-
     /**
      * @notice Updates the address of the contract that implements `interfaceName`.
      * @param interfaceName bytes32 encoding of the interface name that is either changed or registered.

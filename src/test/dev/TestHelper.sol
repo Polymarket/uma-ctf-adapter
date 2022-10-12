@@ -33,11 +33,7 @@ abstract contract TestHelper is Test {
         vm.stopPrank();
     }
 
-    function assertBalance(
-        address _token,
-        address _who,
-        uint256 _amount
-    ) internal {
+    function assertBalance(address _token, address _who, uint256 _amount) internal {
         assertEq(ERC20(_token).balanceOf(_who), balanceCheckpoints[_token][_who] + _amount);
     }
 
@@ -49,21 +45,12 @@ abstract contract TestHelper is Test {
         return ERC20(_token).balanceOf(_who);
     }
 
-    function approve(
-        address _token,
-        address _spender,
-        uint256 _amount
-    ) internal {
+    function approve(address _token, address _spender, uint256 _amount) internal {
         ERC20(_token).approve(_spender, _amount);
     }
 
     ///@dev msg.sender is the owner of the approved tokens
-    function dealAndApprove(
-        address _token,
-        address _to,
-        address _spender,
-        uint256 _amount
-    ) internal {
+    function dealAndApprove(address _token, address _to, address _spender, uint256 _amount) internal {
         deal(_token, _to, _amount);
         approve(_token, _spender, _amount);
     }

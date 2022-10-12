@@ -10,4 +10,3 @@ interface IAddressWhitelist {
 
     function getWhitelist() external view returns (address[] memory);
 }
-
