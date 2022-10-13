@@ -16,10 +16,10 @@ import { QuestionData, IUmaCtfAdapterEE } from "src/interfaces/IUmaCtfAdapter.so
 
 import { console2 as console } from "forge-std/console2.sol";
 
-
 struct Unsigned {
     uint256 rawValue;
 }
+
 interface IStore {
     function setFinalFee(address currency, Unsigned memory newFinalFee) external;
 }
@@ -37,16 +37,17 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
     address public finder;
     address public whitelist;
 
-    bytes public constant ancillaryData = hex"569e599c2f623949c0d74d7bf006f8a4f68b911876d6437c1db4ad4c3eb21e68682fb8168b75eb23d3994383a40643d73d59";
+    bytes public constant ancillaryData =
+        hex"569e599c2f623949c0d74d7bf006f8a4f68b911876d6437c1db4ad4c3eb21e68682fb8168b75eb23d3994383a40643d73d59";
     bytes32 public constant questionID = keccak256(ancillaryData);
 
     function setUp() public virtual {
         vm.label(admin, "Admin");
 
         // Deploy Collateral and ConditionalTokens Framework
-        usdc = deployERC20("USD Coin", "USD");
+        usdc = deployToken("USD Coin", "USD");
         ctf = Deployer.ConditionalTokens();
-        
+
         // UMA Contracts Setup
         // Deploy Store
         address store = Deployer.Store();
@@ -56,7 +57,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         address identifierWhitelist = Deployer.IdentifierWhitelist();
         // Add YES_OR_NO_QUERY to Identifier Whitelist
         IIdentifierWhitelist(identifierWhitelist).addSupportedIdentifier("YES_OR_NO_QUERY");
-        
+
         // Deploy Collateral whitelist
         whitelist = Deployer.AddressWhitelist();
         // Add USDC to whitelist
@@ -66,13 +67,13 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         finder = Deployer.Finder();
         // Deploy Optimistic Oracle
         optimisticOracle = Deployer.OptimisticOracleV2(7200, finder);
-        
+
         // Add Identifier, Store, Whitelist and Optimistic Oracle to Finder
         IFinder(finder).changeImplementationAddress("IdentifierWhitelist", identifierWhitelist);
         IFinder(finder).changeImplementationAddress("Store", store);
         IFinder(finder).changeImplementationAddress("OptimisticOracleV2", optimisticOracle);
         IFinder(finder).changeImplementationAddress("CollateralWhitelist", whitelist);
-        
+
         // Deploy adapter
         vm.startPrank(admin);
         adapter = new UmaCtfAdapter(ctf, finder);
@@ -82,7 +83,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         vm.stopPrank();
     }
 
-    function deployERC20(string memory name, string memory symbol) internal returns (address token) {
-        token= address(new MintableERC20(name, symbol));
+    function deployToken(string memory name, string memory symbol) internal returns (address token) {
+        token = address(new MintableERC20(name, symbol));
     }
 }

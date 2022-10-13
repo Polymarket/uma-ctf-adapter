@@ -122,7 +122,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
 
     function testInitializeRevertUnsupportedRewardToken() public {
         // Deploy a new ERC20 token to be used as reward token
-        address tkn = deployERC20("Test Token", "TST");
+        address tkn = deployToken("Test Token", "TST");
         vm.prank(admin);
         dealAndApprove(tkn, admin, address(adapter), type(uint256).max);
 
@@ -138,7 +138,6 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.expectRevert(InvalidAncillaryData.selector);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
     }
-
 
     function testPause() public {
         vm.prank(admin);
@@ -188,5 +187,4 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.prank(carla);
         adapter.flag(questionID);
     }
-
 }

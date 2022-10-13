@@ -17,7 +17,6 @@ import { IOptimisticRequester } from "./interfaces/IOptimisticRequester.sol";
 
 import { QuestionData, IUmaCtfAdapter } from "./interfaces/IUmaCtfAdapter.sol";
 
-
 /// @title UmaCtfAdapter
 /// @notice Enables resolution of Polymarket CTF markets via UMA's Optimistic Oracle
 contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticRequester, ReentrancyGuard {
