@@ -250,7 +250,6 @@ contract UMaCtfAdapterTest is AdapterHelper {
 
     function testResolveRevertAlreadyResolved() public {
         testResolve();
-
         vm.expectRevert(Resolved.selector);
         adapter.resolve(questionID);
     }

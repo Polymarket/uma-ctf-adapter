@@ -53,7 +53,28 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         vm.label(usdc, "USDC");
         ctf = Deployer.ConditionalTokens();
 
-        // UMA Contracts Setup
+        // Setup UMA Contracts
+        setupUmaContracts();
+
+        // Deploy adapter
+        vm.startPrank(admin);
+        adapter = new UmaCtfAdapter(ctf, finder);
+
+        // Mint USDC to Admin and approve on Adapter
+        dealAndApprove(usdc, admin, address(adapter), 1_000_000_000_000);
+        vm.stopPrank();
+
+        // Mint USDC to Proposer and Disputer and approve the OptimisticOracle as spender
+        vm.startPrank(proposer);
+        dealAndApprove(usdc, proposer, optimisticOracle, 1_000_000_000_000);
+        vm.stopPrank();
+
+        vm.startPrank(disputer);
+        dealAndApprove(usdc, disputer, optimisticOracle, 1_000_000_000_000);
+        vm.stopPrank();
+    }
+
+    function setupUmaContracts() internal {
         // Deploy Store
         address store = Deployer.Store();
         // Set final fee for USDC
@@ -73,30 +94,11 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         // Deploy Optimistic Oracle
         optimisticOracle = Deployer.OptimisticOracleV2(7200, finder);
 
-        // Add Identifier, Store, Whitelist and Optimistic Oracle to Finder
+        // Add IdentifierWhitelist, Store, CollateralWhitelist and Optimistic Oracle to Finder
         IFinder(finder).changeImplementationAddress("IdentifierWhitelist", identifierWhitelist);
         IFinder(finder).changeImplementationAddress("Store", store);
         IFinder(finder).changeImplementationAddress("OptimisticOracleV2", optimisticOracle);
         IFinder(finder).changeImplementationAddress("CollateralWhitelist", whitelist);
-
-        // Deploy adapter
-        vm.startPrank(admin);
-        adapter = new UmaCtfAdapter(ctf, finder);
-
-        // Mint USDC to Admin and approve on Adapter
-        dealAndApprove(usdc, admin, address(adapter), 1_000_000_000_000);
-        vm.stopPrank();
-
-        // Mint USDC to Proposer and Disputer and approve the OptimisticOracle as spender
-        vm.startPrank(proposer);
-        deal(usdc, proposer, 1_000_000_000_000);
-        approve(usdc, optimisticOracle, type(uint256).max);
-        vm.stopPrank();
-
-        vm.startPrank(disputer);
-        deal(usdc, disputer, 1_000_000_000_000);
-        approve(usdc, optimisticOracle, type(uint256).max);
-        vm.stopPrank();
     }
 
     function settle(uint256 timestamp, bytes memory data) internal {
@@ -110,6 +112,13 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         vm.prank(proposer);
         IOptimisticOracleV2(optimisticOracle).proposePrice(
             address(adapter), identifier, timestamp, data, price
+        );
+    }
+
+    function dispute(uint256 timestamp, bytes memory data) internal {
+        vm.prank(disputer);
+        IOptimisticOracleV2(optimisticOracle).disputePrice(
+            address(adapter), identifier, timestamp, data
         );
     }
 
