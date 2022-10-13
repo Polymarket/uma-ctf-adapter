@@ -12,6 +12,7 @@ import { IFinder } from "src/interfaces/IFinder.sol";
 import { IAddressWhitelist } from "src/interfaces/IAddressWhitelist.sol";
 
 import { IAuthEE } from "src/interfaces/IAuth.sol";
+import { IOptimisticOracleV2 } from "src/interfaces/IOptimisticOracleV2.sol";
 import { QuestionData, IUmaCtfAdapterEE } from "src/interfaces/IUmaCtfAdapter.sol";
 
 import { console2 as console } from "forge-std/console2.sol";
@@ -30,6 +31,8 @@ interface IIdentifierWhitelist {
 
 abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
     address public admin = alice;
+    address public proposer = brian;
+    address public disputer = henry;
     UmaCtfAdapter public adapter;
     address public usdc;
     address public ctf;
@@ -40,12 +43,14 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
     bytes public constant ancillaryData =
         hex"569e599c2f623949c0d74d7bf006f8a4f68b911876d6437c1db4ad4c3eb21e68682fb8168b75eb23d3994383a40643d73d59";
     bytes32 public constant questionID = keccak256(ancillaryData);
+    bytes32 public constant identifier = "YES_OR_NO_QUERY";
 
     function setUp() public virtual {
         vm.label(admin, "Admin");
 
         // Deploy Collateral and ConditionalTokens Framework
         usdc = deployToken("USD Coin", "USD");
+        vm.label(usdc, "USDC");
         ctf = Deployer.ConditionalTokens();
 
         // UMA Contracts Setup
@@ -81,6 +86,42 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         // Mint USDC to Admin and approve on Adapter
         dealAndApprove(usdc, admin, address(adapter), 1_000_000_000_000);
         vm.stopPrank();
+
+        // Mint USDC to Proposer and Disputer and approve the OptimisticOracle as spender
+        vm.startPrank(proposer);
+        deal(usdc, proposer, 1_000_000_000_000);
+        approve(usdc, optimisticOracle, type(uint256).max);
+        vm.stopPrank();
+
+        vm.startPrank(disputer);
+        deal(usdc, disputer, 1_000_000_000_000);
+        approve(usdc, optimisticOracle, type(uint256).max);
+        vm.stopPrank();
+    }
+
+    function settle(uint256 timestamp, bytes memory data) internal {
+        vm.prank(proposer);
+        IOptimisticOracleV2(optimisticOracle).settle(
+            address(adapter), identifier, timestamp, data
+        );
+    }
+
+    function propose(int256 price, uint256 timestamp, bytes memory data) internal {
+        vm.prank(proposer);
+        IOptimisticOracleV2(optimisticOracle).proposePrice(
+            address(adapter), identifier, timestamp, data, price
+        );
+    }
+
+    function proposeAndSettle(int256 price, uint256 timestamp, bytes memory data) internal {
+        // Propose a price for the request
+        propose(price, timestamp, data);
+
+        // Advance time past the request expiration time
+        fastForward(1000);
+
+        // Settle the request
+        settle(timestamp, data);
     }
 
     function deployToken(string memory name, string memory symbol) internal returns (address token) {

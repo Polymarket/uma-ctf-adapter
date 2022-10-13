@@ -187,4 +187,71 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.prank(carla);
         adapter.flag(questionID);
     }
+
+    function testReadyToResolve() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        QuestionData memory data = adapter.getQuestion(questionID);
+
+        // Propose a price for the question
+        int256 proposedPrice = 1 ether;
+        proposeAndSettle(proposedPrice, data.requestTimestamp, data.ancillaryData);
+
+        assertTrue(adapter.readyToResolve(questionID));
+    }
+
+    function testResolve() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        QuestionData memory data; 
+        data = adapter.getQuestion(questionID);
+
+        // Propose a price for the question
+        int256 price = 1 ether;
+        proposeAndSettle(price, data.requestTimestamp, data.ancillaryData);
+
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionResolved(questionID, price, payouts);
+        
+        adapter.resolve(questionID);
+        data = adapter.getQuestion(questionID);
+        assertTrue(data.resolved);
+    }
+
+    function testResolveRevertNotInitialized() public {
+        vm.expectRevert(NotReadyToResolve.selector);
+        adapter.resolve(questionID);
+    }
+
+    function testResolveRevertUnavailablePrice() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        vm.expectRevert(NotReadyToResolve.selector);
+        adapter.resolve(questionID);
+    }
+
+    function testResolveRevertPaused() public {
+        vm.startPrank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        
+        adapter.pause(questionID);
+        vm.stopPrank();
+
+        vm.expectRevert(Paused.selector);
+        adapter.resolve(questionID);
+    }
+
+    function testResolveRevertAlreadyResolved() public {
+        testResolve();
+
+        vm.expectRevert(Resolved.selector);
+        adapter.resolve(questionID);
+    }
 }

@@ -47,6 +47,37 @@ interface IOptimisticOracleV2 {
         uint256 reward
     ) external returns (uint256 totalBond);
 
+    /**
+     * @notice Proposes a price value for an existing price request.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param proposedPrice price being proposed.
+     * @return totalBond the amount that's pulled from the proposer's wallet as a bond. The bond will be returned to
+     * the proposer once settled if the proposal is correct.
+     */
+    function proposePrice(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        int256 proposedPrice
+    ) external returns (uint256 totalBond);
+
+    /**
+     * @notice Disputes a price value for an existing price request with an active proposal.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @return totalBond the amount that's pulled from the disputer's wallet as a bond. The bond will be returned to
+     * the disputer once settled if the dispute was valid (the proposal was incorrect).
+     */
+    function disputePrice(address requester, bytes32 identifier, uint256 timestamp, bytes memory ancillaryData)
+        external
+        returns (uint256 totalBond);
+
     /// @notice Set the proposal bond associated with a price request.
     /// @param identifier price identifier to identify the existing request.
     /// @param timestamp timestamp to identify the existing request.
@@ -90,6 +121,22 @@ interface IOptimisticOracleV2 {
         bool callbackOnPriceDisputed,
         bool callbackOnPriceSettled
     ) external;
+
+    /**
+     * @notice Attempts to settle an outstanding price request. Will revert if it isn't settleable.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @return payout the amount that the "winner" (proposer or disputer) receives on settlement. This amount includes
+     * the returned bonds as well as additional rewards.
+     */
+    function settle(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData
+    ) external returns (uint256 payout);
 
     /// @notice Retrieves a price that was previously requested by a caller. Reverts if the request is not settled
     /// or settleable. Note: this method is not view so that this call may actually settle the price request if it
