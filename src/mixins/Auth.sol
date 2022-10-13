@@ -25,18 +25,21 @@ abstract contract Auth is IAuth {
         emit NewAdmin(msg.sender, admin);
     }
 
-    /// @notice Deauthorizes a user
+    /// @notice Removes an admin
+    /// @param admin - The address of the admin to be removed
     function removeAdmin(address admin) external onlyAdmin {
         admins[admin] = 0;
         emit RemovedAdmin(msg.sender, admin);
     }
 
-    /// @notice
+    /// @notice Renounces Admin privileges from the caller
     function renounceAdmin() external onlyAdmin {
         admins[msg.sender] = 0;
         emit RemovedAdmin(msg.sender, msg.sender);
     }
-
+    
+    /// @notice Checks if an address is an admin
+    /// @param addr - The address to be checked
     function isAdmin(address addr) external view returns (bool) {
         return admins[addr] == 1;
     }

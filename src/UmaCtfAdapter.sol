@@ -81,32 +81,24 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
         if (_isInitialized(questions[questionID])) revert Initialized();
 
-        uint256 requestTimestamp = block.timestamp;
+        uint256 timestamp = block.timestamp;
 
         // Persist the question parameters in storage
-        _saveQuestion(msg.sender, questionID, ancillaryData, requestTimestamp, rewardToken, reward, proposalBond);
+        _saveQuestion(msg.sender, questionID, ancillaryData, timestamp, rewardToken, reward, proposalBond);
 
         // Prepare the question on the CTF
         ctf.prepareCondition(address(this), questionID, 2);
 
         // Request a price for the question from the OO
-        _requestPrice(msg.sender, requestTimestamp, ancillaryData, rewardToken, reward, proposalBond);
+        _requestPrice(msg.sender, timestamp, ancillaryData, rewardToken, reward, proposalBond);
 
-        emit QuestionInitialized(
-            questionID, requestTimestamp, msg.sender, ancillaryData, rewardToken, reward, proposalBond
-        );
+        emit QuestionInitialized(questionID, timestamp, msg.sender, ancillaryData, rewardToken, reward, proposalBond);
     }
 
     /// @notice Checks whether a questionID is ready to be resolved
     /// @param questionID - The unique questionID
     function readyToResolve(bytes32 questionID) public view returns (bool) {
         return _readyToResolve(questions[questionID]);
-    }
-
-    function _readyToResolve(QuestionData storage questionData) internal view returns (bool) {
-        if (!_isInitialized(questionData)) return false;
-        // Check that the OO has an available price
-        return _hasPrice(questionData);
     }
 
     /// @notice Resolves a question
@@ -140,8 +132,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         return _constructPayouts(price);
     }
 
-    /// @notice OO callback which is executed when there is a dispute on an OO price request
-    /// originating from the Adapter.
+    /// @notice Callback which is executed on dispute
     /// Resets the question and sends out a new price request to the OO
     /// @param ancillaryData    - Ancillary data of the request
     function priceDisputed(bytes32, uint256, bytes memory ancillaryData, uint256) external onlyOptimisticOracle {
@@ -165,7 +156,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         return _isFlagged(questions[questionID]);
     }
 
-    /// @notice TODO natspec
+    /// @notice Gets the QuestionData for the given questionID
+    /// @param questionID - The unique questionID
     function getQuestion(bytes32 questionID) external view returns (QuestionData memory) {
         return questions[questionID];
     }
@@ -242,6 +234,12 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /*///////////////////////////////////////////////////////////////////
                             INTERNAL FUNCTIONS 
     //////////////////////////////////////////////////////////////////*/
+
+    function _readyToResolve(QuestionData storage questionData) internal view returns (bool) {
+        if (!_isInitialized(questionData)) return false;
+        // Check that the OO has an available price
+        return _hasPrice(questionData);
+    }
 
     function _saveQuestion(
         address creator,

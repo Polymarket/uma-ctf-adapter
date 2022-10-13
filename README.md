@@ -6,7 +6,7 @@
 
 This repository contains contracts used to resolve [Polymarket](https://polymarket.com/) prediction markets via UMA's [optimistic oracle](https://docs.umaproject.org/oracle/optimistic-oracle-interface).
 
-### Architecture
+## Architecture
 ![Contract Architecture](./docs/adapter.png)
 
 The Adapter is an [oracle](https://github.com/Polymarket/conditional-tokens-contracts/blob/a927b5a52cf9ace712bf1b5fe1d92bf76399e692/contracts/ConditionalTokens.sol#L65) to [Conditional Tokens Framework(CTF)](https://docs.gnosis.io/conditionaltokens/) conditions, which Polymarket prediction markets are based on.
@@ -23,11 +23,15 @@ UMA Proposers will then respond to the request and fetch resolution data offchai
 After resolution data is available, anyone can call `resolve` which resolves the market using the resolution data.
 
 
-### Deployments
+## Deployments
 
 See [current deployments](./deploys.md)
 
-### Development
+## Development
+
+`git clone https://github.com/Polymarket/uma-ctf-adapter.git --recurse-submodules`
+
+---
 
 ### Set-up
 
