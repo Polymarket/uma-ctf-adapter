@@ -158,7 +158,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         adapter.pause(questionID);
     }
 
-    function testPauseRevertNonAdmin() public {
+    function testPauseRevertNotAdmin() public {
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
 
@@ -172,20 +172,6 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.expectRevert(NotAdmin.selector);
         vm.prank(carla);
         adapter.unpause(questionID);
-    }
-
-    function testFlag() public {
-        vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
-
-        vm.prank(admin);
-        adapter.flag(questionID);
-
-        assertTrue(adapter.isFlagged(questionID));
-
-        vm.expectRevert(NotAdmin.selector);
-        vm.prank(carla);
-        adapter.flag(questionID);
     }
 
     function testReadyToResolve() public {
@@ -224,6 +210,72 @@ contract UMaCtfAdapterTest is AdapterHelper {
         assertTrue(data.resolved);
     }
 
+    function testResolveYes() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        QuestionData memory data; 
+        data = adapter.getQuestion(questionID);
+
+        // Price corresponds to YES
+        int256 price = 1 ether;
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+        proposeAndSettle(price, data.requestTimestamp, data.ancillaryData);
+        
+        vm.expectEmit(true, true, true, true);
+        emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionResolved(questionID, price, payouts);
+        adapter.resolve(questionID);
+    }
+
+    function testResolveNo() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        QuestionData memory data; 
+        data = adapter.getQuestion(questionID);
+
+        // Price corresponds to NO
+        int256 price = 0;
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 0;
+        payouts[1] = 1;
+        proposeAndSettle(price, data.requestTimestamp, data.ancillaryData);
+        
+        vm.expectEmit(true, true, true, true);
+        emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionResolved(questionID, price, payouts);
+        adapter.resolve(questionID);
+    }
+
+    function testResolveUnknown() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        QuestionData memory data; 
+        data = adapter.getQuestion(questionID);
+
+        // Price corresponds to UNKNOWN
+        int256 price = 0.5 ether;
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 1;
+        proposeAndSettle(price, data.requestTimestamp, data.ancillaryData);
+        
+        vm.expectEmit(true, true, true, true);
+        emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionResolved(questionID, price, payouts);
+        adapter.resolve(questionID);
+    }
+
     function testResolveRevertNotInitialized() public {
         vm.expectRevert(NotReadyToResolve.selector);
         adapter.resolve(questionID);
@@ -252,5 +304,206 @@ contract UMaCtfAdapterTest is AdapterHelper {
         testResolve();
         vm.expectRevert(Resolved.selector);
         adapter.resolve(questionID);
+    }
+
+    function testExpectedPayouts() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        QuestionData memory data; 
+        data = adapter.getQuestion(questionID);
+
+        // Propose a price for the question
+        int256 price = 1 ether;
+        proposeAndSettle(price, data.requestTimestamp, data.ancillaryData);
+
+        // Get Expected payouts if the price exists on the OO
+        uint256[] memory expectedPayouts = adapter.getExpectedPayouts(questionID);
+        // expectedPayouts = [1, 0]
+        assertEq(1, expectedPayouts[0]);
+        assertEq(0, expectedPayouts[1]);
+    }
+
+    function testExpectedPayoutsRevertNotInitialized() public {
+        vm.expectRevert(NotInitialized.selector);
+        // Reverts as it is uninitialized
+        adapter.getExpectedPayouts(questionID);
+    }
+
+    function testExpectedPayoutsRevertPriceNotAvailable() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        vm.expectRevert(PriceNotAvailable.selector);
+        // Reverts as the price is not available from the OO
+        adapter.getExpectedPayouts(questionID);
+    }
+
+    function testFlag() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        vm.prank(admin);
+        adapter.flag(questionID);
+
+        assertTrue(adapter.isFlagged(questionID));
+
+        vm.expectRevert(NotAdmin.selector);
+        vm.prank(carla);
+        adapter.flag(questionID);
+    }
+
+    function testFlagRevertNotAdmin() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        vm.expectRevert(NotAdmin.selector);
+        vm.prank(carla);
+        adapter.flag(questionID);
+    }
+
+    function testFlagRevertNotInitialized() public {
+        vm.expectRevert(NotInitialized.selector);
+        vm.prank(admin);
+        adapter.flag(questionID);
+    }
+
+    function testEmergencyResolve() public {
+        fastForward(100);
+
+        vm.startPrank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        // Flag the question for emergency resolution
+        adapter.flag(questionID);
+
+        QuestionData memory data;
+
+        // Ensure the relevant flags are set, meaning, the question is paused and the adminResolutionTimestamp is set
+        data = adapter.getQuestion(questionID);
+        assertTrue(data.paused);
+        assertTrue(data.adminResolutionTimestamp > 0);
+
+        // Fast forward time past the emergencySafetyPeriod
+        fastForward(adapter.emergencySafetyPeriod());
+
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+        
+        vm.expectEmit(true, true, true, true);
+        emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionEmergencyResolved(questionID, payouts);
+        
+        // Emergency resolve the question
+        adapter.emergencyResolve(questionID, payouts);
+
+        // Check the flags post emergency resolution
+        data = adapter.getQuestion(questionID);
+        assertTrue(data.resolved);
+    }
+
+    function testEmergencyResolvePaused() public {
+        // Emergency resolution will still affect paused questions
+        fastForward(100);
+
+        vm.startPrank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        // Pause the question
+        adapter.pause(questionID);
+
+        // Flag the question for emergency resolution
+        adapter.flag(questionID);
+
+        // Fast forward time past the emergencySafetyPeriod
+        fastForward(adapter.emergencySafetyPeriod());
+
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+        
+        vm.expectEmit(true, true, true, true);
+        emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionEmergencyResolved(questionID, payouts);
+        
+        // Emergency resolve the question
+        adapter.emergencyResolve(questionID, payouts);
+        QuestionData memory data = adapter.getQuestion(questionID);
+        assertTrue(data.resolved);
+    }
+
+    function testEmergencyResolveRevertNotFlagged() public {
+        fastForward(100);
+        vm.startPrank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+        vm.expectRevert(NotFlagged.selector);
+        adapter.emergencyResolve(questionID, payouts);
+    }
+
+    function testEmergencyResolveRevertSafetyPeriod() public {
+        fastForward(100);
+        vm.startPrank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        adapter.flag(questionID);
+
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+
+        vm.expectRevert(SafetyPeriodNotPassed.selector);
+        adapter.emergencyResolve(questionID, payouts);
+    }
+
+    function testEmergencyResolveRevertInvalidPayouts() public {
+        fastForward(100);
+        vm.startPrank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        adapter.flag(questionID);
+
+        uint256[] memory invalidPayouts = new uint256[](4);
+        invalidPayouts[0] = 0;
+        invalidPayouts[1] = 0;
+        invalidPayouts[2] = 1;
+        invalidPayouts[3] = 6;
+
+        vm.expectRevert(InvalidPayouts.selector);
+        adapter.emergencyResolve(questionID, invalidPayouts);
+    }
+
+    function testEmergencyResolveRevertNotAdmin() public {
+        vm.startPrank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.flag(questionID);
+
+        vm.stopPrank();
+
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+
+        vm.expectRevert(NotAdmin.selector);
+        vm.prank(carla);
+        adapter.emergencyResolve(questionID, payouts);
+    }
+
+    function testEmergencyResolveRevertNotInitialized() public {
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+        
+        vm.expectRevert(NotInitialized.selector);
+        vm.prank(admin);
+        adapter.emergencyResolve(questionID, payouts);
     }
 }

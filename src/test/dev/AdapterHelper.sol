@@ -12,6 +12,7 @@ import { IFinder } from "src/interfaces/IFinder.sol";
 import { IAddressWhitelist } from "src/interfaces/IAddressWhitelist.sol";
 
 import { IAuthEE } from "src/interfaces/IAuth.sol";
+import { IConditionalTokens } from "src/interfaces/IConditionalTokens.sol";
 import { IOptimisticOracleV2 } from "src/interfaces/IOptimisticOracleV2.sol";
 import { QuestionData, IUmaCtfAdapterEE } from "src/interfaces/IUmaCtfAdapter.sol";
 
@@ -40,10 +41,20 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
     address public finder;
     address public whitelist;
 
+    bytes32 public conditionId;
+
     bytes public constant ancillaryData =
         hex"569e599c2f623949c0d74d7bf006f8a4f68b911876d6437c1db4ad4c3eb21e68682fb8168b75eb23d3994383a40643d73d59";
     bytes32 public constant questionID = keccak256(ancillaryData);
     bytes32 public constant identifier = "YES_OR_NO_QUERY";
+
+    event ConditionResolution(
+        bytes32 indexed conditionId,
+        address indexed oracle,
+        bytes32 indexed questionId,
+        uint256 outcomeSlotCount,
+        uint256[] payoutNumerators
+    );
 
     function setUp() public virtual {
         vm.label(admin, "Admin");
@@ -59,6 +70,8 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         // Deploy adapter
         vm.startPrank(admin);
         adapter = new UmaCtfAdapter(ctf, finder);
+
+        conditionId = IConditionalTokens(ctf).getConditionId(address(adapter), questionID, 2);
 
         // Mint USDC to Admin and approve on Adapter
         dealAndApprove(usdc, admin, address(adapter), 1_000_000_000_000);
