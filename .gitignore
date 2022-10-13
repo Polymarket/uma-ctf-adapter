@@ -9,10 +9,8 @@ lib
 .env.*
 !.env.example
 
-artifacts
-typechain
 cache
 coverage*
 .vscode
-scratch.ts
 dist
+out

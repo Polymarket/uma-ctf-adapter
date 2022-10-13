@@ -1,41 +1,20 @@
-name: Tests
+on: [push]
 
-on:
-    push:
-        branches: main
-    pull_request:
-        branches: "*"
+name: test
 
 jobs:
-    test:
+    check:
+        name: Tests
         runs-on: ubuntu-latest
         steps:
-            - name: Checkout code
-              uses: actions/checkout@v2
+            - uses: actions/checkout@v3
               with:
-                  persist-credentials: false
-            - name: Install node
-              uses: actions/setup-node@v1
+                  submodules: recursive
+
+            - name: Install Foundry
+              uses: foundry-rs/foundry-toolchain@v1
               with:
-                  node-version: 16
-            - name: Install dependencies
-              run: yarn
-            - name: Typechain
-              run: yarn typechain
+                  version: nightly
 
-            - name: Test
-              run: yarn test
-
-            - name: Run tests with coverage
-              run: yarn coverage
-
-            - name: Upload coverage report
-              uses: coverallsapp/github-action@master
-              with:
-                github-token: ${{ secrets.GITHUB_TOKEN }}
-                path-to-lcov: ./coverage/lcov.info
-    
-env:
-    MNEMONIC: "test test test test test test test test test test test test"
-    INFURA_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-    MATICVIGIL_API_KEY: "zzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+            - name: Run tests
+              run: forge test -vvv

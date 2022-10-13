@@ -1,8 +1,6 @@
 # Polymarket UMA CTF Adapter
 
 ![Github Actions](https://github.com/Polymarket/uma-conditional-tokens-adapter/workflows/Tests/badge.svg)
-![Github Actions](https://github.com/Polymarket/uma-conditional-tokens-adapter/workflows/Lint/badge.svg)
-[![Coverage](https://coveralls.io/repos/github/Polymarket/uma-conditional-tokens-adapter/badge.svg?branch=main)](https://coveralls.io/github/Polymarket/uma-conditional-tokens-adapter?branch=main)
 
 ## Overview
 
@@ -11,7 +9,7 @@ This repository contains contracts used to resolve [Polymarket](https://polymark
 ### Architecture
 ![Contract Architecture](./docs/adapter.png)
 
-The Adapter is an [oracle](https://github.com/Polymarket/conditional-tokens-contracts/blob/a927b5a52cf9ace712bf1b5fe1d92bf76399e692/contracts/ConditionalTokens.sol#L65) to [CTF](https://docs.gnosis.io/conditionaltokens/) conditions, which Polymarket prediction markets are based on.
+The Adapter is an [oracle](https://github.com/Polymarket/conditional-tokens-contracts/blob/a927b5a52cf9ace712bf1b5fe1d92bf76399e692/contracts/ConditionalTokens.sol#L65) to [Conditional Tokens Framework(CTF)](https://docs.gnosis.io/conditionaltokens/) conditions, which Polymarket prediction markets are based on.
 
 It fetches resolution data from UMA's Optmistic Oracle and resolves the condition based on said resolution data.
 
@@ -29,19 +27,28 @@ After resolution data is available, anyone can call `resolve` which resolves the
 
 See [current deployments](./deploys.md)
 
+### Development
 
-### Dependencies
+### Set-up
 
-Install dependencies with `yarn install`
+Install [Foundry](https://github.com/foundry-rs/foundry/).
 
-### Compile
+Foundry has daily updates, run `foundryup` to update `forge` and `cast`.
 
-Compile the contracts with `yarn compile`
+To install/update forge dependencies: `forge update`
+
+To build contracts: `forge build`
+
+To use prettier-solidity: `pnpm install` (or `npm install` or `yarn install`)
+
+---
 
 ### Testing
 
-Test the contracts with `yarn test`
+To run all tests: `forge test`
 
-### Coverage
+To run test functions matching a regex pattern `forge test -m PATTERN`
 
-Generate coverage reports with `yarn coverage`
+To run tests in contracts matching a regex pattern `forge test --mc PATTERN`
+
+Set `-vvv` to see a stack trace for a failed test.
