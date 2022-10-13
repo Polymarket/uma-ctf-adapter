@@ -219,7 +219,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
     /// @notice Allows an admin to pause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
-    function pauseQuestion(bytes32 questionID) external onlyAdmin {
+    function pause(bytes32 questionID) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
 
         if (!_isInitialized(questionData)) revert NotInitialized();
@@ -230,7 +230,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
     /// @notice Allows an admin to unpause market resolution in an emergency
     /// @param questionID - The unique questionID of the question
-    function unPauseQuestion(bytes32 questionID) external onlyAdmin {
+    function unpause(bytes32 questionID) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
         if (!_isInitialized(questionData)) revert NotInitialized();
 

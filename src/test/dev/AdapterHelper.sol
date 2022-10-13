@@ -37,8 +37,8 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
     address public finder;
     address public whitelist;
 
-    bytes public constant defaultAncillaryData = hex"569e599c2f623949c0d74d7bf006f8a4f68b911876d6437c1db4ad4c3eb21e68682fb8168b75eb23d3994383a40643d73d59";
-    bytes32 public constant defaultQuestionID = keccak256(defaultAncillaryData);
+    bytes public constant ancillaryData = hex"569e599c2f623949c0d74d7bf006f8a4f68b911876d6437c1db4ad4c3eb21e68682fb8168b75eb23d3994383a40643d73d59";
+    bytes32 public constant questionID = keccak256(ancillaryData);
 
     function setUp() public virtual {
         vm.label(admin, "Admin");

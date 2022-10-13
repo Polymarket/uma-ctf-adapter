@@ -54,16 +54,16 @@ contract UMaCtfAdapterTest is AdapterHelper {
         uint256 bond = 10_000_000_000;
 
         vm.expectEmit(true, true, true, true);
-        emit QuestionInitialized(defaultQuestionID, block.timestamp, admin, defaultAncillaryData, usdc, reward, bond);
+        emit QuestionInitialized(questionID, block.timestamp, admin, ancillaryData, usdc, reward, bond);
 
         vm.prank(admin);
-        adapter.initialize(defaultAncillaryData, usdc, reward, bond);
+        adapter.initialize(ancillaryData, usdc, reward, bond);
 
         // Assert the QuestionData in storage
-        QuestionData memory data = adapter.getQuestion(defaultQuestionID);
+        QuestionData memory data = adapter.getQuestion(questionID);
         assertEq(block.timestamp, data.requestTimestamp);
         assertEq(admin, data.creator);
-        assertEq(defaultAncillaryData, data.ancillaryData);
+        assertEq(ancillaryData, data.ancillaryData);
         assertEq(usdc, data.rewardToken);
         assertEq(reward, data.reward);
         assertEq(bond, data.proposalBond);
@@ -84,17 +84,17 @@ contract UMaCtfAdapterTest is AdapterHelper {
 
     function testInitializeZeroRewardAndBond() public {
         vm.expectEmit(true, true, true, true);
-        emit QuestionInitialized(defaultQuestionID, block.timestamp, admin, defaultAncillaryData, usdc, 0, 0);
+        emit QuestionInitialized(questionID, block.timestamp, admin, ancillaryData, usdc, 0, 0);
 
         vm.prank(admin);
-        adapter.initialize(defaultAncillaryData, usdc, 0, 0);
+        adapter.initialize(ancillaryData, usdc, 0, 0);
 
-        assertTrue(adapter.isInitialized(defaultQuestionID));
+        assertTrue(adapter.isInitialized(questionID));
 
-        QuestionData memory data = adapter.getQuestion(defaultQuestionID);
+        QuestionData memory data = adapter.getQuestion(questionID);
         assertEq(block.timestamp, data.requestTimestamp);
         assertEq(admin, data.creator);
-        assertEq(defaultAncillaryData, data.ancillaryData);
+        assertEq(ancillaryData, data.ancillaryData);
         assertEq(usdc, data.rewardToken);
         assertEq(0, data.reward);
         assertEq(0, data.proposalBond);
@@ -105,27 +105,22 @@ contract UMaCtfAdapterTest is AdapterHelper {
     function testInitializeRevertOnSameQuestion() public {
         // Init Question
         vm.prank(admin);
-        adapter.initialize(defaultAncillaryData, usdc, 0, 0);
+        adapter.initialize(ancillaryData, usdc, 0, 0);
 
         // Revert when initializing the same question
         vm.expectRevert(Initialized.selector);
-        adapter.initialize(defaultAncillaryData, usdc, 0, 0);
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 0, 0);
     }
 
     function testInitializeRevertInsufficientRewardBalance() public {
-        uint256 reward = 1_000_000;
-        uint256 bond = 10_000_000_000;
-
         // Revert when caller does not have tokens or allowance on the adapter
         vm.expectRevert("TransferHelper/STF");
         vm.prank(carla);
-        adapter.initialize(defaultAncillaryData, usdc, reward, bond);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
     }
 
     function testInitializeRevertUnsupportedRewardToken() public {
-        uint256 reward = 1_000_000;
-        uint256 bond = 10_000_000_000;
-
         // Deploy a new ERC20 token to be used as reward token
         address tkn = deployERC20("Test Token", "TST");
         vm.prank(admin);
@@ -134,17 +129,64 @@ contract UMaCtfAdapterTest is AdapterHelper {
         // Revert as the token is not supported
         vm.expectRevert(UnsupportedToken.selector);
         vm.prank(admin);
-        adapter.initialize(defaultAncillaryData, tkn, reward, bond);
+        adapter.initialize(ancillaryData, tkn, 1_000_000, 10_000_000_000);
     }
 
     function testInitializeRevertInvalidAncillaryData() public {
-        uint256 reward = 1_000_000;
-        uint256 bond = 10_000_000_000;
-
         // Revert since ancillaryData is invalid
         bytes memory ancillaryData = hex"";
         vm.expectRevert(InvalidAncillaryData.selector);
-        vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, reward, bond);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
     }
+
+
+    function testPause() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        vm.prank(admin);
+        adapter.pause(questionID);
+        assertTrue(adapter.getQuestion(questionID).paused);
+
+        vm.prank(admin);
+        adapter.unpause(questionID);
+        assertFalse(adapter.getQuestion(questionID).paused);
+    }
+
+    function testPauseRevertNotInitialized() public {
+        vm.expectRevert(NotInitialized.selector);
+        vm.prank(admin);
+        adapter.pause(questionID);
+    }
+
+    function testPauseRevertNonAdmin() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        vm.expectRevert(NotAdmin.selector);
+        vm.prank(carla);
+        adapter.pause(questionID);
+
+        vm.prank(admin);
+        adapter.pause(questionID);
+
+        vm.expectRevert(NotAdmin.selector);
+        vm.prank(carla);
+        adapter.unpause(questionID);
+    }
+
+    function testFlag() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+
+        vm.prank(admin);
+        adapter.flag(questionID);
+
+        assertTrue(adapter.isFlagged(questionID));
+
+        vm.expectRevert(NotAdmin.selector);
+        vm.prank(carla);
+        adapter.flag(questionID);
+    }
+
 }
