@@ -131,9 +131,20 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         dealAndApprove(tkn, admin, address(adapter), type(uint256).max);
 
-        // Revert when the reward token is not supported
+        // Revert as the token is not supported
         vm.expectRevert(UnsupportedToken.selector);
         vm.prank(admin);
         adapter.initialize(defaultAncillaryData, tkn, reward, bond);
+    }
+
+    function testInitializeRevertInvalidAncillaryData() public {
+        uint256 reward = 1_000_000;
+        uint256 bond = 10_000_000_000;
+
+        // Revert since ancillaryData is invalid
+        bytes memory ancillaryData = hex"";
+        vm.expectRevert(InvalidAncillaryData.selector);
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, reward, bond);
     }
 }
