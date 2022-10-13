@@ -8,7 +8,6 @@ import { IOptimisticOracleV2 } from "src/interfaces/IOptimisticOracleV2.sol";
 
 import { QuestionData } from "src/UmaCtfAdapter.sol";
 
-
 contract UMaCtfAdapterTest is AdapterHelper {
     function testSetup() public {
         assertEq(whitelist, address(adapter.collateralWhitelist()));
@@ -190,7 +189,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
 
-        QuestionData memory data; 
+        QuestionData memory data;
         data = adapter.getQuestion(questionID);
 
         // Propose a price for the question
@@ -203,7 +202,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
 
         vm.expectEmit(true, true, true, true);
         emit QuestionResolved(questionID, price, payouts);
-        
+
         adapter.resolve(questionID);
         data = adapter.getQuestion(questionID);
         assertTrue(data.resolved);
@@ -213,7 +212,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
 
-        QuestionData memory data; 
+        QuestionData memory data;
         data = adapter.getQuestion(questionID);
 
         // Price corresponds to YES
@@ -222,7 +221,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         payouts[0] = 1;
         payouts[1] = 0;
         proposeAndSettle(price, data.requestTimestamp, data.ancillaryData);
-        
+
         vm.expectEmit(true, true, true, true);
         emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
 
@@ -235,7 +234,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
 
-        QuestionData memory data; 
+        QuestionData memory data;
         data = adapter.getQuestion(questionID);
 
         // Price corresponds to NO
@@ -244,7 +243,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         payouts[0] = 0;
         payouts[1] = 1;
         proposeAndSettle(price, data.requestTimestamp, data.ancillaryData);
-        
+
         vm.expectEmit(true, true, true, true);
         emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
 
@@ -257,7 +256,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
 
-        QuestionData memory data; 
+        QuestionData memory data;
         data = adapter.getQuestion(questionID);
 
         // Price corresponds to UNKNOWN
@@ -266,7 +265,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         payouts[0] = 1;
         payouts[1] = 1;
         proposeAndSettle(price, data.requestTimestamp, data.ancillaryData);
-        
+
         vm.expectEmit(true, true, true, true);
         emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
 
@@ -291,7 +290,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
     function testResolveRevertPaused() public {
         vm.startPrank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
-        
+
         adapter.pause(questionID);
         vm.stopPrank();
 
@@ -309,7 +308,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
 
-        QuestionData memory data; 
+        QuestionData memory data;
         data = adapter.getQuestion(questionID);
 
         // Propose a price for the question
@@ -389,13 +388,13 @@ contract UMaCtfAdapterTest is AdapterHelper {
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 1;
         payouts[1] = 0;
-        
+
         vm.expectEmit(true, true, true, true);
         emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
 
         vm.expectEmit(true, true, true, true);
         emit QuestionEmergencyResolved(questionID, payouts);
-        
+
         // Emergency resolve the question
         adapter.emergencyResolve(questionID, payouts);
 
@@ -423,13 +422,13 @@ contract UMaCtfAdapterTest is AdapterHelper {
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 1;
         payouts[1] = 0;
-        
+
         vm.expectEmit(true, true, true, true);
         emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
 
         vm.expectEmit(true, true, true, true);
         emit QuestionEmergencyResolved(questionID, payouts);
-        
+
         // Emergency resolve the question
         adapter.emergencyResolve(questionID, payouts);
         QuestionData memory data = adapter.getQuestion(questionID);
@@ -500,7 +499,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 1;
         payouts[1] = 0;
-        
+
         vm.expectRevert(NotInitialized.selector);
         vm.prank(admin);
         adapter.emergencyResolve(questionID, payouts);
@@ -512,10 +511,10 @@ contract UMaCtfAdapterTest is AdapterHelper {
         adapter.initialize(ancillaryData, usdc, reward, 10_000_000_000);
 
         QuestionData memory data;
-        
+
         data = adapter.getQuestion(questionID);
         uint256 initialTimestamp = data.requestTimestamp;
-        
+
         // Propose a price for the question
         int256 proposedPrice = 1 ether;
         propose(proposedPrice, initialTimestamp, ancillaryData);
@@ -529,7 +528,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         // Assert the QuestionReset event
         vm.expectEmit(true, true, true, true);
         emit QuestionReset(questionID);
-        
+
         // Dispute the proposal, triggering the priceDisputed callback, resetting the question and creating a new OO request
         dispute(initialTimestamp, ancillaryData);
 
@@ -556,7 +555,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
 
         vm.expectEmit(true, true, true, true);
         emit QuestionResolved(questionID, price, payouts);
-        
+
         // Resolve the question
         adapter.resolve(questionID);
     }
@@ -574,7 +573,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
 
         vm.expectEmit(true, true, true, true);
         emit QuestionReset(questionID);
-        
+
         vm.prank(admin);
         adapter.reset(questionID);
     }

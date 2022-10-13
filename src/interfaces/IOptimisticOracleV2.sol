@@ -131,12 +131,9 @@ interface IOptimisticOracleV2 {
      * @return payout the amount that the "winner" (proposer or disputer) receives on settlement. This amount includes
      * the returned bonds as well as additional rewards.
      */
-    function settle(
-        address requester,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes memory ancillaryData
-    ) external returns (uint256 payout);
+    function settle(address requester, bytes32 identifier, uint256 timestamp, bytes memory ancillaryData)
+        external
+        returns (uint256 payout);
 
     /// @notice Retrieves a price that was previously requested by a caller. Reverts if the request is not settled
     /// or settleable. Note: this method is not view so that this call may actually settle the price request if it

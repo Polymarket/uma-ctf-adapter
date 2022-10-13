@@ -51,7 +51,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
     bytes32 public constant identifier = "YES_OR_NO_QUERY";
 
     event Transfer(address indexed from, address indexed to, uint256 value);
-    
+
     event ConditionResolution(
         bytes32 indexed conditionId,
         address indexed oracle,
@@ -126,27 +126,25 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
 
     function settle(uint256 timestamp, bytes memory data) internal {
         vm.prank(proposer);
-        IOptimisticOracleV2(optimisticOracle).settle(
-            address(adapter), identifier, timestamp, data
-        );
+        IOptimisticOracleV2(optimisticOracle).settle(address(adapter), identifier, timestamp, data);
     }
 
-    function getRequest(uint256 timestamp, bytes memory data) internal view returns (IOptimisticOracleV2.Request memory) {
+    function getRequest(uint256 timestamp, bytes memory data)
+        internal
+        view
+        returns (IOptimisticOracleV2.Request memory)
+    {
         return IOptimisticOracleV2(optimisticOracle).getRequest(address(adapter), identifier, timestamp, data);
     }
 
     function propose(int256 price, uint256 timestamp, bytes memory data) internal {
         vm.prank(proposer);
-        IOptimisticOracleV2(optimisticOracle).proposePrice(
-            address(adapter), identifier, timestamp, data, price
-        );
+        IOptimisticOracleV2(optimisticOracle).proposePrice(address(adapter), identifier, timestamp, data, price);
     }
 
     function dispute(uint256 timestamp, bytes memory data) internal {
         vm.prank(disputer);
-        IOptimisticOracleV2(optimisticOracle).disputePrice(
-            address(adapter), identifier, timestamp, data
-        );
+        IOptimisticOracleV2(optimisticOracle).disputePrice(address(adapter), identifier, timestamp, data);
     }
 
     function proposeAndSettle(int256 price, uint256 timestamp, bytes memory data) internal {
