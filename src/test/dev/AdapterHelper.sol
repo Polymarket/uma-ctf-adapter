@@ -6,6 +6,7 @@ import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
 import { Deployer } from "./Deployer.sol";
 import { TestHelper } from "./TestHelper.sol";
 import { MintableERC20 } from "./MintableERC20.sol";
+import { OracleStub } from "./OracleStub.sol";
 
 import { UmaCtfAdapter } from "src/UmaCtfAdapter.sol";
 import { IFinder } from "src/interfaces/IFinder.sol";
@@ -40,6 +41,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
     address public optimisticOracle;
     address public finder;
     address public whitelist;
+    OracleStub public oracle;
 
     bytes32 public conditionId;
 
@@ -48,6 +50,8 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
     bytes32 public constant questionID = keccak256(ancillaryData);
     bytes32 public constant identifier = "YES_OR_NO_QUERY";
 
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    
     event ConditionResolution(
         bytes32 indexed conditionId,
         address indexed oracle,
@@ -58,6 +62,8 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
 
     function setUp() public virtual {
         vm.label(admin, "Admin");
+        vm.label(proposer, "Proposer");
+        vm.label(disputer, "Disputer");
 
         // Deploy Collateral and ConditionalTokens Framework
         usdc = deployToken("USD Coin", "USD");
@@ -102,16 +108,20 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         // Add USDC to whitelist
         IAddressWhitelist(whitelist).addToWhitelist(usdc);
 
+        // Deploy Oracle(Voting)
+        oracle = new OracleStub();
+
         // Deploy Finder
         finder = Deployer.Finder();
         // Deploy Optimistic Oracle
         optimisticOracle = Deployer.OptimisticOracleV2(7200, finder);
 
-        // Add IdentifierWhitelist, Store, CollateralWhitelist and Optimistic Oracle to Finder
+        // Add contracts to Finder
         IFinder(finder).changeImplementationAddress("IdentifierWhitelist", identifierWhitelist);
         IFinder(finder).changeImplementationAddress("Store", store);
         IFinder(finder).changeImplementationAddress("OptimisticOracleV2", optimisticOracle);
         IFinder(finder).changeImplementationAddress("CollateralWhitelist", whitelist);
+        IFinder(finder).changeImplementationAddress("Oracle", address(oracle));
     }
 
     function settle(uint256 timestamp, bytes memory data) internal {
@@ -119,6 +129,10 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         IOptimisticOracleV2(optimisticOracle).settle(
             address(adapter), identifier, timestamp, data
         );
+    }
+
+    function getRequest(uint256 timestamp, bytes memory data) internal view returns (IOptimisticOracleV2.Request memory) {
+        return IOptimisticOracleV2(optimisticOracle).getRequest(address(adapter), identifier, timestamp, data);
     }
 
     function propose(int256 price, uint256 timestamp, bytes memory data) internal {

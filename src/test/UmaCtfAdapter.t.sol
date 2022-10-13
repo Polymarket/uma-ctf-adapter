@@ -8,6 +8,7 @@ import { IOptimisticOracleV2 } from "src/interfaces/IOptimisticOracleV2.sol";
 
 import { QuestionData } from "src/UmaCtfAdapter.sol";
 
+
 contract UMaCtfAdapterTest is AdapterHelper {
     function testSetup() public {
         assertEq(whitelist, address(adapter.collateralWhitelist()));
@@ -32,7 +33,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         assertFalse(adapter.isAdmin(henry));
     }
 
-    function testAuthNotAdmin() public {
+    function testAuthRevertNotAdmin() public {
         vm.expectRevert(NotAdmin.selector);
         adapter.addAdmin(address(1));
     }
@@ -59,7 +60,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, reward, bond);
 
-        // Assert the QuestionData in storage
+        // Assert the QuestionData fields in storage
         QuestionData memory data = adapter.getQuestion(questionID);
         assertEq(block.timestamp, data.requestTimestamp);
         assertEq(admin, data.creator);
@@ -71,9 +72,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         assertFalse(data.resolved);
 
         // Assert the Optimistic Oracle Request
-        IOptimisticOracleV2.Request memory request = IOptimisticOracleV2(optimisticOracle).getRequest(
-            address(adapter), bytes32("YES_OR_NO_QUERY"), data.requestTimestamp, data.ancillaryData
-        );
+        IOptimisticOracleV2.Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
         assertEq(address(0), request.proposer);
         assertEq(address(0), request.disputer);
         assertEq(reward, request.reward);
@@ -505,5 +504,92 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.expectRevert(NotInitialized.selector);
         vm.prank(admin);
         adapter.emergencyResolve(questionID, payouts);
+    }
+
+    function testPriceDisputed() public {
+        uint256 reward = 1_000_000;
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, reward, 10_000_000_000);
+
+        QuestionData memory data;
+        
+        data = adapter.getQuestion(questionID);
+        uint256 initialTimestamp = data.requestTimestamp;
+        
+        // Propose a price for the question
+        int256 proposedPrice = 1 ether;
+        propose(proposedPrice, initialTimestamp, ancillaryData);
+
+        fastForward(100);
+
+        // Assert the reward refund from the OO to the Adapter
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(optimisticOracle, address(adapter), reward);
+
+        // Assert the QuestionReset event
+        vm.expectEmit(true, true, true, true);
+        emit QuestionReset(questionID);
+        
+        // Dispute the proposal, triggering the priceDisputed callback, resetting the question and creating a new OO request
+        dispute(initialTimestamp, ancillaryData);
+
+        data = adapter.getQuestion(questionID);
+        assertTrue(data.requestTimestamp > initialTimestamp);
+    }
+
+    function testPriceDisputedResolveAfterDispute() public {
+        // Init and dispute a proposal
+        testPriceDisputed();
+
+        QuestionData memory data = adapter.getQuestion(questionID);
+
+        // Propose and settle a new price for the previously reset question
+        int256 price = 1 ether;
+        proposeAndSettle(price, data.requestTimestamp, data.ancillaryData);
+
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+
+        vm.expectEmit(true, true, true, true);
+        emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionResolved(questionID, price, payouts);
+        
+        // Resolve the question
+        adapter.resolve(questionID);
+    }
+
+    function testPriceDisputedRevertNotOO() public {
+        vm.expectRevert(NotOptimisticOracle.selector);
+        vm.prank(carla);
+        adapter.priceDisputed(identifier, block.timestamp, ancillaryData, 1_000_000);
+    }
+
+    function testReset() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        fastForward(10);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionReset(questionID);
+        
+        vm.prank(admin);
+        adapter.reset(questionID);
+    }
+
+    function testResetRevertNotInitialized() public {
+        vm.expectRevert(NotInitialized.selector);
+        vm.prank(admin);
+        adapter.reset(questionID);
+    }
+
+    function testResetRevertResolved() public {
+        testResolve();
+
+        vm.expectRevert(Resolved.selector);
+        vm.prank(admin);
+        adapter.reset(questionID);
     }
 }

@@ -149,7 +149,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         QuestionData storage questionData = questions[questionID];
 
         // Upon dispute, immediately reset the question, sending out a new price request
-        _reset(questionID, questionData);
+        // paying for the price request from the Adapter's balance
+        _reset(address(this), questionID, questionData);
     }
 
     /// @notice Checks if a question is initialized
@@ -197,7 +198,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (questionData.resolved) revert Resolved();
 
-        _reset(questionID, questionData);
+        // Reset the question, paying for the price request from the caller
+        _reset(msg.sender, questionID, questionData);
     }
 
     /// @notice Allows an admin to resolve a CTF market in an emergency
@@ -314,7 +316,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
     /// @notice Reset the question by updating the requestTimestamp field and sending a new price request to the OO
     /// @param questionID - The unique questionID
-    function _reset(bytes32 questionID, QuestionData storage questionData) internal {
+    function _reset(address requestor, bytes32 questionID, QuestionData storage questionData) internal {
         uint256 requestTimestamp = block.timestamp;
 
         // Update the question parameters in storage with a new request timestamp
@@ -330,7 +332,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
         // Send out a new price request with the new request timestamp
         _requestPrice(
-            address(this),
+            requestor,
             requestTimestamp,
             questionData.ancillaryData,
             questionData.rewardToken,
