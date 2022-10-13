@@ -165,6 +165,11 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         return _isFlagged(questions[questionID]);
     }
 
+    /// @notice TODO natspec
+    function getQuestion(bytes32 questionID) external view returns (QuestionData memory) {
+        return questions[questionID];
+    }
+
     /*////////////////////////////////////////////////////////////////////
                             ADMIN ONLY FUNCTIONS 
     ///////////////////////////////////////////////////////////////////*/

@@ -77,4 +77,6 @@ interface IUmaCtfAdapter is IUmaCtfAdapterEE {
     function flag(bytes32) external;
 
     function reset(bytes32) external;
+
+    function getQuestion(bytes32) external returns (QuestionData memory);
 }

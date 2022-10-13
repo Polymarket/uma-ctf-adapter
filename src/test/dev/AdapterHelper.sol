@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
+
 import { Deployer } from "./Deployer.sol";
 import { TestHelper } from "./TestHelper.sol";
-import { USDC } from "./USDC.sol";
+import { MintableERC20 } from "./MintableERC20.sol";
 
 import { UmaCtfAdapter } from "src/UmaCtfAdapter.sol";
-
 import { IFinder } from "src/interfaces/IFinder.sol";
 import { IAddressWhitelist } from "src/interfaces/IAddressWhitelist.sol";
 
@@ -15,23 +16,16 @@ import { QuestionData, IUmaCtfAdapterEE } from "src/interfaces/IUmaCtfAdapter.so
 
 import { console2 as console } from "forge-std/console2.sol";
 
-struct Data {
-    uint256 requestTimestamp;
-    uint256 reward;
-    uint256 proposalBond;
-    uint256 adminResolutionTimestamp;
-    bool resolved;
-    bool paused;
-    address rewardToken;
-    address creator;
-    bytes ancillaryData;
-}
 
 struct Unsigned {
     uint256 rawValue;
 }
 interface IStore {
     function setFinalFee(address currency, Unsigned memory newFinalFee) external;
+}
+
+interface IIdentifierWhitelist {
+    function addSupportedIdentifier(bytes32) external;
 }
 
 abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
@@ -43,10 +37,14 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
     address public finder;
     address public whitelist;
 
-    uint256 internal twoHours = 7200;
+    bytes public constant defaultAncillaryData = hex"569e599c2f623949c0d74d7bf006f8a4f68b911876d6437c1db4ad4c3eb21e68682fb8168b75eb23d3994383a40643d73d59";
+    bytes32 public constant defaultQuestionID = keccak256(defaultAncillaryData);
 
     function setUp() public virtual {
-        usdc = address(new USDC());
+        vm.label(admin, "Admin");
+
+        // Deploy Collateral and ConditionalTokens Framework
+        usdc = deployERC20("USD Coin", "USD");
         ctf = Deployer.ConditionalTokens();
         
         // UMA Contracts Setup
@@ -57,7 +55,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
 
         address identifierWhitelist = Deployer.IdentifierWhitelist();
         // Add YES_OR_NO_QUERY to Identifier Whitelist
-        identifierWhitelist.call(abi.encodeWithSignature("addSupportedIdentifier(bytes32)", bytes32("YES_OR_NO_QUERY")));
+        IIdentifierWhitelist(identifierWhitelist).addSupportedIdentifier("YES_OR_NO_QUERY");
         
         // Deploy Collateral whitelist
         whitelist = Deployer.AddressWhitelist();
@@ -67,7 +65,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         // Deploy Finder
         finder = Deployer.Finder();
         // Deploy Optimistic Oracle
-        optimisticOracle = Deployer.OptimisticOracleV2(twoHours, finder);
+        optimisticOracle = Deployer.OptimisticOracleV2(7200, finder);
         
         // Add Identifier, Store, Whitelist and Optimistic Oracle to Finder
         IFinder(finder).changeImplementationAddress("IdentifierWhitelist", identifierWhitelist);
@@ -76,35 +74,15 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         IFinder(finder).changeImplementationAddress("CollateralWhitelist", whitelist);
         
         // Deploy adapter
-        vm.prank(admin);
+        vm.startPrank(admin);
         adapter = new UmaCtfAdapter(ctf, finder);
 
         // Mint USDC to Admin and approve on Adapter
-        dealAndApprove(usdc, admin, address(adapter), 1_000_000_000);
+        dealAndApprove(usdc, admin, address(adapter), 1_000_000_000_000);
+        vm.stopPrank();
     }
 
-    function getData(bytes32 questionID) public view returns (Data memory) {
-        (
-            uint256 requestTimestamp,
-            uint256 reward,
-            uint256 proposalBond,
-            uint256 adminResolutionTimestamp,
-            bool resolved,
-            bool paused,
-            address rewardToken,
-            address creator,
-            bytes memory ancillaryData
-        ) = adapter.questions(questionID);
-        return Data({
-            creator: creator,
-            requestTimestamp: requestTimestamp,
-            ancillaryData: ancillaryData,
-            rewardToken: rewardToken,
-            reward: reward,
-            proposalBond: proposalBond,
-            resolved: resolved,
-            paused: paused,
-            adminResolutionTimestamp: adminResolutionTimestamp
-        });
+    function deployERC20(string memory name, string memory symbol) internal returns (address token) {
+        token= address(new MintableERC20(name, symbol));
     }
 }
