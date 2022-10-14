@@ -281,8 +281,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         uint256 bond
     ) internal {
         if (reward > 0) {
-            // If the requestor is not the Adapter, pay for the price request by transferring rewardToken from the requestor
-            // If not, pay for the price request from the Adapter's balances
+            // If the requestor is not the Adapter, the requestor pays for the price request
+            // If not, the Adapter pays for the price request
             if (requestor != address(this)) {
                 TransferHelper._transferFromERC20(rewardToken, requestor, address(this), reward);
             }
