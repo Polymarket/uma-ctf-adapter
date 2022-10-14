@@ -113,7 +113,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
 
     function testInitializeRevertInsufficientRewardBalance() public {
         // Revert when caller does not have tokens or allowance on the adapter
-        vm.expectRevert("TransferHelper/STF");
+        vm.expectRevert("TRANSFER_FROM_FAILED");
         vm.prank(carla);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
     }

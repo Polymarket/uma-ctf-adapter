@@ -1,49 +1,25 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 
 /// @title TransferHelper
-/// @author Uniswap: https://github.com/Uniswap/v3-periphery/blob/main/contracts/libraries/TransferHelper.sol
+/// @notice Helper library to transfer tokens
 library TransferHelper {
-    /// @notice Transfers tokens from the targeted address to the given destination
-    /// @notice Errors with 'STF' if transfer fails
-    /// @param token The contract address of the token to be transferred
-    /// @param from The originating address from which the tokens will be transferred
-    /// @param to The destination address of the transfer
-    /// @param value The amount to be transferred
-    function safeTransferFrom(address token, address from, address to, uint256 value) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), "TransferHelper/STF");
-    }
-
     /// @notice Transfers tokens from msg.sender to a recipient
-    /// @dev Errors with ST if transfer fails
-    /// @param token The contract address of the token which will be transferred
-    /// @param to The recipient of the transfer
-    /// @param value The value of the transfer
-    function safeTransfer(address token, address to, uint256 value) internal {
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(IERC20.transfer.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), "TransferHelper/ST");
+    /// @param token    - The contract address of the token which will be transferred
+    /// @param to       - The recipient of the transfer
+    /// @param amount   - The amount to be transferred
+    function _transferERC20(address token, address to, uint256 amount) internal {
+        SafeTransferLib.safeTransfer(ERC20(token), to, amount);
     }
 
-    /// @notice Approves the stipulated contract to spend the given allowance in the given token
-    /// @dev Errors with 'SA' if transfer fails
-    /// @param token The contract address of the token to be approved
-    /// @param to The target of the approval
-    /// @param value The amount of the given token the target will be allowed to spend
-    function safeApprove(address token, address to, uint256 value) internal {
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(IERC20.approve.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), "TransferHelper/SA");
-    }
-
-    /// @notice Transfers ETH to the recipient address
-    /// @dev Fails with `STE`
-    /// @param to The destination of the transfer
-    /// @param value The value to be transferred
-    function safeTransferETH(address to, uint256 value) internal {
-        (bool success,) = to.call{value: value}(new bytes(0));
-        require(success, "TransferHelper/STE");
+    /// @notice Transfers tokens from the targeted address to the given destination
+    /// @param token    - The contract address of the token to be transferred
+    /// @param from     - The originating address from which the tokens will be transferred
+    /// @param to       - The destination address of the transfer
+    /// @param amount   - The amount to be transferred
+    function _transferFromERC20(address token, address from, address to, uint256 amount) internal {
+        SafeTransferLib.safeTransferFrom(ERC20(token), from, to, amount);
     }
 }

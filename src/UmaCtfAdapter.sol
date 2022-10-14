@@ -284,12 +284,12 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             // If the requestor is not the Adapter, pay for the price request by transferring rewardToken from the requestor
             // If not, pay for the price request from the Adapter's balances
             if (requestor != address(this)) {
-                TransferHelper.safeTransferFrom(rewardToken, requestor, address(this), reward);
+                TransferHelper._transferFromERC20(rewardToken, requestor, address(this), reward);
             }
 
             // Approve the OO as spender on the reward token from the Adapter
             if (IERC20(rewardToken).allowance(address(this), address(optimisticOracle)) < reward) {
-                TransferHelper.safeApprove(rewardToken, address(optimisticOracle), type(uint256).max);
+                IERC20(rewardToken).approve(address(optimisticOracle), type(uint256).max);
             }
         }
 
