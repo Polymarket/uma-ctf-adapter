@@ -318,28 +318,23 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     function _reset(address requestor, bytes32 questionID, QuestionData storage questionData) internal {
         uint256 requestTimestamp = block.timestamp;
 
-        // Update the question parameters in storage with a new request timestamp
-        _saveQuestion(
-            questionData.creator,
-            questionID,
-            questionData.ancillaryData,
-            requestTimestamp,
-            questionData.rewardToken,
-            questionData.reward,
-            questionData.proposalBond
-        );
+        // If the question has already been reset, do not reset it
+        if (!questionData.reset) {
+            // Update the question parameters in storage
+            questionData.requestTimestamp = requestTimestamp;
+            questionData.reset = true;
 
-        // Send out a new price request with the new request timestamp
-        _requestPrice(
-            requestor,
-            requestTimestamp,
-            questionData.ancillaryData,
-            questionData.rewardToken,
-            questionData.reward,
-            questionData.proposalBond
-        );
-
-        emit QuestionReset(questionID);
+            // Send out a new price request with the new request timestamp
+            _requestPrice(
+                requestor,
+                requestTimestamp,
+                questionData.ancillaryData,
+                questionData.rewardToken,
+                questionData.reward,
+                questionData.proposalBond
+            );
+            emit QuestionReset(questionID);
+        }
     }
 
     /// @notice Resolves the underlying CTF market
