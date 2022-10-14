@@ -566,6 +566,29 @@ contract UMaCtfAdapterTest is AdapterHelper {
         adapter.priceDisputed(identifier, block.timestamp, ancillaryData, 1_000_000);
     }
 
+    function testPriceDisputedAlreadyReset() public {
+        // The first dispute will reset the question
+        testPriceDisputed();
+
+        QuestionData memory data = adapter.getQuestion(questionID);
+        uint256 timestamp = data.requestTimestamp;
+        assertTrue(data.reset);
+        
+        // Subsequent disputes to the new price request will not reset the question
+        // Ensuring that there are at most 2 requests for a question
+
+        fastForward(10);
+        propose(0, data.requestTimestamp, ancillaryData);
+
+        fastForward(10);
+        dispute(data.requestTimestamp, ancillaryData);
+
+        fastForward(10);
+
+        // The second dispute is a no-op, and the requestTimestamp is unchanged
+        assertEq(timestamp, data.requestTimestamp);
+    }
+
     function testReset() public {
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
@@ -576,6 +599,9 @@ contract UMaCtfAdapterTest is AdapterHelper {
 
         vm.prank(admin);
         adapter.reset(questionID);
+        QuestionData memory data = adapter.getQuestion(questionID);
+
+        assertTrue(data.reset);
     }
 
     function testResetRevertNotInitialized() public {
