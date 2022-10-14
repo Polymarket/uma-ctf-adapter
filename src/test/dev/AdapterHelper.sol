@@ -17,7 +17,6 @@ import { IConditionalTokens } from "src/interfaces/IConditionalTokens.sol";
 import { IOptimisticOracleV2 } from "src/interfaces/IOptimisticOracleV2.sol";
 import { QuestionData, IUmaCtfAdapterEE } from "src/interfaces/IUmaCtfAdapter.sol";
 
-
 struct Unsigned {
     uint256 rawValue;
 }
