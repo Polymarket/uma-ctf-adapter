@@ -259,6 +259,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             proposalBond: proposalBond,
             resolved: false,
             paused: false,
+            reset: false,
             adminResolutionTimestamp: 0
         });
     }
@@ -279,9 +280,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         uint256 reward,
         uint256 bond
     ) internal {
-        // If non-zero reward, pay for the price request by transferring rewardToken from the requestor
         if (reward > 0) {
-            // If requestor is the Adapter itself, pay for the request from the Adapter's balances
+            // If the requestor is not the Adapter, pay for the price request by transferring rewardToken from the requestor
+            // If not, pay for the price request from the Adapter's balances
             if (requestor != address(this)) {
                 TransferHelper.safeTransferFrom(rewardToken, requestor, address(this), reward);
             }

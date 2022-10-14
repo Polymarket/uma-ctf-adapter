@@ -15,6 +15,8 @@ struct QuestionData {
     bool resolved;
     /// @notice Flag marking whether a question is paused
     bool paused;
+    /// @notice Flag marking whether a question has been reset. A question can only be reset once
+    bool reset;
     /// @notice ERC20 token address used for payment of rewards, proposal bonds and fees
     address rewardToken;
     /// @notice The address of the question creator
