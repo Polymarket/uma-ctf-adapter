@@ -591,4 +591,20 @@ contract UMaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         adapter.reset(questionID);
     }
+
+    function testResetAlreadyReset() public {
+        testReset();
+
+        uint256 timestamp = block.timestamp;
+        
+        fastForward(100);
+
+        // Resetting an already reset question is a no-op
+        vm.prank(admin);
+        adapter.reset(questionID);
+        QuestionData memory data = adapter.getQuestion(questionID);
+        
+        // The request timestamp is unchanged
+        assertEq(data.requestTimestamp, timestamp);
+    }
 }
