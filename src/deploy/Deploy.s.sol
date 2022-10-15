@@ -11,11 +11,9 @@ contract Deploy is Script {
     /// @notice Deploys the Adapter
     /// @param ctf          - The ConditionalTokens Framework address
     /// @param finder       - The UMA Finder address
-    function deploy(
-        address ctf,
-        address finder
-    ) public returns (address adapter) {
+    function deploy(address ctf, address finder) public returns (address adapter) {
         vm.startBroadcast();
         adapter = address(new UmaCtfAdapter(ctf, finder));
+        vm.stopBroadcast();
     }
 }
