@@ -6,14 +6,6 @@ import { SafeTransferLib, ERC20 } from "solmate/utils/SafeTransferLib.sol";
 /// @title TransferHelper
 /// @notice Helper library to transfer tokens
 library TransferHelper {
-    /// @notice Transfers tokens from msg.sender to a recipient
-    /// @param token    - The contract address of the token which will be transferred
-    /// @param to       - The recipient of the transfer
-    /// @param amount   - The amount to be transferred
-    function _transferERC20(address token, address to, uint256 amount) internal {
-        SafeTransferLib.safeTransfer(ERC20(token), to, amount);
-    }
-
     /// @notice Transfers tokens from the targeted address to the given destination
     /// @param token    - The contract address of the token to be transferred
     /// @param from     - The originating address from which the tokens will be transferred
