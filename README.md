@@ -29,7 +29,7 @@ See [current deployments](./deploys.md)
 
 ## Development
 
-`git clone https://github.com/Polymarket/uma-ctf-adapter.git --recurse-submodules`
+Clone the repo: `git clone https://github.com/Polymarket/uma-ctf-adapter.git --recurse-submodules`
 
 ---
 
@@ -43,16 +43,10 @@ To install/update forge dependencies: `forge update`
 
 To build contracts: `forge build`
 
-To use prettier-solidity: `pnpm install` (or `npm install` or `yarn install`)
-
 ---
 
 ### Testing
 
 To run all tests: `forge test`
-
-To run test functions matching a regex pattern `forge test -m PATTERN`
-
-To run tests in contracts matching a regex pattern `forge test --mc PATTERN`
 
 Set `-vvv` to see a stack trace for a failed test.
