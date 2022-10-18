@@ -567,26 +567,39 @@ contract UMaCtfAdapterTest is AdapterHelper {
     }
 
     function testPriceDisputedAlreadyReset() public {
-        // The first dispute will reset the question
+        // Initalize and dispute a question
         testPriceDisputed();
 
         QuestionData memory data = adapter.getQuestion(questionID);
         uint256 timestamp = data.requestTimestamp;
         assertTrue(data.reset);
         
-        // Subsequent disputes to the new price request will not reset the question
-        // Ensuring that there are at most 2 requests for a question
-
         fastForward(10);
         propose(0, data.requestTimestamp, ancillaryData);
 
+        // Subsequent disputes to the new price request will not reset the question
+        // Ensuring that there are at most 2 requests for a question
         fastForward(10);
         dispute(data.requestTimestamp, ancillaryData);
 
-        fastForward(10);
-
         // The second dispute is a no-op, and the requestTimestamp is unchanged
         assertEq(timestamp, data.requestTimestamp);
+
+        // Mock the DVM dispute process and settle the Request with a NO price
+        int256 noPrice = 0;
+        oracle.setPriceExists(true);
+        oracle.setPrice(noPrice);
+        settle(data.requestTimestamp, data.ancillaryData);
+
+        // Resolve the Question and assert that the price used is from the second dispute
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 0;
+        payouts[1] = 1;
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionResolved(questionID, noPrice, payouts);
+
+        adapter.resolve(questionID);
     }
 
     function testReset() public {

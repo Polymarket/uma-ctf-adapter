@@ -318,7 +318,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     function _reset(address requestor, bytes32 questionID, QuestionData storage questionData) internal {
         uint256 requestTimestamp = block.timestamp;
 
-        // If the question has already been reset, do not reset it
+        // If the question has not been reset previously, reset the question
+        // Ensures that there are at most 2 OO Requests at a time for a question
         if (!questionData.reset) {
             // Update the question parameters in storage
             questionData.requestTimestamp = requestTimestamp;
