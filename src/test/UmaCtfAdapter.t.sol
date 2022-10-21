@@ -637,10 +637,13 @@ contract UmaCtfAdapterTest is AdapterHelper {
         // Dispute, will not reset the question
         // But will refund the reward to the Adapter
 
-        // Assert refund on dispute
+        // Assert refund transfer event on dispute
         vm.expectEmit(true, true, true, true);
         emit Transfer(optimisticOracle, address(adapter), data.reward);
         dispute(timestamp, data.ancillaryData);
+
+        // Assert refund balance on adapter
+        assertBalance(usdc, address(adapter), data.reward);
 
         // Mock the DVM dispute process and settle the Request with the ignore price
         int256 ignorePrice = type(int256).min;
