@@ -103,7 +103,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
     /// @notice Resolves a question
     /// Pulls price information from the OO and resolves the underlying CTF market.
-    /// Is only available after price information is available on the OO
+    /// Reverts if price is not available on the OO
+    /// Resets the question if the price returned by the OO is the Ignore price
     /// @param questionID - The unique questionID of the question
     function resolve(bytes32 questionID) external {
         QuestionData storage questionData = questions[questionID];
