@@ -8,7 +8,7 @@ import { IOptimisticOracleV2 } from "src/interfaces/IOptimisticOracleV2.sol";
 
 import { QuestionData } from "src/UmaCtfAdapter.sol";
 
-contract UMaCtfAdapterTest is AdapterHelper {
+contract UmaCtfAdapterTest is AdapterHelper {
     function testSetup() public {
         assertEq(whitelist, address(adapter.collateralWhitelist()));
         assertEq(ctf, address(adapter.ctf()));
