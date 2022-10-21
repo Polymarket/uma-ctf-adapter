@@ -140,8 +140,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         bytes32 questionID = keccak256(ancillaryData);
         QuestionData storage questionData = questions[questionID];
 
-        // Upon dispute, immediately reset the question, sending out a new price request
-        // paying for the price request from the Adapter's balance
+        // Upon dispute, immediately reset the question, which creates a new OO price request paid by the Adapter
         _reset(address(this), questionID, questionData);
     }
 
@@ -176,8 +175,6 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (_isFlagged(questionData)) revert Flagged();
 
         questionData.emergencyResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
-
-        // Flagging a question pauses it by default
         questionData.paused = true;
 
         emit QuestionFlagged(questionID);
