@@ -345,9 +345,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         );
 
         // If the OO returns the ignore price, reset the question
-        if (price == _ignorePrice()) {
-            return _reset(address(this), questionID, questionData);
-        }
+        if (price == _ignorePrice()) return _reset(address(this), questionID, questionData);
 
         // Construct the payout array for the question
         uint256[] memory payouts = _constructPayouts(price);

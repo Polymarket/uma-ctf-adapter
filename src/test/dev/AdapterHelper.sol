@@ -128,11 +128,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         IOptimisticOracleV2(optimisticOracle).settle(address(adapter), identifier, timestamp, data);
     }
 
-    function getRequest(uint256 timestamp, bytes memory data)
-        internal
-        view
-        returns (Request memory)
-    {
+    function getRequest(uint256 timestamp, bytes memory data) internal view returns (Request memory) {
         return IOptimisticOracleV2(optimisticOracle).getRequest(address(adapter), identifier, timestamp, data);
     }
 

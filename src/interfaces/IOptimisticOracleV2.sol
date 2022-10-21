@@ -29,7 +29,6 @@ struct Request {
 
 /// @title Optimistic Oracle V2 Interface
 interface IOptimisticOracleV2 {
-
     /// @notice Requests a new price.
     /// @param identifier price identifier being requested.
     /// @param timestamp timestamp of the price being requested.
