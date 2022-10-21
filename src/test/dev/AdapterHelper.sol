@@ -14,7 +14,7 @@ import { IAddressWhitelist } from "src/interfaces/IAddressWhitelist.sol";
 
 import { IAuthEE } from "src/interfaces/IAuth.sol";
 import { IConditionalTokens } from "src/interfaces/IConditionalTokens.sol";
-import { IOptimisticOracleV2 } from "src/interfaces/IOptimisticOracleV2.sol";
+import { IOptimisticOracleV2, Request } from "src/interfaces/IOptimisticOracleV2.sol";
 import { QuestionData, IUmaCtfAdapterEE } from "src/interfaces/IUmaCtfAdapter.sol";
 
 struct Unsigned {
@@ -123,6 +123,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
     }
 
     function settle(uint256 timestamp, bytes memory data) internal {
+        fastForward(10);
         vm.prank(proposer);
         IOptimisticOracleV2(optimisticOracle).settle(address(adapter), identifier, timestamp, data);
     }
@@ -130,17 +131,19 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
     function getRequest(uint256 timestamp, bytes memory data)
         internal
         view
-        returns (IOptimisticOracleV2.Request memory)
+        returns (Request memory)
     {
         return IOptimisticOracleV2(optimisticOracle).getRequest(address(adapter), identifier, timestamp, data);
     }
 
     function propose(int256 price, uint256 timestamp, bytes memory data) internal {
+        fastForward(10);
         vm.prank(proposer);
         IOptimisticOracleV2(optimisticOracle).proposePrice(address(adapter), identifier, timestamp, data, price);
     }
 
     function dispute(uint256 timestamp, bytes memory data) internal {
+        fastForward(10);
         vm.prank(disputer);
         IOptimisticOracleV2(optimisticOracle).disputePrice(address(adapter), identifier, timestamp, data);
     }

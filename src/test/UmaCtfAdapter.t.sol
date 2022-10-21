@@ -4,7 +4,7 @@ pragma solidity 0.8.15;
 import { AdapterHelper } from "./dev/AdapterHelper.sol";
 
 import { IAddressWhitelist } from "src/interfaces/IAddressWhitelist.sol";
-import { IOptimisticOracleV2 } from "src/interfaces/IOptimisticOracleV2.sol";
+import { IOptimisticOracleV2, Request } from "src/interfaces/IOptimisticOracleV2.sol";
 
 import { QuestionData } from "src/UmaCtfAdapter.sol";
 
@@ -71,7 +71,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         assertFalse(data.resolved);
 
         // Assert the Optimistic Oracle Request
-        IOptimisticOracleV2.Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
+        Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
         assertEq(address(0), request.proposer);
         assertEq(address(0), request.disputer);
         assertEq(reward, request.reward);
@@ -182,7 +182,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         int256 proposedPrice = 1 ether;
         proposeAndSettle(proposedPrice, data.requestTimestamp, data.ancillaryData);
 
-        assertTrue(adapter.readyToResolve(questionID));
+        assertTrue(adapter.ready(questionID));
     }
 
     function testResolve() public {
@@ -337,6 +337,28 @@ contract UmaCtfAdapterTest is AdapterHelper {
         adapter.getExpectedPayouts(questionID);
     }
 
+    function testExpectedPayoutsRevertIgnorePriceReceived() public {
+        testPriceDisputed();
+
+        QuestionData memory data = adapter.getQuestion(questionID);
+
+        // Propose
+        propose(0, data.requestTimestamp, data.ancillaryData);
+
+        // Dispute
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        // Mock the DVM dispute process and settle the Request with the ignore price
+        int256 price = type(int256).min;
+        oracle.setPriceExists(true);
+        oracle.setPrice(price);
+        settle(data.requestTimestamp, data.ancillaryData);
+
+        // Reverts as the price on the OO is invalid
+        vm.expectRevert(InvalidOOPrice.selector);
+        adapter.getExpectedPayouts(questionID);
+    }
+
     function testFlag() public {
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
@@ -377,10 +399,10 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         QuestionData memory data;
 
-        // Ensure the relevant flags are set, meaning, the question is paused and the adminResolutionTimestamp is set
+        // Ensure the relevant flags are set, meaning, the question is paused and the emergencyResolutionTimestamp is set
         data = adapter.getQuestion(questionID);
         assertTrue(data.paused);
-        assertTrue(data.adminResolutionTimestamp > 0);
+        assertTrue(data.emergencyResolutionTimestamp > 0);
 
         // Fast forward time past the emergencySafetyPeriod
         fastForward(adapter.emergencySafetyPeriod());
@@ -574,12 +596,10 @@ contract UmaCtfAdapterTest is AdapterHelper {
         uint256 timestamp = data.requestTimestamp;
         assertTrue(data.reset);
         
-        fastForward(10);
         propose(0, data.requestTimestamp, ancillaryData);
 
         // Subsequent disputes to the new price request will not reset the question
         // Ensuring that there are at most 2 requests for a question
-        fastForward(10);
         dispute(data.requestTimestamp, ancillaryData);
 
         // The second dispute is a no-op, and the requestTimestamp is unchanged
@@ -600,6 +620,56 @@ contract UmaCtfAdapterTest is AdapterHelper {
         emit QuestionResolved(questionID, noPrice, payouts);
 
         adapter.resolve(questionID);
+    }
+
+    function testPriceDisputedIgnorePriceReceived() public {
+        // Initalize and dispute a question
+        testPriceDisputed();
+
+        QuestionData memory data;
+        data = adapter.getQuestion(questionID);
+        uint256 timestamp = data.requestTimestamp;
+
+        // Initialize another round of proposals and disputes, forcing the OO to fallback to DVM dispute process
+        // Propose
+        propose(0, timestamp, data.ancillaryData);
+
+        // Dispute, will not reset the question
+        // But will refund the reward to the Adapter
+
+        // Assert refund on dispute
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(optimisticOracle, address(adapter), data.reward);
+        dispute(timestamp, data.ancillaryData);
+
+        // Mock the DVM dispute process and settle the Request with the ignore price
+        int256 ignorePrice = type(int256).min;
+        oracle.setPriceExists(true);
+        oracle.setPrice(ignorePrice);
+        settle(timestamp, data.ancillaryData);
+
+        // Attempt to resolve the Question
+        // Since the DVM returns the ignore price, reset the question
+        // Paying for the price request from the Adapter's token balance
+        
+        // Assert price request payment
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(adapter), optimisticOracle, data.reward);
+
+        // Assert question reset
+        vm.expectEmit(true, true, true, true);
+        emit QuestionReset(questionID);
+
+        adapter.resolve(questionID);
+
+        // Assert that the question parameters in storage have been updated
+        data = adapter.getQuestion(questionID);
+        assertTrue(data.requestTimestamp > timestamp);
+
+        // Assert that there is a new OO price request for the question
+        Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
+        assertEq(address(0), request.proposer);
+        assertEq(address(0), request.disputer);
     }
 
     function testReset() public {

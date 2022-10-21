@@ -97,8 +97,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
     /// @notice Checks whether a questionID is ready to be resolved
     /// @param questionID - The unique questionID
-    function readyToResolve(bytes32 questionID) public view returns (bool) {
-        return _readyToResolve(questions[questionID]);
+    function ready(bytes32 questionID) public view returns (bool) {
+        return _ready(questions[questionID]);
     }
 
     /// @notice Resolves a question
@@ -110,7 +110,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
         if (questionData.paused) revert Paused();
         if (questionData.resolved) revert Resolved();
-        if (!_readyToResolve(questionData)) revert NotReadyToResolve();
+        if (!_ready(questionData)) revert NotReadyToResolve();
 
         // Resolve the underlying market
         return _resolve(questionID, questionData);
@@ -174,7 +174,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (_isFlagged(questionData)) revert Flagged();
 
-        questionData.adminResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
+        questionData.emergencyResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
 
         // Flagging a question pauses it by default
         questionData.paused = true;
@@ -203,7 +203,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (payouts.length != 2) revert InvalidPayouts();
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (!_isFlagged(questionData)) revert NotFlagged();
-        if (block.timestamp <= questionData.adminResolutionTimestamp) revert SafetyPeriodNotPassed();
+        if (block.timestamp <= questionData.emergencyResolutionTimestamp) revert SafetyPeriodNotPassed();
 
         questionData.resolved = true;
         ctf.reportPayouts(questionID, payouts);
@@ -235,7 +235,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
                             INTERNAL FUNCTIONS 
     //////////////////////////////////////////////////////////////////*/
 
-    function _readyToResolve(QuestionData storage questionData) internal view returns (bool) {
+    function _ready(QuestionData storage questionData) internal view returns (bool) {
         if (!_isInitialized(questionData)) return false;
         // Check that the OO has an available price
         return _hasPrice(questionData);
@@ -260,7 +260,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             resolved: false,
             paused: false,
             reset: false,
-            adminResolutionTimestamp: 0
+            emergencyResolutionTimestamp: 0
         });
     }
 
@@ -347,6 +347,12 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             yesOrNoIdentifier, questionData.requestTimestamp, questionData.ancillaryData
         );
 
+        // If the DVM returns the IGNORE_PRICE, reset the question, sending out a new price request to the DVM
+        if (price == type(int256).min) {
+            questionData.reset = false;
+            return _reset(address(this), questionID, questionData);
+        }
+
         // Construct the payout array for the question
         uint256[] memory payouts = _constructPayouts(price);
 
@@ -366,7 +372,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     }
 
     function _isFlagged(QuestionData storage questionData) internal view returns (bool) {
-        return questionData.adminResolutionTimestamp > 0;
+        return questionData.emergencyResolutionTimestamp > 0;
     }
 
     function _isInitialized(QuestionData storage questionData) internal view returns (bool) {
@@ -379,7 +385,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         // Payouts: [YES, NO]
         uint256[] memory payouts = new uint256[](2);
         // Valid prices are 0, 0.5 and 1
-        if (price != 0 && price != 0.5 ether && price != 1 ether) revert InvalidResolutionData();
+        if (price != 0 && price != 0.5 ether && price != 1 ether) revert InvalidOOPrice();
 
         if (price == 0) {
             // NO: Report [Yes, No] as [0, 1]

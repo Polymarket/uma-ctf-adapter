@@ -9,8 +9,8 @@ struct QuestionData {
     uint256 reward;
     /// @notice Additional bond required by Optimistic oracle proposers/disputers
     uint256 proposalBond;
-    /// @notice Admin Resolution timestamp, set when a market is flagged for admin resolution
-    uint256 adminResolutionTimestamp;
+    /// @notice Emergency resolution timestamp, set when a market is flagged for emergency resolution
+    uint256 emergencyResolutionTimestamp;
     /// @notice Flag marking whether a question is resolved
     bool resolved;
     /// @notice Flag marking whether a question is paused
@@ -38,7 +38,7 @@ interface IUmaCtfAdapterEE {
     error PriceNotAvailable();
     error InvalidAncillaryData();
     error NotOptimisticOracle();
-    error InvalidResolutionData();
+    error InvalidOOPrice();
     error InvalidPayouts();
 
     /// @notice Emitted when a questionID is initialized
@@ -86,5 +86,5 @@ interface IUmaCtfAdapter is IUmaCtfAdapterEE {
 
     function getQuestion(bytes32) external returns (QuestionData memory);
 
-    function readyToResolve(bytes32) external view returns (bool);
+    function ready(bytes32) external view returns (bool);
 }
