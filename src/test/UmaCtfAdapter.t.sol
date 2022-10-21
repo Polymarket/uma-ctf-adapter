@@ -2,7 +2,6 @@
 pragma solidity 0.8.15;
 
 import { AdapterHelper } from "./dev/AdapterHelper.sol";
-
 import { IAddressWhitelist } from "src/interfaces/IAddressWhitelist.sol";
 import { IOptimisticOracleV2, Request } from "src/interfaces/IOptimisticOracleV2.sol";
 
@@ -74,6 +73,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
         assertEq(address(0), request.proposer);
         assertEq(address(0), request.disputer);
+        assertEq(usdc, address(request.currency));
         assertEq(reward, request.reward);
         assertEq(1_500_000_000, request.finalFee);
         assertTrue(request.requestSettings.eventBased);
@@ -132,9 +132,9 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testInitializeRevertInvalidAncillaryData() public {
         // Revert since ancillaryData is invalid
-        bytes memory ancillaryData = hex"";
+        bytes memory data = hex"";
         vm.expectRevert(InvalidAncillaryData.selector);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(data, usdc, 1_000_000, 10_000_000_000);
     }
 
     function testPause() public {
@@ -659,11 +659,14 @@ contract UmaCtfAdapterTest is AdapterHelper {
         vm.expectEmit(true, true, true, true);
         emit Transfer(address(adapter), optimisticOracle, data.reward);
 
-        // Assert question reset
+        // Assert that the question has been reset
         vm.expectEmit(true, true, true, true);
         emit QuestionReset(questionID);
 
         adapter.resolve(questionID);
+
+        // Assert token balance on Adapter after paying request reward
+        assertBalance(usdc, address(adapter), 0);
 
         // Assert that the question parameters in storage have been updated
         data = adapter.getQuestion(questionID);
@@ -673,6 +676,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
         assertEq(address(0), request.proposer);
         assertEq(address(0), request.disputer);
+        assertEq(usdc, address(request.currency));
     }
 
     function testReset() public {

@@ -345,7 +345,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             yesOrNoIdentifier, questionData.requestTimestamp, questionData.ancillaryData
         );
 
-        // If the OO returns the IGNORE_PRICE, reset the question, sending out a new price request
+        // If the OO returns the ignore price, reset the question
         if (price == _ignorePrice()) {
             questionData.reset = false;
             return _reset(address(this), questionID, questionData);
