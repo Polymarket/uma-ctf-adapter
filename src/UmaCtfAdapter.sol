@@ -347,8 +347,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             yesOrNoIdentifier, questionData.requestTimestamp, questionData.ancillaryData
         );
 
-        // If the DVM returns the IGNORE_PRICE, reset the question, sending out a new price request to the DVM
-        if (price == type(int256).min) {
+        // If the OO returns the IGNORE_PRICE, reset the question, sending out a new price request
+        if (price == _ignorePrice()) {
             questionData.reset = false;
             return _reset(address(this), questionID, questionData);
         }
@@ -401,5 +401,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             payouts[1] = 0;
         }
         return payouts;
+    }
+
+    function _ignorePrice() internal pure returns (int256) {
+        return type(int256).min;
     }
 }
