@@ -595,7 +595,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         QuestionData memory data = adapter.getQuestion(questionID);
         uint256 timestamp = data.requestTimestamp;
         assertTrue(data.reset);
-        
+
         propose(0, data.requestTimestamp, ancillaryData);
 
         // Subsequent disputes to the new price request will not reset the question
@@ -654,7 +654,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         // Attempt to resolve the Question
         // Since the DVM returns the ignore price, reset the question
         // Paying for the price request from the Adapter's token balance
-        
+
         // Assert price request payment
         vm.expectEmit(true, true, true, true);
         emit Transfer(address(adapter), optimisticOracle, data.reward);
@@ -712,15 +712,14 @@ contract UmaCtfAdapterTest is AdapterHelper {
         testReset();
 
         uint256 timestamp = block.timestamp;
-        
+
         fastForward(100);
 
-        // Resetting an already reset question is a no-op
+        // Resetting an already reset question is allowed
         vm.prank(admin);
         adapter.reset(questionID);
         QuestionData memory data = adapter.getQuestion(questionID);
-        
-        // The request timestamp is unchanged
-        assertEq(data.requestTimestamp, timestamp);
+
+        assertTrue(data.requestTimestamp > timestamp);
     }
 }

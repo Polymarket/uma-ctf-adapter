@@ -140,7 +140,10 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         bytes32 questionID = keccak256(ancillaryData);
         QuestionData storage questionData = questions[questionID];
 
-        // Upon dispute, immediately reset the question, which creates a new OO price request paid by the Adapter
+        if (questionData.reset) return;
+
+        // If the question has not been reset previously, reset the question
+        // Ensures that there are at most 2 OO Requests at a time for a question
         _reset(address(this), questionID, questionData);
     }
 
@@ -201,7 +204,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (payouts.length != 2) revert InvalidPayouts();
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (!_isFlagged(questionData)) revert NotFlagged();
-        if (block.timestamp <= questionData.emergencyResolutionTimestamp) revert SafetyPeriodNotPassed();
+        if (block.timestamp < questionData.emergencyResolutionTimestamp) revert SafetyPeriodNotPassed();
 
         questionData.resolved = true;
         ctf.reportPayouts(questionID, payouts);
@@ -315,25 +318,21 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /// @param questionID - The unique questionID
     function _reset(address requestor, bytes32 questionID, QuestionData storage questionData) internal {
         uint256 requestTimestamp = block.timestamp;
+        // Update the question parameters in storage
+        questionData.requestTimestamp = requestTimestamp;
+        questionData.reset = true;
 
-        // If the question has not been reset previously, reset the question
-        // Ensures that there are at most 2 OO Requests at a time for a question
-        if (!questionData.reset) {
-            // Update the question parameters in storage
-            questionData.requestTimestamp = requestTimestamp;
-            questionData.reset = true;
+        // Send out a new price request with the new timestamp
+        _requestPrice(
+            requestor,
+            requestTimestamp,
+            questionData.ancillaryData,
+            questionData.rewardToken,
+            questionData.reward,
+            questionData.proposalBond
+        );
 
-            // Send out a new price request with the new request timestamp
-            _requestPrice(
-                requestor,
-                requestTimestamp,
-                questionData.ancillaryData,
-                questionData.rewardToken,
-                questionData.reward,
-                questionData.proposalBond
-            );
-            emit QuestionReset(questionID);
-        }
+        emit QuestionReset(questionID);
     }
 
     /// @notice Resolves the underlying CTF market
@@ -347,7 +346,6 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
         // If the OO returns the ignore price, reset the question
         if (price == _ignorePrice()) {
-            questionData.reset = false;
             return _reset(address(this), questionID, questionData);
         }
 
