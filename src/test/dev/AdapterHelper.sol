@@ -45,7 +45,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
     bytes32 public conditionId;
 
     bytes public constant ancillaryData =
-        hex"569e599c2f623949c0d74d7bf006f8a4f68b911876d6437c1db4ad4c3eb21e68682fb8168b75eb23d3994383a40643d73d59";
+        hex"713a207469746c653a2057696c6c206974207261696e20696e204e5943206f6e205765646e65736461792c206465736372697074696f6e3a2057696c6c206974207261696e20696e204e5943206f6e205765646e6573646179";
     bytes public appendedAncillaryData = AncillaryDataLib._appendAncillaryData(admin, ancillaryData);
     bytes32 public questionID = keccak256(appendedAncillaryData);
     bytes32 public constant identifier = "YES_OR_NO_QUERY";
