@@ -172,7 +172,8 @@ contract UmaCtfAdapterTest is AdapterHelper {
         adapter.unpause(questionID);
     }
 
-    function testReadyToResolve() public {
+    function testReady() public {
+        // Valid case
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
 
@@ -183,6 +184,20 @@ contract UmaCtfAdapterTest is AdapterHelper {
         proposeAndSettle(proposedPrice, data.requestTimestamp, data.ancillaryData);
 
         assertTrue(adapter.ready(questionID));
+
+        // Uninitialized
+        adapter.ready(keccak256("abc"));
+
+        // Paused
+        vm.prank(admin);
+        adapter.pause(questionID);
+        assertFalse(adapter.ready(questionID));
+        vm.prank(admin);
+        adapter.unpause(questionID);
+
+        // Resolved
+        adapter.resolve(questionID);
+        assertFalse(adapter.ready(questionID));
     }
 
     function testResolve() public {
