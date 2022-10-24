@@ -275,7 +275,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
     }
 
     function testResolveRevertNotInitialized() public {
-        vm.expectRevert(NotReadyToResolve.selector);
+        vm.expectRevert(NotInitialized.selector);
         adapter.resolve(questionID);
     }
 

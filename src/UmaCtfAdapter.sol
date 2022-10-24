@@ -109,9 +109,10 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     function resolve(bytes32 questionID) external {
         QuestionData storage questionData = questions[questionID];
 
+        if (!_isInitialized(questionData)) revert NotInitialized();
         if (questionData.paused) revert Paused();
         if (questionData.resolved) revert Resolved();
-        if (!_ready(questionData)) revert NotReadyToResolve();
+        if (!_hasPrice(questionData)) revert NotReadyToResolve();
 
         // Resolve the underlying market
         return _resolve(questionID, questionData);
@@ -238,7 +239,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
     function _ready(QuestionData storage questionData) internal view returns (bool) {
         if (!_isInitialized(questionData)) return false;
-        // Check that the OO has an available price
+        if (questionData.paused) return false;
+        if (questionData.resolved) return false;
         return _hasPrice(questionData);
     }
 
