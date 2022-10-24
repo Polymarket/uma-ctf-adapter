@@ -2,13 +2,16 @@
 pragma solidity 0.8.15;
 
 library AncillaryDataLib {
-
     string private constant initializerPrefix = ",initializer:";
 
     /// @notice Appends the initializer address to the ancillaryData
     /// @param initializer      - The initializer address
     /// @param ancillaryData    - The ancillary data
-    function _appendAncillaryData(address initializer, bytes memory ancillaryData) internal pure returns (bytes memory) {
+    function _appendAncillaryData(address initializer, bytes memory ancillaryData)
+        internal
+        pure
+        returns (bytes memory)
+    {
         return abi.encodePacked(ancillaryData, initializerPrefix, _toUtf8BytesAddress(initializer));
     }
 
@@ -18,8 +21,9 @@ library AncillaryDataLib {
     /// Will return address in all lower case characters and without the leading 0x.
     /// @param addr - The address to encode.
     function _toUtf8BytesAddress(address addr) internal pure returns (bytes memory) {
-        return
-            abi.encodePacked(_toUtf8Bytes32Bottom(bytes32(bytes20(addr)) >> 128), bytes8(_toUtf8Bytes32Bottom(bytes20(addr))));
+        return abi.encodePacked(
+            _toUtf8Bytes32Bottom(bytes32(bytes20(addr)) >> 128), bytes8(_toUtf8Bytes32Bottom(bytes20(addr)))
+        );
     }
 
     /// @notice Converts the bottom half of a bytes32 input to hex in a highly gas-optimized way.
@@ -30,11 +34,11 @@ library AncillaryDataLib {
 
             // Nibble interleave
             x = x & 0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff;
-            x = (x | (x * 2**64)) & 0x0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff;
-            x = (x | (x * 2**32)) & 0x00000000ffffffff00000000ffffffff00000000ffffffff00000000ffffffff;
-            x = (x | (x * 2**16)) & 0x0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff;
-            x = (x | (x * 2**8)) & 0x00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff;
-            x = (x | (x * 2**4)) & 0x0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f;
+            x = (x | (x * 2 ** 64)) & 0x0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff;
+            x = (x | (x * 2 ** 32)) & 0x00000000ffffffff00000000ffffffff00000000ffffffff00000000ffffffff;
+            x = (x | (x * 2 ** 16)) & 0x0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff;
+            x = (x | (x * 2 ** 8)) & 0x00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff;
+            x = (x | (x * 2 ** 4)) & 0x0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f;
 
             // Hex encode
             uint256 h = (x & 0x0808080808080808080808080808080808080808080808080808080808080808) / 8;
