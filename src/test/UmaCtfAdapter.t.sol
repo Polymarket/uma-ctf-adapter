@@ -53,7 +53,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         uint256 bond = 10_000_000_000;
 
         vm.expectEmit(true, true, true, true);
-        emit QuestionInitialized(questionID, block.timestamp, admin, ancillaryData, usdc, reward, bond);
+        emit QuestionInitialized(questionID, block.timestamp, admin, appendedAncillaryData, usdc, reward, bond);
 
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, reward, bond);
@@ -62,7 +62,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         QuestionData memory data = adapter.getQuestion(questionID);
         assertEq(block.timestamp, data.requestTimestamp);
         assertEq(admin, data.creator);
-        assertEq(ancillaryData, data.ancillaryData);
+        assertEq(appendedAncillaryData, data.ancillaryData);
         assertEq(usdc, data.rewardToken);
         assertEq(reward, data.reward);
         assertEq(bond, data.proposalBond);
@@ -82,7 +82,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testInitializeZeroRewardAndBond() public {
         vm.expectEmit(true, true, true, true);
-        emit QuestionInitialized(questionID, block.timestamp, admin, ancillaryData, usdc, 0, 0);
+        emit QuestionInitialized(questionID, block.timestamp, admin, appendedAncillaryData, usdc, 0, 0);
 
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 0, 0);
@@ -92,7 +92,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         QuestionData memory data = adapter.getQuestion(questionID);
         assertEq(block.timestamp, data.requestTimestamp);
         assertEq(admin, data.creator);
-        assertEq(ancillaryData, data.ancillaryData);
+        assertEq(appendedAncillaryData, data.ancillaryData);
         assertEq(usdc, data.rewardToken);
         assertEq(0, data.reward);
         assertEq(0, data.proposalBond);
@@ -554,7 +554,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         // Propose a price for the question
         int256 proposedPrice = 1 ether;
-        propose(proposedPrice, initialTimestamp, ancillaryData);
+        propose(proposedPrice, initialTimestamp, data.ancillaryData);
 
         fastForward(100);
 
@@ -567,7 +567,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         emit QuestionReset(questionID);
 
         // Dispute the proposal, triggering the priceDisputed callback, resetting the question and creating a new OO request
-        dispute(initialTimestamp, ancillaryData);
+        dispute(initialTimestamp, data.ancillaryData);
 
         data = adapter.getQuestion(questionID);
         assertTrue(data.requestTimestamp > initialTimestamp);
@@ -611,11 +611,11 @@ contract UmaCtfAdapterTest is AdapterHelper {
         uint256 timestamp = data.requestTimestamp;
         assertTrue(data.reset);
 
-        propose(0, data.requestTimestamp, ancillaryData);
+        propose(0, data.requestTimestamp, data.ancillaryData);
 
         // Subsequent disputes to the new price request will not reset the question
         // Ensuring that there are at most 2 requests for a question
-        dispute(data.requestTimestamp, ancillaryData);
+        dispute(data.requestTimestamp, data.ancillaryData);
 
         // The second dispute is a no-op, and the requestTimestamp is unchanged
         assertEq(timestamp, data.requestTimestamp);

@@ -13,9 +13,10 @@ import { IFinder } from "src/interfaces/IFinder.sol";
 import { IAddressWhitelist } from "src/interfaces/IAddressWhitelist.sol";
 
 import { IAuthEE } from "src/interfaces/IAuth.sol";
+import { AncillaryDataLib } from "src/libraries/AncillaryDataLib.sol";
 import { IConditionalTokens } from "src/interfaces/IConditionalTokens.sol";
-import { IOptimisticOracleV2, Request } from "src/interfaces/IOptimisticOracleV2.sol";
 import { QuestionData, IUmaCtfAdapterEE } from "src/interfaces/IUmaCtfAdapter.sol";
+import { IOptimisticOracleV2, Request } from "src/interfaces/IOptimisticOracleV2.sol";
 
 struct Unsigned {
     uint256 rawValue;
@@ -45,7 +46,8 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
 
     bytes public constant ancillaryData =
         hex"569e599c2f623949c0d74d7bf006f8a4f68b911876d6437c1db4ad4c3eb21e68682fb8168b75eb23d3994383a40643d73d59";
-    bytes32 public constant questionID = keccak256(ancillaryData);
+    bytes public appendedAncillaryData = AncillaryDataLib._appendAncillaryData(admin, ancillaryData);
+    bytes32 public questionID = keccak256(appendedAncillaryData);
     bytes32 public constant identifier = "YES_OR_NO_QUERY";
 
     event Transfer(address indexed from, address indexed to, uint256 value);
