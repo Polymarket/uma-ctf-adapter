@@ -44,6 +44,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
 
     bytes32 public conditionId;
 
+    // Bytes of 'q: title: Will it rain in NYC on Wednesday, description: Will it rain in NYC on Wednesday'
     bytes public constant ancillaryData =
         hex"713a207469746c653a2057696c6c206974207261696e20696e204e5943206f6e205765646e65736461792c206465736372697074696f6e3a2057696c6c206974207261696e20696e204e5943206f6e205765646e6573646179";
     bytes public appendedAncillaryData = AncillaryDataLib._appendAncillaryData(admin, ancillaryData);
