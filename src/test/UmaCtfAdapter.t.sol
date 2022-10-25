@@ -2,13 +2,12 @@
 pragma solidity 0.8.15;
 
 import { AdapterHelper } from "./dev/AdapterHelper.sol";
-
 import { IAddressWhitelist } from "src/interfaces/IAddressWhitelist.sol";
-import { IOptimisticOracleV2 } from "src/interfaces/IOptimisticOracleV2.sol";
+import { IOptimisticOracleV2, Request } from "src/interfaces/IOptimisticOracleV2.sol";
 
 import { QuestionData } from "src/UmaCtfAdapter.sol";
 
-contract UMaCtfAdapterTest is AdapterHelper {
+contract UmaCtfAdapterTest is AdapterHelper {
     function testSetup() public {
         assertEq(whitelist, address(adapter.collateralWhitelist()));
         assertEq(ctf, address(adapter.ctf()));
@@ -71,9 +70,10 @@ contract UMaCtfAdapterTest is AdapterHelper {
         assertFalse(data.resolved);
 
         // Assert the Optimistic Oracle Request
-        IOptimisticOracleV2.Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
+        Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
         assertEq(address(0), request.proposer);
         assertEq(address(0), request.disputer);
+        assertEq(usdc, address(request.currency));
         assertEq(reward, request.reward);
         assertEq(1_500_000_000, request.finalFee);
         assertTrue(request.requestSettings.eventBased);
@@ -132,9 +132,9 @@ contract UMaCtfAdapterTest is AdapterHelper {
 
     function testInitializeRevertInvalidAncillaryData() public {
         // Revert since ancillaryData is invalid
-        bytes memory ancillaryData = hex"";
+        bytes memory data = hex"";
         vm.expectRevert(InvalidAncillaryData.selector);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(data, usdc, 1_000_000, 10_000_000_000);
     }
 
     function testPause() public {
@@ -182,7 +182,7 @@ contract UMaCtfAdapterTest is AdapterHelper {
         int256 proposedPrice = 1 ether;
         proposeAndSettle(proposedPrice, data.requestTimestamp, data.ancillaryData);
 
-        assertTrue(adapter.readyToResolve(questionID));
+        assertTrue(adapter.ready(questionID));
     }
 
     function testResolve() public {
@@ -337,6 +337,28 @@ contract UMaCtfAdapterTest is AdapterHelper {
         adapter.getExpectedPayouts(questionID);
     }
 
+    function testExpectedPayoutsRevertIgnorePriceReceived() public {
+        testPriceDisputed();
+
+        QuestionData memory data = adapter.getQuestion(questionID);
+
+        // Propose
+        propose(0, data.requestTimestamp, data.ancillaryData);
+
+        // Dispute
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        // Mock the DVM dispute process and settle the Request with the ignore price
+        int256 price = type(int256).min;
+        oracle.setPriceExists(true);
+        oracle.setPrice(price);
+        settle(data.requestTimestamp, data.ancillaryData);
+
+        // Reverts as the price on the OO is invalid
+        vm.expectRevert(InvalidOOPrice.selector);
+        adapter.getExpectedPayouts(questionID);
+    }
+
     function testFlag() public {
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
@@ -377,10 +399,10 @@ contract UMaCtfAdapterTest is AdapterHelper {
 
         QuestionData memory data;
 
-        // Ensure the relevant flags are set, meaning, the question is paused and the adminResolutionTimestamp is set
+        // Ensure the relevant flags are set, meaning, the question is paused and the emergencyResolutionTimestamp is set
         data = adapter.getQuestion(questionID);
         assertTrue(data.paused);
-        assertTrue(data.adminResolutionTimestamp > 0);
+        assertTrue(data.emergencyResolutionTimestamp > 0);
 
         // Fast forward time past the emergencySafetyPeriod
         fastForward(adapter.emergencySafetyPeriod());
@@ -573,13 +595,11 @@ contract UMaCtfAdapterTest is AdapterHelper {
         QuestionData memory data = adapter.getQuestion(questionID);
         uint256 timestamp = data.requestTimestamp;
         assertTrue(data.reset);
-        
-        fastForward(10);
+
         propose(0, data.requestTimestamp, ancillaryData);
 
         // Subsequent disputes to the new price request will not reset the question
         // Ensuring that there are at most 2 requests for a question
-        fastForward(10);
         dispute(data.requestTimestamp, ancillaryData);
 
         // The second dispute is a no-op, and the requestTimestamp is unchanged
@@ -600,6 +620,63 @@ contract UMaCtfAdapterTest is AdapterHelper {
         emit QuestionResolved(questionID, noPrice, payouts);
 
         adapter.resolve(questionID);
+    }
+
+    function testPriceDisputedIgnorePriceReceived() public {
+        // Initalize and dispute a question
+        testPriceDisputed();
+
+        QuestionData memory data;
+        data = adapter.getQuestion(questionID);
+        uint256 timestamp = data.requestTimestamp;
+
+        // Initialize another round of proposals and disputes, forcing the OO to fallback to DVM dispute process
+        // Propose
+        propose(0, timestamp, data.ancillaryData);
+
+        // Dispute, will not reset the question
+        // But will refund the reward to the Adapter
+
+        // Assert refund transfer event on dispute
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(optimisticOracle, address(adapter), data.reward);
+        dispute(timestamp, data.ancillaryData);
+
+        // Assert refund balance on adapter
+        assertBalance(usdc, address(adapter), data.reward);
+
+        // Mock the DVM dispute process and settle the Request with the ignore price
+        int256 ignorePrice = type(int256).min;
+        oracle.setPriceExists(true);
+        oracle.setPrice(ignorePrice);
+        settle(timestamp, data.ancillaryData);
+
+        // Attempt to resolve the Question
+        // Since the DVM returns the ignore price, reset the question
+        // Paying for the price request from the Adapter's token balance
+
+        // Assert price request payment
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(adapter), optimisticOracle, data.reward);
+
+        // Assert that the question has been reset
+        vm.expectEmit(true, true, true, true);
+        emit QuestionReset(questionID);
+
+        adapter.resolve(questionID);
+
+        // Assert token balance on Adapter after paying request reward
+        assertBalance(usdc, address(adapter), 0);
+
+        // Assert that the question parameters in storage have been updated
+        data = adapter.getQuestion(questionID);
+        assertTrue(data.requestTimestamp > timestamp);
+
+        // Assert that there is a new OO price request for the question
+        Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
+        assertEq(address(0), request.proposer);
+        assertEq(address(0), request.disputer);
+        assertEq(usdc, address(request.currency));
     }
 
     function testReset() public {
@@ -635,15 +712,14 @@ contract UMaCtfAdapterTest is AdapterHelper {
         testReset();
 
         uint256 timestamp = block.timestamp;
-        
+
         fastForward(100);
 
-        // Resetting an already reset question is a no-op
+        // Resetting an already reset question is allowed
         vm.prank(admin);
         adapter.reset(questionID);
         QuestionData memory data = adapter.getQuestion(questionID);
-        
-        // The request timestamp is unchanged
-        assertEq(data.requestTimestamp, timestamp);
+
+        assertTrue(data.requestTimestamp > timestamp);
     }
 }

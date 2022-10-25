@@ -18,14 +18,20 @@ When a new market is deployed, it is `initialized`, meaning:
 2) The market is [`prepared`](https://github.com/Polymarket/conditional-tokens-contracts/blob/a927b5a52cf9ace712bf1b5fe1d92bf76399e692/contracts/ConditionalTokens.sol#L65) on the CTF contract
 3) A resolution data request is sent out to the Optimistic Oracle
 
-UMA Proposers will then respond to the request and fetch resolution data offchain. If the resolution data is not disputed, the data will be available to the Adapter after a defined liveness period(currently about 2 hours). If the proposal is disputed, UMA's [DVM](https://docs.umaproject.org/getting-started/oracle#umas-data-verification-mechanism) is the fallback and will return data after a 48 - 72 hour period.
+UMA Proposers will then respond to the request and fetch resolution data offchain. If the resolution data is not disputed, the data will be available to the Adapter after a defined liveness period(currently about 2 hours). 
+
+If the proposal is disputed, UMA's [DVM](https://docs.umaproject.org/getting-started/oracle#umas-data-verification-mechanism) is the fallback and will return data after a 48 - 72 hour period.
 
 After resolution data is available, anyone can call `resolve` which resolves the market using the resolution data.
 
 
 ## Deployments
 
-See [current deployments](./deploys.md)
+| Network          | Address                                                                           |
+| ---------------- | --------------------------------------------------------------------------------- |
+| Polygon          | [0xB97455fcF78eb37375e8be6f26df895341CA073d](https://polygonscan.com/address/0xB97455fcF78eb37375e8be6f26df895341CA073d)|
+| Mumbai           | [0xB97455fcF78eb37375e8be6f26df895341CA073d](https://mumbai.polygonscan.com/address/0xB97455fcF78eb37375e8be6f26df895341CA073d)|
+
 
 ## Development
 
