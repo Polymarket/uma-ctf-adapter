@@ -29,8 +29,8 @@ After resolution data is available, anyone can call `resolve` which resolves the
 
 | Network          | Address                                                                           |
 | ---------------- | --------------------------------------------------------------------------------- |
-| Polygon          | [0xB97455fcF78eb37375e8be6f26df895341CA073d](https://polygonscan.com/address/0xB97455fcF78eb37375e8be6f26df895341CA073d)|
-| Mumbai           | [0xB97455fcF78eb37375e8be6f26df895341CA073d](https://mumbai.polygonscan.com/address/0xB97455fcF78eb37375e8be6f26df895341CA073d)|
+| Polygon          | |
+| Mumbai           | |
 
 
 ## Development
