@@ -8,6 +8,7 @@ import { Auth } from "./mixins/Auth.sol";
 import { BulletinBoard } from "./mixins/BulletinBoard.sol";
 
 import { TransferHelper } from "./libraries/TransferHelper.sol";
+import { AncillaryDataLib } from "./libraries/AncillaryDataLib.sol";
 
 import { IFinder } from "./interfaces/IFinder.sol";
 import { IAddressWhitelist } from "./interfaces/IAddressWhitelist.sol";
@@ -75,24 +76,26 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         returns (bytes32 questionID)
     {
         if (!collateralWhitelist.isOnWhitelist(rewardToken)) revert UnsupportedToken();
-        if (ancillaryData.length == 0 || ancillaryData.length > maxAncillaryData) revert InvalidAncillaryData();
 
-        questionID = keccak256(ancillaryData);
+        bytes memory data = AncillaryDataLib._appendAncillaryData(msg.sender, ancillaryData);
+        if (ancillaryData.length == 0 || data.length > maxAncillaryData) revert InvalidAncillaryData();
+
+        questionID = keccak256(data);
 
         if (_isInitialized(questions[questionID])) revert Initialized();
 
         uint256 timestamp = block.timestamp;
 
         // Persist the question parameters in storage
-        _saveQuestion(msg.sender, questionID, ancillaryData, timestamp, rewardToken, reward, proposalBond);
+        _saveQuestion(msg.sender, questionID, data, timestamp, rewardToken, reward, proposalBond);
 
         // Prepare the question on the CTF
         ctf.prepareCondition(address(this), questionID, 2);
 
         // Request a price for the question from the OO
-        _requestPrice(msg.sender, timestamp, ancillaryData, rewardToken, reward, proposalBond);
+        _requestPrice(msg.sender, timestamp, data, rewardToken, reward, proposalBond);
 
-        emit QuestionInitialized(questionID, timestamp, msg.sender, ancillaryData, rewardToken, reward, proposalBond);
+        emit QuestionInitialized(questionID, timestamp, msg.sender, data, rewardToken, reward, proposalBond);
     }
 
     /// @notice Checks whether a questionID is ready to be resolved
@@ -109,9 +112,10 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     function resolve(bytes32 questionID) external {
         QuestionData storage questionData = questions[questionID];
 
+        if (!_isInitialized(questionData)) revert NotInitialized();
         if (questionData.paused) revert Paused();
         if (questionData.resolved) revert Resolved();
-        if (!_ready(questionData)) revert NotReadyToResolve();
+        if (!_hasPrice(questionData)) revert NotReadyToResolve();
 
         // Resolve the underlying market
         return _resolve(questionID, questionData);
@@ -238,7 +242,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
     function _ready(QuestionData storage questionData) internal view returns (bool) {
         if (!_isInitialized(questionData)) return false;
-        // Check that the OO has an available price
+        if (questionData.paused) return false;
+        if (questionData.resolved) return false;
         return _hasPrice(questionData);
     }
 
@@ -252,16 +257,16 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         uint256 proposalBond
     ) internal {
         questions[questionID] = QuestionData({
-            creator: creator,
             requestTimestamp: requestTimestamp,
-            ancillaryData: ancillaryData,
-            rewardToken: rewardToken,
             reward: reward,
             proposalBond: proposalBond,
+            emergencyResolutionTimestamp: 0,
             resolved: false,
             paused: false,
             reset: false,
-            emergencyResolutionTimestamp: 0
+            rewardToken: rewardToken,
+            creator: creator,
+            ancillaryData: ancillaryData
         });
     }
 
