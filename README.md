@@ -1,7 +1,15 @@
 # Polymarket UMA CTF Adapter
 
-[![Version][https://img.shields.io/github/v/release/polymarket/uma-ctf-adapter.svg?label=version]][https://github.com/Polymarket/uma-ctf-adapter/releases]
-![Github Actions](https://github.com/Polymarket/uma-ctf-adapter/workflows/Tests/badge.svg)
+[![Version][version-badge]][version-link]
+[![License][license-badge]][license-link]
+[![Test][ci-badge]][ci-link]
+
+[version-badge]: https://img.shields.io/github/v/release/polymarket/uma-ctf-adapter.svg?label=version
+[version-link]: https://github.com/Polymarket/uma-ctf-adapter/releases
+[license-badge]: https://img.shields.io/github/license/polymarket/uma-ctf-adapter
+[license-link]: https://github.com/Polymarket/uma-ctf-adapter/blob/main/LICENSE.md
+[ci-badge]: https://github.com/Polymarket/uma-ctf-adapter/workflows/Tests/badge.svg
+[ci-link]: https://github.com/Polymarket/uma-ctf-adapter/actions/workflows/Tests.yaml
 
 ## Overview
 
