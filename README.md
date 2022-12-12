@@ -1,6 +1,7 @@
 # Polymarket UMA CTF Adapter
 
-![Github Actions](https://github.com/Polymarket/uma-conditional-tokens-adapter/workflows/Tests/badge.svg)
+[![Version][https://img.shields.io/github/v/release/polymarket/uma-ctf-adapter.svg?label=version]][https://github.com/Polymarket/uma-ctf-adapter/releases]
+![Github Actions](https://github.com/Polymarket/uma-ctf-adapter/workflows/Tests/badge.svg)
 
 ## Overview
 
