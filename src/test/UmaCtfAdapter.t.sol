@@ -122,6 +122,8 @@ contract UmaCtfAdapterTest is AdapterHelper {
         assertFalse(data.paused);
         assertFalse(data.resolved);
         
+        Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
+        assertEq(request.requestSettings.customLiveness, liveness);
     }
 
     function testInitializeRevertOnSameQuestion() public {
