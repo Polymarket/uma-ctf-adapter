@@ -71,7 +71,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /// @param rewardToken   - ERC20 token address used for payment of rewards and fees
     /// @param reward        - Reward offered to a successful proposer
     /// @param proposalBond  - Bond required to be posted by OO proposers/disputers. If 0, the default OO bond is used.
-    function initialize(bytes memory ancillaryData, address rewardToken, uint256 reward, uint256 proposalBond)
+    /// @param liveness      - UMA liveness period. If 0, the default liveness period is used.
+    function initialize(bytes memory ancillaryData, address rewardToken, uint256 reward, uint256 proposalBond, uint256 liveness)
         external
         returns (bytes32 questionID)
     {
@@ -87,13 +88,13 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         uint256 timestamp = block.timestamp;
 
         // Persist the question parameters in storage
-        _saveQuestion(msg.sender, questionID, data, timestamp, rewardToken, reward, proposalBond);
+        _saveQuestion(msg.sender, questionID, data, timestamp, rewardToken, reward, proposalBond, liveness);
 
         // Prepare the question on the CTF
         ctf.prepareCondition(address(this), questionID, 2);
 
         // Request a price for the question from the OO
-        _requestPrice(msg.sender, timestamp, data, rewardToken, reward, proposalBond);
+        _requestPrice(msg.sender, timestamp, data, rewardToken, reward, proposalBond, liveness);
 
         emit QuestionInitialized(questionID, timestamp, msg.sender, data, rewardToken, reward, proposalBond);
     }
@@ -254,12 +255,14 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         uint256 requestTimestamp,
         address rewardToken,
         uint256 reward,
-        uint256 proposalBond
+        uint256 proposalBond,
+        uint256 liveness
     ) internal {
         questions[questionID] = QuestionData({
             requestTimestamp: requestTimestamp,
             reward: reward,
             proposalBond: proposalBond,
+            liveness: liveness,
             emergencyResolutionTimestamp: 0,
             resolved: false,
             paused: false,
@@ -278,13 +281,15 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /// @param rewardToken      - Address of the reward token
     /// @param reward           - Reward amount, denominated in rewardToken
     /// @param bond             - Bond amount used, denominated in rewardToken
+    /// @param liveness         - UMA liveness period, will be the default liveness period if 0.
     function _requestPrice(
         address requestor,
         uint256 requestTimestamp,
         bytes memory ancillaryData,
         address rewardToken,
         uint256 reward,
-        uint256 bond
+        uint256 bond,
+        uint256 liveness
     ) internal {
         if (reward > 0) {
             // If the requestor is not the Adapter, the requestor pays for the price request
@@ -317,6 +322,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
         // Update the proposal bond on the Optimistic oracle if necessary
         if (bond > 0) optimisticOracle.setBond(yesOrNoIdentifier, requestTimestamp, ancillaryData, bond);
+        if (liveness > 0) optimisticOracle.setCustomLiveness(yesOrNoIdentifier, requestTimestamp, ancillaryData, liveness);
     }
 
     /// @notice Reset the question by updating the requestTimestamp field and sending a new price request to the OO
@@ -334,7 +340,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             questionData.ancillaryData,
             questionData.rewardToken,
             questionData.reward,
-            questionData.proposalBond
+            questionData.proposalBond,
+            questionData.liveness
         );
 
         emit QuestionReset(questionID);

@@ -56,7 +56,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         emit QuestionInitialized(questionID, block.timestamp, admin, appendedAncillaryData, usdc, reward, bond);
 
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, reward, bond);
+        adapter.initialize(ancillaryData, usdc, reward, bond, 0);
 
         // Assert the QuestionData fields in storage
         QuestionData memory data = adapter.getQuestion(questionID);
@@ -85,7 +85,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         emit QuestionInitialized(questionID, block.timestamp, admin, appendedAncillaryData, usdc, 0, 0);
 
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 0, 0);
+        adapter.initialize(ancillaryData, usdc, 0, 0, 0);
 
         assertTrue(adapter.isInitialized(questionID));
 
@@ -100,22 +100,46 @@ contract UmaCtfAdapterTest is AdapterHelper {
         assertFalse(data.resolved);
     }
 
+    function testInitializeCustomLiveness() public {
+        uint256 liveness = 10 days;
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionInitialized(questionID, block.timestamp, admin, appendedAncillaryData, usdc, 0, 0);
+
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 0, 0, liveness);
+
+        assertTrue(adapter.isInitialized(questionID));
+
+        QuestionData memory data = adapter.getQuestion(questionID);
+        assertEq(block.timestamp, data.requestTimestamp);
+        assertEq(admin, data.creator);
+        assertEq(appendedAncillaryData, data.ancillaryData);
+        assertEq(usdc, data.rewardToken);
+        assertEq(0, data.reward);
+        assertEq(0, data.proposalBond);
+        assertEq(liveness, data.liveness);
+        assertFalse(data.paused);
+        assertFalse(data.resolved);
+        
+    }
+
     function testInitializeRevertOnSameQuestion() public {
         // Init Question
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 0, 0);
+        adapter.initialize(ancillaryData, usdc, 0, 0, 0);
 
         // Revert when initializing the same question
         vm.expectRevert(Initialized.selector);
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 0, 0);
+        adapter.initialize(ancillaryData, usdc, 0, 0, 0);
     }
 
     function testInitializeRevertInsufficientRewardBalance() public {
         // Revert when caller does not have tokens or allowance on the adapter
         vm.expectRevert("TRANSFER_FROM_FAILED");
         vm.prank(carla);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
     }
 
     function testInitializeRevertUnsupportedRewardToken() public {
@@ -127,19 +151,27 @@ contract UmaCtfAdapterTest is AdapterHelper {
         // Revert as the token is not supported
         vm.expectRevert(UnsupportedToken.selector);
         vm.prank(admin);
-        adapter.initialize(ancillaryData, tkn, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, tkn, 1_000_000, 10_000_000_000, 0);
     }
 
     function testInitializeRevertInvalidAncillaryData() public {
         // Revert since ancillaryData is invalid
         bytes memory data = hex"";
         vm.expectRevert(InvalidAncillaryData.selector);
-        adapter.initialize(data, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(data, usdc, 1_000_000, 10_000_000_000, 0);
+    }
+
+    function testInitializeRevertCustomLiveness() public {
+        uint256 livenessTooLong = 5200 weeks; // 100 years
+
+        vm.expectRevert("Liveness too large");
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 0, 0, livenessTooLong);
     }
 
     function testPause() public {
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         vm.prank(admin);
         adapter.pause(questionID);
@@ -158,7 +190,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testPauseRevertNotAdmin() public {
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         vm.expectRevert(NotAdmin.selector);
         vm.prank(carla);
@@ -175,7 +207,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
     function testReady() public {
         // Valid case
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         QuestionData memory data = adapter.getQuestion(questionID);
 
@@ -202,7 +234,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testResolve() public {
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         QuestionData memory data;
         data = adapter.getQuestion(questionID);
@@ -225,7 +257,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testResolveYes() public {
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         QuestionData memory data;
         data = adapter.getQuestion(questionID);
@@ -247,7 +279,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testResolveNo() public {
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         QuestionData memory data;
         data = adapter.getQuestion(questionID);
@@ -269,7 +301,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testResolveUnknown() public {
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         QuestionData memory data;
         data = adapter.getQuestion(questionID);
@@ -296,7 +328,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testResolveRevertUnavailablePrice() public {
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         vm.expectRevert(NotReadyToResolve.selector);
         adapter.resolve(questionID);
@@ -304,7 +336,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testResolveRevertPaused() public {
         vm.startPrank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         adapter.pause(questionID);
         vm.stopPrank();
@@ -321,7 +353,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testExpectedPayouts() public {
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         QuestionData memory data;
         data = adapter.getQuestion(questionID);
@@ -345,7 +377,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testExpectedPayoutsRevertPriceNotAvailable() public {
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         vm.expectRevert(PriceNotAvailable.selector);
         // Reverts as the price is not available from the OO
@@ -376,7 +408,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testFlag() public {
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         vm.prank(admin);
         adapter.flag(questionID);
@@ -390,7 +422,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testFlagRevertNotAdmin() public {
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         vm.expectRevert(NotAdmin.selector);
         vm.prank(carla);
@@ -407,7 +439,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         fastForward(100);
 
         vm.startPrank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         // Flag the question for emergency resolution
         adapter.flag(questionID);
@@ -445,7 +477,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         fastForward(100);
 
         vm.startPrank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         // Pause the question
         adapter.pause(questionID);
@@ -475,7 +507,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
     function testEmergencyResolveRevertNotFlagged() public {
         fastForward(100);
         vm.startPrank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 1;
@@ -487,7 +519,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
     function testEmergencyResolveRevertSafetyPeriod() public {
         fastForward(100);
         vm.startPrank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         adapter.flag(questionID);
 
@@ -502,7 +534,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
     function testEmergencyResolveRevertInvalidPayouts() public {
         fastForward(100);
         vm.startPrank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
         adapter.flag(questionID);
 
@@ -518,7 +550,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testEmergencyResolveRevertNotAdmin() public {
         vm.startPrank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
         adapter.flag(questionID);
 
         vm.stopPrank();
@@ -545,7 +577,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
     function testPriceDisputed() public {
         uint256 reward = 1_000_000;
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, reward, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, reward, 10_000_000_000, 0);
 
         QuestionData memory data;
 
@@ -696,7 +728,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testReset() public {
         vm.prank(admin);
-        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
         fastForward(10);
 
         vm.expectEmit(true, true, true, true);

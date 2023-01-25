@@ -9,6 +9,8 @@ struct QuestionData {
     uint256 reward;
     /// @notice Additional bond required by Optimistic oracle proposers/disputers
     uint256 proposalBond;
+    /// @notice Custom liveness period
+    uint256 liveness;
     /// @notice Emergency resolution timestamp, set when a market is flagged for emergency resolution
     uint256 emergencyResolutionTimestamp;
     /// @notice Flag marking whether a question is resolved
@@ -72,7 +74,7 @@ interface IUmaCtfAdapterEE {
 }
 
 interface IUmaCtfAdapter is IUmaCtfAdapterEE {
-    function initialize(bytes memory, address, uint256, uint256) external returns (bytes32);
+    function initialize(bytes memory, address, uint256, uint256, uint256) external returns (bytes32);
 
     function resolve(bytes32) external;
 
