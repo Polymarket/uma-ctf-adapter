@@ -289,6 +289,36 @@ contract UmaCtfAdapterTest is AdapterHelper {
         adapter.resolve(questionID);
     }
 
+    function testResolveIgnorePrice() public {
+        testPriceDisputed();
+
+        QuestionData memory data;
+        data = adapter.getQuestion(questionID);
+
+        // Price corresponds to Ignore price, occurs if the dispute is escalated to the DVM and is too early
+        int256 price = type(int256).min;
+
+        // Mock the DVM dispute process and settle the Request with the ignore price
+        // Propose
+        propose(0, data.requestTimestamp, data.ancillaryData);
+
+        // Dispute
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        oracle.setPriceExists(true);
+        oracle.setPrice(price);
+        settle(data.requestTimestamp, data.ancillaryData);
+
+        // Second Dispute will refund the reward to the adapter
+        assertBalance(usdc, address(adapter), data.reward);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionReset(questionID);
+
+        // Attempt to resolve the question with the Ignore price will reset the question
+        adapter.resolve(questionID);
+    }
+
     function testResolveRevertNotInitialized() public {
         vm.expectRevert(NotInitialized.selector);
         adapter.resolve(questionID);
