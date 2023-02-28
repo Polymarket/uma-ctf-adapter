@@ -346,10 +346,9 @@ contract UmaCtfAdapterTest is AdapterHelper {
         // Second Dispute will refund the reward to the adapter
         assertBalance(usdc, address(adapter), data.reward);
 
+        // Attempting to resolve the question with the Ignore price will reset the question
         vm.expectEmit(true, true, true, true);
         emit QuestionReset(questionID);
-
-        // Attempt to resolve the question with the Ignore price will reset the question
         adapter.resolve(questionID);
     }
 
