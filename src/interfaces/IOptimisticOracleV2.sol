@@ -176,4 +176,6 @@ interface IOptimisticOracleV2 {
         external
         view
         returns (bool);
+
+    function defaultLiveness() external view returns (uint256);
 }

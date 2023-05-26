@@ -605,6 +605,24 @@ contract UmaCtfAdapterTest is AdapterHelper {
         adapter.emergencyResolve(questionID, payouts);
     }
 
+    function testProposed() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        QuestionData memory data = adapter.getQuestion(questionID);
+
+        // Propose a price for the question
+        propose(1 ether, data.requestTimestamp, data.ancillaryData);
+
+        // Assert state of the OO Request post-proposal
+        Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
+
+        assertEq(request.proposer, proposer);
+        assertEq(request.proposedPrice, 1 ether);
+        assertEq(request.expirationTime, block.timestamp + getDefaultLiveness());
+        assertEq(request.requestSettings.bond, 10_000_000_000);
+    }
+
     function testPriceDisputed() public {
         uint256 reward = 1_000_000;
         vm.prank(admin);
@@ -617,7 +635,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         // Propose a price for the question
         int256 proposedPrice = 1 ether;
-        propose(proposedPrice, initialTimestamp, data.ancillaryData);
+        propose(proposedPrice, initialTimestamp, data.ancillaryData); 
 
         fastForward(100);
 

@@ -158,6 +158,10 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         settle(timestamp, data);
     }
 
+    function getDefaultLiveness() internal view returns (uint256) {
+        return IOptimisticOracleV2(optimisticOracle).defaultLiveness();
+    }
+
     function deployToken(string memory name, string memory symbol) internal returns (address token) {
         token = address(new MintableERC20(name, symbol));
     }
