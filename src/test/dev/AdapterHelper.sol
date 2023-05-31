@@ -98,7 +98,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         // Deploy Store
         address store = Deployer.Store();
         // Set final fee for USDC
-        IStore(store).setFinalFee(usdc, Unsigned({rawValue: 1500000000}));
+        IStore(store).setFinalFee(usdc, Unsigned({ rawValue: 1500000000 }));
 
         address identifierWhitelist = Deployer.IdentifierWhitelist();
         // Add YES_OR_NO_QUERY to Identifier Whitelist
@@ -156,6 +156,10 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
 
         // Settle the request
         settle(timestamp, data);
+    }
+
+    function getDefaultLiveness() internal view returns (uint256) {
+        return IOptimisticOracleV2(optimisticOracle).defaultLiveness();
     }
 
     function deployToken(string memory name, string memory symbol) internal returns (address token) {
