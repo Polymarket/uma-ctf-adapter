@@ -74,19 +74,25 @@ interface IUmaCtfAdapterEE {
 }
 
 interface IUmaCtfAdapter is IUmaCtfAdapterEE {
-    function initialize(bytes memory, address, uint256, uint256, uint256) external returns (bytes32);
+    function initialize(
+        bytes memory ancillaryData,
+        address rewardToken,
+        uint256 reward,
+        uint256 proposalBond,
+        uint256 liveness
+    ) external returns (bytes32);
 
-    function resolve(bytes32) external;
+    function ready(bytes32 questionID) external view returns (bool);
 
-    function flag(bytes32) external;
+    function resolve(bytes32 questionID) external;
 
-    function reset(bytes32) external;
+    function flag(bytes32 questionID) external;
 
-    function pause(bytes32) external;
+    function reset(bytes32 questionID) external;
 
-    function unpause(bytes32) external;
+    function pause(bytes32 questionID) external;
 
-    function getQuestion(bytes32) external returns (QuestionData memory);
+    function unpause(bytes32 questionID) external;
 
-    function ready(bytes32) external view returns (bool);
+    function getQuestion(bytes32 questionID) external returns (QuestionData memory);
 }
