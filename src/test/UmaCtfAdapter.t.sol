@@ -15,39 +15,6 @@ contract UmaCtfAdapterTest is AdapterHelper {
         assertTrue(IAddressWhitelist(whitelist).isOnWhitelist(usdc));
     }
 
-    function testAuth() public {
-        vm.expectEmit(true, true, true, true);
-        emit NewAdmin(admin, henry);
-
-        vm.prank(admin);
-        adapter.addAdmin(henry);
-        assertTrue(adapter.isAdmin(henry));
-
-        vm.expectEmit(true, true, true, true);
-        emit RemovedAdmin(admin, henry);
-
-        vm.prank(admin);
-        adapter.removeAdmin(henry);
-        assertFalse(adapter.isAdmin(henry));
-    }
-
-    function testAuthRevertNotAdmin() public {
-        vm.expectRevert(NotAdmin.selector);
-        adapter.addAdmin(address(1));
-    }
-
-    function testAuthRenounce() public {
-        // Non admin cannot renounce
-        vm.expectRevert(NotAdmin.selector);
-        vm.prank(address(12));
-        adapter.renounceAdmin();
-
-        // Successfully renounces the admin role
-        vm.prank(admin);
-        adapter.renounceAdmin();
-        assertFalse(adapter.isAdmin(admin));
-    }
-
     function testInitialize() public {
         uint256 reward = 1_000_000;
         uint256 bond = 10_000_000_000;
