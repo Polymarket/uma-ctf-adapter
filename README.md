@@ -38,10 +38,7 @@ After resolution data is available, anyone can call `resolve` which resolves the
 
 ## Deployments
 
-| Network          | Address                                                                           |
-| ---------------- | --------------------------------------------------------------------------------- |
-| Polygon          |[0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74](https://polygonscan.com/address/0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74)|
-| Mumbai           |[0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74](https://mumbai.polygonscan.com/address/0x6A9D222616C90FcA5754cd1333cFD9b7fb6a4F74)|
+See [Deployments](https://github.com/Polymarket/uma-ctf-adapter/releases)
 
 
 ## Development
