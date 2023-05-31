@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { Test } from "forge-std/Test.sol"; 
+import { Test } from "forge-std/Test.sol";
 
 import { BulletinBoard } from "src/mixins/BulletinBoard.sol";
 import { IBulletinBoardEE, AncillaryDataUpdate } from "src/interfaces/IBulletinBoard.sol";
 
-
-contract BBHarness is BulletinBoard {}
+contract BBHarness is BulletinBoard { }
 
 contract BulletinBoardTest is Test, IBulletinBoardEE {
     address bob = address(1);

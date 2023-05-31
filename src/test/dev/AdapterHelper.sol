@@ -98,7 +98,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         // Deploy Store
         address store = Deployer.Store();
         // Set final fee for USDC
-        IStore(store).setFinalFee(usdc, Unsigned({rawValue: 1500000000}));
+        IStore(store).setFinalFee(usdc, Unsigned({ rawValue: 1500000000 }));
 
         address identifierWhitelist = Deployer.IdentifierWhitelist();
         // Add YES_OR_NO_QUERY to Identifier Whitelist

@@ -88,7 +88,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         assertEq(liveness, data.liveness);
         assertFalse(data.paused);
         assertFalse(data.resolved);
-        
+
         Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
         assertEq(request.requestSettings.customLiveness, liveness);
     }
@@ -602,7 +602,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         // Propose a price for the question
         int256 proposedPrice = 1 ether;
-        propose(proposedPrice, initialTimestamp, data.ancillaryData); 
+        propose(proposedPrice, initialTimestamp, data.ancillaryData);
 
         fastForward(100);
 

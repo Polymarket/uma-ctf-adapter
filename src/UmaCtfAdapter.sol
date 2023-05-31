@@ -72,10 +72,13 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /// @param reward        - Reward offered to a successful proposer
     /// @param proposalBond  - Bond required to be posted by OO proposers/disputers. If 0, the default OO bond is used.
     /// @param liveness      - UMA liveness period in seconds. If 0, the default liveness period is used.
-    function initialize(bytes memory ancillaryData, address rewardToken, uint256 reward, uint256 proposalBond, uint256 liveness)
-        external
-        returns (bytes32 questionID)
-    {
+    function initialize(
+        bytes memory ancillaryData,
+        address rewardToken,
+        uint256 reward,
+        uint256 proposalBond,
+        uint256 liveness
+    ) external returns (bytes32 questionID) {
         if (!collateralWhitelist.isOnWhitelist(rewardToken)) revert UnsupportedToken();
 
         bytes memory data = AncillaryDataLib._appendAncillaryData(msg.sender, ancillaryData);
@@ -322,7 +325,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
         // Update the proposal bond on the Optimistic oracle if necessary
         if (bond > 0) optimisticOracle.setBond(yesOrNoIdentifier, requestTimestamp, ancillaryData, bond);
-        if (liveness > 0) optimisticOracle.setCustomLiveness(yesOrNoIdentifier, requestTimestamp, ancillaryData, liveness);
+        if (liveness > 0) {
+            optimisticOracle.setCustomLiveness(yesOrNoIdentifier, requestTimestamp, ancillaryData, liveness);
+        }
     }
 
     /// @notice Reset the question by updating the requestTimestamp field and sending a new price request to the OO

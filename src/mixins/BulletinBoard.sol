@@ -6,7 +6,6 @@ import { IBulletinBoard, AncillaryDataUpdate } from "src/interfaces/IBulletinBoa
 /// @title Bulletin Board
 /// @notice A registry containing ancillary data updates
 abstract contract BulletinBoard is IBulletinBoard {
-
     /// @notice Mapping to an array of Ancillary data updates for questions
     mapping(bytes32 => AncillaryDataUpdate[]) public updates;
 
@@ -16,7 +15,7 @@ abstract contract BulletinBoard is IBulletinBoard {
     /// @param update       - The update for the question
     function postUpdate(bytes32 questionID, bytes memory update) external {
         bytes32 id = keccak256(abi.encode(questionID, msg.sender));
-        updates[id].push(AncillaryDataUpdate({timestamp: block.timestamp, update: update}));
+        updates[id].push(AncillaryDataUpdate({ timestamp: block.timestamp, update: update }));
         emit AncillaryDataUpdated(questionID, msg.sender, update);
     }
 
@@ -32,7 +31,7 @@ abstract contract BulletinBoard is IBulletinBoard {
     /// @param owner        - The address of the question initializer
     function getLatestUpdate(bytes32 questionID, address owner) external view returns (AncillaryDataUpdate memory) {
         AncillaryDataUpdate[] memory currentUpdates = getUpdates(questionID, owner);
-        if (currentUpdates.length == 0) return AncillaryDataUpdate({timestamp: 0, update: ""});
+        if (currentUpdates.length == 0) return AncillaryDataUpdate({ timestamp: 0, update: "" });
         return currentUpdates[currentUpdates.length - 1];
     }
 }
