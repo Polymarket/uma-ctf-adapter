@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity ^0.8.15;
 
 struct QuestionData {
     /// @notice Request timestamp, set when a request is made to the Optimistic Oracle
