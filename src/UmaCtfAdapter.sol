@@ -149,13 +149,13 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         bytes32 questionID = keccak256(ancillaryData);
         QuestionData storage questionData = questions[questionID];
 
-        // increment dispute count on dispute
-        questionData.disputeCount = questionData.disputeCount + 1;
+        // increment dispute count
+        questionData.disputeCount++;
 
-        if (questionData.disputeCount >= 2) return;
 
         // If the question has not been disputed before, reset the question
         // Ensures that there are at most 2 OO Requests at a time for a question
+        if (questionData.disputeCount == 2) return;
         _reset(address(this), questionID, false, questionData);
     }
 

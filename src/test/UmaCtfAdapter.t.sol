@@ -651,7 +651,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         adapter.priceDisputed(identifier, block.timestamp, ancillaryData, 1_000_000);
     }
 
-    function testPriceDisputedAlreadyReset() public {
+    function testPriceDisputedDvmRespondsNo() public {
         // Initalize and dispute a question
         testPriceDisputed();
 
@@ -696,9 +696,57 @@ contract UmaCtfAdapterTest is AdapterHelper {
         emit QuestionResolved(questionID, noPrice, payouts);
 
         adapter.resolve(questionID);
+        assertEq(balanceOf(usdc, address(adapter)), 0);
     }
 
-    function testPriceDisputedIgnorePriceReceived() public {
+    function testPriceDisputedDvmRespondsYes() public {
+        // Initalize and dispute a question
+        testPriceDisputed();
+
+        QuestionData memory data;
+        data = adapter.getQuestion(questionID);
+        uint256 timestamp = data.requestTimestamp;
+        assertEq(1, data.disputeCount);
+
+        propose(0, data.requestTimestamp, data.ancillaryData);
+
+        // Subsequent disputes to the new price request will not reset the question
+        // Ensuring that there are at most 2 requests for a question
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        data = adapter.getQuestion(questionID);
+
+        // The second dispute is a no-op, and the requestTimestamp is unchanged
+        assertEq(timestamp, data.requestTimestamp);
+        // Assert Dispute count has been incremented to 2
+        assertEq(2, data.disputeCount);
+
+        // Mock the DVM dispute process and settle the Request with a NO price
+        int256 price = 1 ether;
+        oracle.setPriceExists(true);
+        oracle.setPrice(price);
+        settle(data.requestTimestamp, data.ancillaryData);
+
+        // Resolve the Question and assert that the price used is from the second dispute
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+
+        // Assert that the reward now exists on the Adapter after refund
+        assertEq(balanceOf(usdc, address(adapter)), data.reward);
+
+        // Assert the refund transfer to the creator
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(adapter), data.creator, data.reward);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionResolved(questionID, price, payouts);
+
+        adapter.resolve(questionID);
+        assertEq(balanceOf(usdc, address(adapter)), 0);
+    }
+
+    function testPriceDisputedDvmRespondsIgnore() public {
         // Initalize and dispute a question
         testPriceDisputed();
 
