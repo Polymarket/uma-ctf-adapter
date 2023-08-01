@@ -658,6 +658,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         QuestionData memory data;
         data = adapter.getQuestion(questionID);
         uint256 timestamp = data.requestTimestamp;
+        assertTrue(data.reset);
 
         propose(0, data.requestTimestamp, data.ancillaryData);
 
@@ -693,6 +694,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         emit QuestionResolved(questionID, noPrice, payouts);
 
         adapter.resolve(questionID);
+        // Assert balances post resolution
         assertBalance(usdc, address(adapter), 0);
     }
 
