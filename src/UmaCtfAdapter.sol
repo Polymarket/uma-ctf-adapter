@@ -153,7 +153,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             return;
         }
 
-        // If the question has not been disputed before, reset the question
+        // If the question has not been reset previously, reset the question
         // Ensures that there are at most 2 OO Requests at a time for a question
         _reset(address(this), questionID, false, questionData);
     }
