@@ -142,20 +142,19 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     }
 
     /// @notice Callback which is executed on dispute
-    /// Increments the dispute count of the question and sends out a new price request to the OO
-    /// @dev A question can only be disputed twice
+    /// Resets the question and sends out a new price request to the OO
     /// @param ancillaryData    - Ancillary data of the request
     function priceDisputed(bytes32, uint256, bytes memory ancillaryData, uint256) external onlyOptimisticOracle {
         bytes32 questionID = keccak256(ancillaryData);
         QuestionData storage questionData = questions[questionID];
 
-        // increment dispute count
-        questionData.disputeCount++;
-
+        if (questionData.reset) {
+            questionData.refund = true;
+            return;
+        }
 
         // If the question has not been disputed before, reset the question
         // Ensures that there are at most 2 OO Requests at a time for a question
-        if (questionData.disputeCount == 2) return;
         _reset(address(this), questionID, false, questionData);
     }
 
@@ -270,10 +269,11 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             reward: reward,
             proposalBond: proposalBond,
             liveness: liveness,
-            disputeCount: 0,
             emergencyResolutionTimestamp: 0,
             resolved: false,
             paused: false,
+            reset: false,
+            refund: false,
             rewardToken: rewardToken,
             creator: creator,
             ancillaryData: ancillaryData
@@ -336,11 +336,12 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
     /// @notice Reset the question by updating the requestTimestamp field and sending a new price request to the OO
     /// @param questionID - The unique questionID
-    function _reset(address requestor, bytes32 questionID, bool resetDisputeCount, QuestionData storage questionData) internal {
+    function _reset(address requestor, bytes32 questionID, bool resetRefund, QuestionData storage questionData) internal {
         uint256 requestTimestamp = block.timestamp;
         // Update the question parameters in storage
         questionData.requestTimestamp = requestTimestamp;
-        if (resetDisputeCount) questionData.disputeCount = 0;
+        questionData.reset = true;
+        if (resetRefund) questionData.refund = false;
 
         // Send out a new price request with the new timestamp
         _requestPrice(
@@ -368,9 +369,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         // If the OO returns the ignore price, reset the question
         if (price == _ignorePrice()) return _reset(address(this), questionID, true, questionData);
 
-        // If the question has been disputed twice and the OO price is valid(i.e not the ignore price),
-        // this indicates that the reward now sits on the Adapter. Refund the reward to the question creator
-        if (questionData.disputeCount == 2) TransferHelper._transfer(questionData.rewardToken, questionData.creator, questionData.reward);
+        // If refund flag is set, indicating that the question's reward now sits on the Adapter. 
+        // Refund the reward to the question creator on resolution
+        if (questionData.refund) TransferHelper._transfer(questionData.rewardToken, questionData.creator, questionData.reward);
         
         // Construct the payout array for the question
         uint256[] memory payouts = _constructPayouts(price);

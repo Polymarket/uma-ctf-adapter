@@ -13,12 +13,14 @@ struct QuestionData {
     uint256 liveness;
     /// @notice Emergency resolution timestamp, set when a market is flagged for emergency resolution
     uint256 emergencyResolutionTimestamp;
-    /// @notice Indicates the number of times a question has been disputed. A question can disputed twice.
-    uint256 disputeCount;
     /// @notice Flag marking whether a question is resolved
     bool resolved;
     /// @notice Flag marking whether a question is paused
     bool paused;
+    /// @notice Flag marking whether a question has been reset. A question can only be reset once
+    bool reset;
+    /// @notice Flag marking whether a question's reward should be refunded.
+    bool refund;
     /// @notice ERC20 token address used for payment of rewards, proposal bonds and fees
     address rewardToken;
     /// @notice The address of the question creator

@@ -658,8 +658,6 @@ contract UmaCtfAdapterTest is AdapterHelper {
         QuestionData memory data;
         data = adapter.getQuestion(questionID);
         uint256 timestamp = data.requestTimestamp;
-        // The first dispute should increment dispute count once
-        assertEq(1, data.disputeCount);
 
         propose(0, data.requestTimestamp, data.ancillaryData);
 
@@ -669,10 +667,9 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         data = adapter.getQuestion(questionID);
 
-        // The second dispute is a no-op, and the requestTimestamp is unchanged
+        // The second dispute will set the refund flag but will not affect request timestamp
         assertEq(timestamp, data.requestTimestamp);
-        // Assert Dispute count has been incremented to 2
-        assertEq(2, data.disputeCount);
+        assertTrue(data.refund);
 
         // Mock the DVM dispute process and settle the Request with a NO price
         int256 noPrice = 0;
@@ -686,7 +683,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         payouts[1] = 1;
 
         // Assert that the reward now exists on the Adapter after refund
-        assertEq(balanceOf(usdc, address(adapter)), data.reward);
+        assertBalance(usdc, address(adapter), data.reward);
 
         // Assert the refund transfer to the creator
         vm.expectEmit(true, true, true, true);
@@ -696,7 +693,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         emit QuestionResolved(questionID, noPrice, payouts);
 
         adapter.resolve(questionID);
-        assertEq(balanceOf(usdc, address(adapter)), 0);
+        assertBalance(usdc, address(adapter), 0);
     }
 
     function testPriceDisputedDvmRespondsYes() public {
@@ -706,7 +703,6 @@ contract UmaCtfAdapterTest is AdapterHelper {
         QuestionData memory data;
         data = adapter.getQuestion(questionID);
         uint256 timestamp = data.requestTimestamp;
-        assertEq(1, data.disputeCount);
 
         propose(0, data.requestTimestamp, data.ancillaryData);
 
@@ -716,10 +712,9 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         data = adapter.getQuestion(questionID);
 
-        // The second dispute is a no-op, and the requestTimestamp is unchanged
+        // The second dispute will set the refund flag, and leave the requestTimestamp unchanged
         assertEq(timestamp, data.requestTimestamp);
-        // Assert Dispute count has been incremented to 2
-        assertEq(2, data.disputeCount);
+        assertTrue(data.refund);
 
         // Mock the DVM dispute process and settle the Request with a NO price
         int256 price = 1 ether;
@@ -733,7 +728,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         payouts[1] = 0;
 
         // Assert that the reward now exists on the Adapter after refund
-        assertEq(balanceOf(usdc, address(adapter)), data.reward);
+        assertBalance(usdc, address(adapter), data.reward);
 
         // Assert the refund transfer to the creator
         vm.expectEmit(true, true, true, true);
@@ -743,7 +738,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         emit QuestionResolved(questionID, price, payouts);
 
         adapter.resolve(questionID);
-        assertEq(balanceOf(usdc, address(adapter)), 0);
+        assertBalance(usdc, address(adapter), 0);
     }
 
     function testPriceDisputedDvmRespondsIgnore() public {
@@ -795,6 +790,8 @@ contract UmaCtfAdapterTest is AdapterHelper {
         // Assert that the question parameters in storage have been updated
         data = adapter.getQuestion(questionID);
         assertTrue(data.requestTimestamp > timestamp);
+        // Assert that the refund flag is now false, as the question has been reset
+        assertFalse(data.refund);
 
         // Assert that there is a new OO price request for the question
         Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
@@ -814,7 +811,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         adapter.reset(questionID);
         QuestionData memory data = adapter.getQuestion(questionID);
-        assertEq(0, data.disputeCount);
+        assertFalse(data.refund);
     }
 
     function testResetRevertNotInitialized() public {
@@ -844,6 +841,6 @@ contract UmaCtfAdapterTest is AdapterHelper {
         QuestionData memory data = adapter.getQuestion(questionID);
 
         assertTrue(data.requestTimestamp > timestamp);
-        assertEq(data.disputeCount, 0);
+        assertFalse(data.refund);
     }
 }
