@@ -369,7 +369,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         // If the OO returns the ignore price, reset the question
         if (price == _ignorePrice()) return _reset(address(this), questionID, true, questionData);
 
-        // If refund flag is set, indicating that the question's reward now sits on the Adapter. 
+        // If refund flag is set, this indicates that the question's reward now sits on the Adapter. 
         // Refund the reward to the question creator on resolution
         if (questionData.refund) TransferHelper._transfer(questionData.rewardToken, questionData.creator, questionData.reward);
         
