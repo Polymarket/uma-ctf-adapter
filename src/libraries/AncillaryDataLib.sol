@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 library AncillaryDataLib {
-    string private constant initializerPrefix = ",initializer:";
+    string private constant INITIALIZER_PREFIX = ",initializer:";
 
     /// @notice Appends the initializer address to the ancillaryData
     /// @param initializer      - The initializer address
@@ -12,7 +12,7 @@ library AncillaryDataLib {
         pure
         returns (bytes memory)
     {
-        return abi.encodePacked(ancillaryData, initializerPrefix, _toUtf8BytesAddress(initializer));
+        return abi.encodePacked(ancillaryData, INITIALIZER_PREFIX, _toUtf8BytesAddress(initializer));
     }
 
     /// @notice Returns a UTF8-encoded address
