@@ -404,6 +404,46 @@ contract UmaCtfAdapterTest is AdapterHelper {
         adapter.getExpectedPayouts(questionID);
     }
 
+    function testExpectedPayoutsRevertPaused() public {
+        vm.startPrank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        adapter.pause(questionID);
+
+        vm.expectRevert(Paused.selector);
+        // Reverts as the question is paused
+        adapter.getExpectedPayouts(questionID);
+    }
+
+    function testExpectedPayoutsRevertFlagged() public {
+        vm.startPrank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        adapter.flag(questionID);
+
+        vm.expectRevert(Flagged.selector);
+        // Reverts as the question is flagged
+        adapter.getExpectedPayouts(questionID);
+    }
+
+    function testExpectedPayoutsRevertEmergencyResolved() public {
+        vm.startPrank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        // Flag and emergency resolve the question
+        adapter.flag(questionID);
+        fastForward(adapter.emergencySafetyPeriod());
+
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+        adapter.emergencyResolve(questionID, payouts);
+        
+        // Reverts as the question is flagged
+        vm.expectRevert(Flagged.selector);
+        adapter.getExpectedPayouts(questionID);
+    }
+
     function testFlag() public {
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
