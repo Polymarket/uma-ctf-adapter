@@ -438,7 +438,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         payouts[0] = 1;
         payouts[1] = 0;
         adapter.emergencyResolve(questionID, payouts);
-        
+
         // Reverts as the question is flagged
         vm.expectRevert(Flagged.selector);
         adapter.getExpectedPayouts(questionID);

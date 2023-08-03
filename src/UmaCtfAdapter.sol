@@ -135,8 +135,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (_isFlagged(questionData)) revert Flagged();
         if (questionData.paused) revert Paused();
 
-        if (!_hasPrice(questionData)) revert PriceNotAvailable();        
-        
+        if (!_hasPrice(questionData)) revert PriceNotAvailable();
+
         // Fetches price from OO
         int256 price = optimisticOracle.getRequest(
             address(this), yesOrNoIdentifier, questionData.requestTimestamp, questionData.ancillaryData
