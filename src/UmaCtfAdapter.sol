@@ -209,7 +209,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     function emergencyResolve(bytes32 questionID, uint256[] calldata payouts) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
 
-        if (payouts.length != 2) revert InvalidPayouts();
+        if (!_isValidPayoutArray(payouts)) revert InvalidPayouts();
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (!_isFlagged(questionData)) revert NotFlagged();
         if (block.timestamp < questionData.emergencyResolutionTimestamp) revert SafetyPeriodNotPassed();
@@ -412,6 +412,22 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             payouts[1] = 0;
         }
         return payouts;
+    }
+
+    /// @notice Validates a payout array from the admin
+    /// @param payouts - The payout array
+    function _isValidPayoutArray(uint256[] calldata payouts) internal pure returns (bool) {
+        if (payouts.length != 2) return false;
+        
+        if (payouts[0] != 0 && payouts[0] != 1) {
+            return false;
+        }
+
+        if(payouts[1] != 0 && payouts[1] != 1) {
+            return false;
+        }
+
+        return true;
     }
 
     function _ignorePrice() internal pure returns (int256) {
