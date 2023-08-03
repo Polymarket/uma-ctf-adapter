@@ -537,7 +537,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         adapter.flag(questionID);
 
         uint256[] memory invalidPayouts;
-        
+
         // Invalid payout length
         invalidPayouts = new uint256[](4);
         invalidPayouts[0] = 0;
@@ -547,7 +547,6 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         vm.expectRevert(InvalidPayouts.selector);
         adapter.emergencyResolve(questionID, invalidPayouts);
-
 
         // Invalid payout values
         invalidPayouts = new uint256[](2);
@@ -560,10 +559,9 @@ contract UmaCtfAdapterTest is AdapterHelper {
         invalidPayouts = new uint256[](2);
         invalidPayouts[0] = 0;
         invalidPayouts[1] = 4;
-        
+
         vm.expectRevert(InvalidPayouts.selector);
         adapter.emergencyResolve(questionID, invalidPayouts);
-
     }
 
     function testEmergencyResolveRevertNotAdmin() public {
