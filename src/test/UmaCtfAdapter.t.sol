@@ -564,8 +564,8 @@ contract UmaCtfAdapterTest is AdapterHelper {
         adapter.emergencyResolve(questionID, invalidPayouts);
 
         invalidPayouts = new uint256[](2);
-        invalidPayouts[0] = 1;
-        invalidPayouts[1] = 2;
+        invalidPayouts[0] = 2;
+        invalidPayouts[1] = 1;
 
         vm.expectRevert(InvalidPayouts.selector);
         adapter.emergencyResolve(questionID, invalidPayouts);
