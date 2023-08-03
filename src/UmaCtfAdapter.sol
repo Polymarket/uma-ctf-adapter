@@ -2,7 +2,6 @@
 pragma solidity 0.8.15;
 
 import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import { ReentrancyGuard } from "openzeppelin-contracts/security/ReentrancyGuard.sol";
 
 import { Auth } from "./mixins/Auth.sol";
 import { BulletinBoard } from "./mixins/BulletinBoard.sol";
@@ -20,7 +19,7 @@ import { QuestionData, IUmaCtfAdapter } from "./interfaces/IUmaCtfAdapter.sol";
 
 /// @title UmaCtfAdapter
 /// @notice Enables resolution of Polymarket CTF markets via UMA's Optimistic Oracle
-contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticRequester, ReentrancyGuard {
+contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticRequester {
     /*///////////////////////////////////////////////////////////////////
                             IMMUTABLES 
     //////////////////////////////////////////////////////////////////*/
