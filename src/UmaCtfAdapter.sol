@@ -38,9 +38,11 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     uint256 public constant emergencySafetyPeriod = 2 days;
 
     /// @notice Unique query identifier for the Optimistic Oracle
+    /// From UMIP-107
     bytes32 public constant yesOrNoIdentifier = "YES_OR_NO_QUERY";
 
     /// @notice Maximum ancillary data length
+    /// From OOV2 function OO_ANCILLARY_DATA_LIMIT
     uint256 public constant maxAncillaryData = 8139;
 
     /// @notice Mapping of questionID to QuestionData
