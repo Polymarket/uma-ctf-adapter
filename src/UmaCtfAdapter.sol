@@ -76,9 +76,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     ///                        Must be chosen carefully, to properly economically incentize OO proposers and disputers.
     ///                        Questions expected to secure a large amount of value should consider a larger proposal bond. 
     /// @param liveness      - OO liveness period in seconds. 
-    ///                        If 0, the default liveness period is used.
+    ///                        If 0, the default liveness period of 2 hours is used.
     ///                        Must be chosen carefully, depending on the value backed by the question.
-    ///                        Questions expected to secure a large amount of value should consider a higher liveness period.
+    ///                        Questions expected to secure a large amount of value should consider a longer liveness period.
     function initialize(
         bytes memory ancillaryData,
         address rewardToken,
