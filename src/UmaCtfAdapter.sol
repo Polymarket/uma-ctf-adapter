@@ -194,6 +194,22 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         emit QuestionFlagged(questionID);
     }
 
+    /// @notice Unflags a market for emergency resolution
+    /// @param questionID - The unique questionID of the question
+    function unflag(bytes32 questionID) external onlyAdmin {
+        QuestionData storage questionData = questions[questionID];
+
+        if (!_isInitialized(questionData)) revert NotInitialized();
+        if (!_isFlagged(questionData)) revert NotFlagged();
+        if (questionData.resolved) revert Resolved();
+        if (block.timestamp > questionData.emergencyResolutionTimestamp) revert SafetyPeriodPassed();
+
+        questionData.emergencyResolutionTimestamp = 0;
+        questionData.paused = false;
+
+        emit QuestionUnflagged(questionID);
+    }
+
     /// @notice Allows an admin to reset a question, sending out a new price request to the OO.
     /// Failsafe to be used if the priceDisputed callback reverts during execution.
     /// @param questionID - The unique questionID
@@ -312,7 +328,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         }
 
         // Send a price request to the Optimistic oracle
-        optimisticOracle.requestPrice(YES_OR_NO_IDENTIFIER, requestTimestamp, ancillaryData, IERC20(rewardToken), reward);
+        optimisticOracle.requestPrice(
+            YES_OR_NO_IDENTIFIER, requestTimestamp, ancillaryData, IERC20(rewardToken), reward
+        );
 
         // Ensure the price request is event based
         optimisticOracle.setEventBased(YES_OR_NO_IDENTIFIER, requestTimestamp, ancillaryData);

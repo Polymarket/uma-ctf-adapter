@@ -454,7 +454,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         QuestionData memory data = adapter.getQuestion(questionID);
         proposeAndSettle(1 ether, data.requestTimestamp, data.ancillaryData);
-        
+
         // Resolve the question
         adapter.resolve(questionID);
 
@@ -462,6 +462,82 @@ contract UmaCtfAdapterTest is AdapterHelper {
         vm.expectRevert(Resolved.selector);
         vm.prank(admin);
         adapter.flag(questionID);
+    }
+
+    function testUnflag() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        vm.prank(admin);
+        adapter.flag(questionID);
+
+        QuestionData memory data;
+        data = adapter.getQuestion(questionID);
+        assertTrue(data.emergencyResolutionTimestamp > 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionUnflagged(questionID);
+
+        vm.prank(admin);
+        adapter.unflag(questionID);
+
+        // Assert state post unflag
+        data = adapter.getQuestion(questionID);
+        assertEq(0, data.emergencyResolutionTimestamp);
+    }
+
+    function testUnflagRevertNotAdmin() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        vm.prank(admin);
+        adapter.flag(questionID);
+
+        vm.expectRevert(NotAdmin.selector);
+        vm.prank(carla);
+        adapter.unflag(questionID);
+    }
+
+    function testUnflagRevertNotInitialized() public {
+        vm.expectRevert(NotInitialized.selector);
+        vm.prank(admin);
+        adapter.unflag(questionID);
+    }
+
+    function testUnflagRevertAlreadyResolved() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        vm.prank(admin);
+        adapter.flag(questionID);
+
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+        fastForward(adapter.EMERGENCY_SAFETY_PERIOD());
+
+        vm.prank(admin);
+        adapter.emergencyResolve(questionID, payouts);
+
+        // Attempt unflag an already resolved question
+        vm.expectRevert(Resolved.selector);
+        vm.prank(admin);
+        adapter.unflag(questionID);
+    }
+
+    function testUnflagRevertSafetyPeriodPassed() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        vm.prank(admin);
+        adapter.flag(questionID);
+
+        fastForward(adapter.EMERGENCY_SAFETY_PERIOD());
+
+        // Attempt unflag a question after the safety period has passed
+        vm.expectRevert(SafetyPeriodPassed.selector);
+        vm.prank(admin);
+        adapter.unflag(questionID);
     }
 
     function testEmergencyResolve() public {
