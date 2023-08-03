@@ -562,6 +562,13 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         vm.expectRevert(InvalidPayouts.selector);
         adapter.emergencyResolve(questionID, invalidPayouts);
+
+        invalidPayouts = new uint256[](2);
+        invalidPayouts[0] = 1;
+        invalidPayouts[1] = 2;
+
+        vm.expectRevert(InvalidPayouts.selector);
+        adapter.emergencyResolve(questionID, invalidPayouts);
     }
 
     function testEmergencyResolveRevertNotAdmin() public {
