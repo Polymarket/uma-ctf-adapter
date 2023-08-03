@@ -419,6 +419,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     function _isValidPayoutArray(uint256[] calldata payouts) internal pure returns (bool) {
         if (payouts.length != 2) return false;
 
+        // Payout must be [0,0], [0,1], [1,0] or [1,1]
         if (payouts[0] != 0 && payouts[0] != 1) return false;
 
         if (payouts[1] != 0 && payouts[1] != 1) return false;
