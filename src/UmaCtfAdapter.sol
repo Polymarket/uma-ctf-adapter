@@ -152,6 +152,14 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         bytes32 questionID = keccak256(ancillaryData);
         QuestionData storage questionData = questions[questionID];
 
+        // If a Question is already resolved, e.g by emergencyResolve, the priceDisputed callback should not update
+        // any storage parameters.
+        // Refund the reward to the question creator
+        if (questionData.resolved) {
+            TransferHelper._transfer(questionData.rewardToken, questionData.creator, questionData.reward);
+            return;
+        }
+
         if (questionData.reset) return;
 
         // If the question has not been reset previously, reset the question
