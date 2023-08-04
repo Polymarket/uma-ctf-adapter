@@ -484,6 +484,8 @@ contract UmaCtfAdapterTest is AdapterHelper {
         // Assert state post unflag
         data = adapter.getQuestion(questionID);
         assertEq(0, data.emergencyResolutionTimestamp);
+        assertFalse(data.paused);
+
     }
 
     function testUnflagRevertNotAdmin() public {
