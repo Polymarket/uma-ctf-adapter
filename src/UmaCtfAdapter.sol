@@ -8,6 +8,7 @@ import { Auth } from "./mixins/Auth.sol";
 import { BulletinBoard } from "./mixins/BulletinBoard.sol";
 
 import { TransferHelper } from "./libraries/TransferHelper.sol";
+import { PayoutHelperLib } from "./libraries/PayoutHelperLib.sol";
 import { AncillaryDataLib } from "./libraries/AncillaryDataLib.sol";
 
 import { IFinder } from "./interfaces/IFinder.sol";
@@ -417,14 +418,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /// @notice Validates a payout array from the admin
     /// @param payouts - The payout array
     function _isValidPayoutArray(uint256[] calldata payouts) internal pure returns (bool) {
-        if (payouts.length != 2) return false;
-
-        // Payout must be [0,0], [0,1], [1,0] or [1,1]
-        if (payouts[0] != 0 && payouts[0] != 1) return false;
-
-        if (payouts[1] != 0 && payouts[1] != 1) return false;
-
-        return true;
+        return PayoutHelperLib.isValidPayoutArray(payouts);
     }
 
     function _ignorePrice() internal pure returns (int256) {

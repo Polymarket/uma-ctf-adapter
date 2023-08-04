@@ -536,36 +536,12 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         adapter.flag(questionID);
 
-        uint256[] memory invalidPayouts;
-
-        // Invalid payout length
-        invalidPayouts = new uint256[](4);
+        // Invalid payout
+        uint256[] memory invalidPayouts = new uint256[](4);
         invalidPayouts[0] = 0;
         invalidPayouts[1] = 0;
         invalidPayouts[2] = 1;
         invalidPayouts[3] = 6;
-
-        vm.expectRevert(InvalidPayouts.selector);
-        adapter.emergencyResolve(questionID, invalidPayouts);
-
-        // Invalid payout values
-        invalidPayouts = new uint256[](2);
-        invalidPayouts[0] = 3;
-        invalidPayouts[1] = 4;
-
-        vm.expectRevert(InvalidPayouts.selector);
-        adapter.emergencyResolve(questionID, invalidPayouts);
-
-        invalidPayouts = new uint256[](2);
-        invalidPayouts[0] = 0;
-        invalidPayouts[1] = 4;
-
-        vm.expectRevert(InvalidPayouts.selector);
-        adapter.emergencyResolve(questionID, invalidPayouts);
-
-        invalidPayouts = new uint256[](2);
-        invalidPayouts[0] = 2;
-        invalidPayouts[1] = 1;
 
         vm.expectRevert(InvalidPayouts.selector);
         adapter.emergencyResolve(questionID, invalidPayouts);
@@ -595,6 +571,61 @@ contract UmaCtfAdapterTest is AdapterHelper {
         vm.expectRevert(NotInitialized.selector);
         vm.prank(admin);
         adapter.emergencyResolve(questionID, payouts);
+    }
+
+    function testIsValidPayoutArray() public {
+        uint256[] memory payouts;
+        
+        // Valid payout arrays
+        // [0, 1]
+        payouts = new uint256[](2);
+        payouts[0] = 0;
+        payouts[1] = 1;
+        assertTrue(isValidPayoutArray(payouts));
+
+        // [1, 0]
+        payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+        assertTrue(isValidPayoutArray(payouts));
+
+        // [1, 1]
+        payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 1;
+        assertTrue(isValidPayoutArray(payouts));
+
+        // Invalid cases
+        // Invalid length: [1, 0, 1]
+        payouts = new uint256[](3);
+        payouts[0] = 1;
+        payouts[1] = 0;
+        payouts[2] = 1;
+        assertFalse(isValidPayoutArray(payouts));
+        
+        // [3, 4]
+        payouts = new uint256[](2);
+        payouts[0] = 3;
+        payouts[1] = 4;
+        assertFalse(isValidPayoutArray(payouts));
+
+        // [1, 4]
+        payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 4;
+        assertFalse(isValidPayoutArray(payouts));
+
+        // [3, 0]
+        payouts = new uint256[](2);
+        payouts[0] = 3;
+        payouts[1] = 0;
+        assertFalse(isValidPayoutArray(payouts));
+
+        // [0, 0]
+        payouts = new uint256[](2);
+        payouts[0] = 0;
+        payouts[1] = 0;
+        assertFalse(isValidPayoutArray(payouts));
     }
 
     function testProposed() public {
