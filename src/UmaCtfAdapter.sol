@@ -411,6 +411,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             payouts[1] = 1;
         } else if (price == 0.5 ether) {
             // UNKNOWN: Report [Yes, No] as [1, 1], 50/50
+            // Note that a tie is not a valid outcome when used with the `NegRiskOperator`
             payouts[0] = 1;
             payouts[1] = 1;
         } else {
