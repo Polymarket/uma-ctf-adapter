@@ -502,6 +502,68 @@ contract UmaCtfAdapterTest is AdapterHelper {
         assertTrue(data.resolved);
     }
 
+    function testEmergencyResolveWhenRefundExists() public {
+        // Initialize and propose/dispute a question
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        QuestionData memory data;
+        data = adapter.getQuestion(questionID);
+
+        propose(1 ether, data.requestTimestamp, data.ancillaryData);
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        fastForward(100);
+
+        data = adapter.getQuestion(questionID);
+
+        // Second round of propose/dispute, so refund now exists on the Adapter
+        propose(1 ether, data.requestTimestamp, data.ancillaryData);
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        // Assert that the reward now exists on the Adapter after refund
+        assertBalance(usdc, address(adapter), data.reward);
+
+        // Flag the question for emergency resolution
+        vm.prank(admin);
+        adapter.flag(questionID);
+
+        // Ensure the relevant flags are set, meaning, the question is paused and the emergencyResolutionTimestamp is set
+        data = adapter.getQuestion(questionID);
+        assertTrue(data.paused);
+        assertTrue(data.emergencyResolutionTimestamp > 0);
+
+        // Fast forward time past the emergencySafetyPeriod
+        fastForward(adapter.emergencySafetyPeriod());
+
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 0;
+        payouts[1] = 1;
+
+        // Assert refund transfer occured
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(adapter), data.creator, data.reward);
+
+        vm.expectEmit(true, true, true, true);
+        emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionEmergencyResolved(questionID, payouts);
+
+        // Emergency resolve the question
+        vm.prank(admin);
+        adapter.emergencyResolve(questionID, payouts);
+
+        // Assert state post emergency resolution
+
+        // Refund transferred to creator, adapter balance is empty
+        assertBalance(usdc, address(adapter), 0);
+
+        data = adapter.getQuestion(questionID);
+        assertTrue(data.resolved);
+        assertTrue(data.refund);
+    }
+
     function testEmergencyResolveRevertNotFlagged() public {
         fastForward(100);
         vm.startPrank(admin);
@@ -813,6 +875,52 @@ contract UmaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         adapter.reset(questionID);
         QuestionData memory data = adapter.getQuestion(questionID);
+        assertFalse(data.refund);
+    }
+
+    function testResetWhenRefundExists() public {
+        // Initialize a question and propose/dispute it
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        QuestionData memory data;
+        data = adapter.getQuestion(questionID);
+
+        propose(0, data.requestTimestamp, data.ancillaryData);
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        fastForward(100);
+
+        data = adapter.getQuestion(questionID);
+
+        // Propose/dispute again, forcing a fallback to the DVM
+        propose(0, data.requestTimestamp, data.ancillaryData);
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        // Reward tokens should now exist on the adapter
+        assertBalance(usdc, address(adapter), data.reward);
+
+        fastForward(100);
+
+        // Reset the question, refunding the reward to the question creator
+        // And paying for the new price request from the caller
+        // Assert the refund transfer
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(adapter), data.creator, data.reward);
+
+        // Assert the question reset
+        vm.expectEmit(true, true, true, true);
+        emit QuestionReset(questionID);
+        vm.prank(admin);
+        adapter.reset(questionID);
+
+        // Assert state post reset
+        // Adapter should have no reward tokens
+        assertBalance(usdc, address(adapter), 0);
+
+        data = adapter.getQuestion(questionID);
+
+        // Refund flag false, due to reset
         assertFalse(data.refund);
     }
 
