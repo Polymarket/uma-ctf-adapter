@@ -8,6 +8,7 @@ import { Auth } from "./mixins/Auth.sol";
 import { BulletinBoard } from "./mixins/BulletinBoard.sol";
 
 import { TransferHelper } from "./libraries/TransferHelper.sol";
+import { PayoutHelperLib } from "./libraries/PayoutHelperLib.sol";
 import { AncillaryDataLib } from "./libraries/AncillaryDataLib.sol";
 
 import { IFinder } from "./interfaces/IFinder.sol";
@@ -225,7 +226,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     function emergencyResolve(bytes32 questionID, uint256[] calldata payouts) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
 
-        if (payouts.length != 2) revert InvalidPayouts();
+        if (!_isValidPayoutArray(payouts)) revert InvalidPayouts();
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (!_isFlagged(questionData)) revert NotFlagged();
         if (block.timestamp < questionData.emergencyResolutionTimestamp) revert SafetyPeriodNotPassed();
@@ -445,6 +446,12 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             payouts[1] = 0;
         }
         return payouts;
+    }
+
+    /// @notice Validates a payout array from the admin
+    /// @param payouts - The payout array
+    function _isValidPayoutArray(uint256[] calldata payouts) internal pure returns (bool) {
+        return PayoutHelperLib.isValidPayoutArray(payouts);
     }
 
     function _ignorePrice() internal pure returns (int256) {

@@ -13,6 +13,7 @@ import { IFinder } from "src/interfaces/IFinder.sol";
 import { IAddressWhitelist } from "src/interfaces/IAddressWhitelist.sol";
 
 import { IAuthEE } from "src/interfaces/IAuth.sol";
+import { PayoutHelperLib } from "src/libraries/PayoutHelperLib.sol";
 import { AncillaryDataLib } from "src/libraries/AncillaryDataLib.sol";
 import { IConditionalTokens } from "src/interfaces/IConditionalTokens.sol";
 import { QuestionData, IUmaCtfAdapterEE } from "src/interfaces/IUmaCtfAdapter.sol";
@@ -123,6 +124,10 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
         IFinder(finder).changeImplementationAddress("OptimisticOracleV2", optimisticOracle);
         IFinder(finder).changeImplementationAddress("CollateralWhitelist", whitelist);
         IFinder(finder).changeImplementationAddress("Oracle", address(oracle));
+    }
+
+    function isValidPayoutArray(uint256[] memory payouts) public pure returns (bool) {
+        return PayoutHelperLib.isValidPayoutArray(payouts);
     }
 
     function settle(uint256 timestamp, bytes memory data) internal {
