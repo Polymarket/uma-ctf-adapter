@@ -51,6 +51,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         _;
     }
 
+    /// @param _ctf     - The Conditional Token Framework Address
+    ///                 - When deployed for negative risk markets, this should be the `NegRiskOperator` contract address
+    /// @param _finder  - The UMA Finder contract address
     constructor(address _ctf, address _finder) {
         ctf = IConditionalTokens(_ctf);
         IFinder finder = IFinder(_finder);
