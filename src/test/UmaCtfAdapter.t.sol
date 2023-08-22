@@ -542,6 +542,68 @@ contract UmaCtfAdapterTest is AdapterHelper {
         assertTrue(data.resolved);
     }
 
+    function testEmergencyResolveWhenRefundExists() public {
+        // Initialize and propose/dispute a question
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        QuestionData memory data;
+        data = adapter.getQuestion(questionID);
+
+        propose(1 ether, data.requestTimestamp, data.ancillaryData);
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        fastForward(100);
+
+        data = adapter.getQuestion(questionID);
+
+        // Second round of propose/dispute, so refund now exists on the Adapter
+        propose(1 ether, data.requestTimestamp, data.ancillaryData);
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        // Assert that the reward now exists on the Adapter after refund
+        assertBalance(usdc, address(adapter), data.reward);
+
+        // Flag the question for emergency resolution
+        vm.prank(admin);
+        adapter.flag(questionID);
+
+        // Ensure the relevant flags are set, meaning, the question is paused and the emergencyResolutionTimestamp is set
+        data = adapter.getQuestion(questionID);
+        assertTrue(data.paused);
+        assertTrue(data.emergencyResolutionTimestamp > 0);
+
+        // Fast forward time past the emergencySafetyPeriod
+        fastForward(adapter.emergencySafetyPeriod());
+
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 0;
+        payouts[1] = 1;
+
+        // Assert refund transfer occured
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(adapter), data.creator, data.reward);
+
+        vm.expectEmit(true, true, true, true);
+        emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionEmergencyResolved(questionID, payouts);
+
+        // Emergency resolve the question
+        vm.prank(admin);
+        adapter.emergencyResolve(questionID, payouts);
+
+        // Assert state post emergency resolution
+
+        // Refund transferred to creator, adapter balance is empty
+        assertBalance(usdc, address(adapter), 0);
+
+        data = adapter.getQuestion(questionID);
+        assertTrue(data.resolved);
+        assertTrue(data.refund);
+    }
+
     function testEmergencyResolveRevertNotFlagged() public {
         fastForward(100);
         vm.startPrank(admin);
@@ -747,11 +809,12 @@ contract UmaCtfAdapterTest is AdapterHelper {
         adapter.priceDisputed(identifier, block.timestamp, ancillaryData, 1_000_000);
     }
 
-    function testPriceDisputedAlreadyReset() public {
+    function testPriceDisputedDvmRespondsNo() public {
         // Initalize and dispute a question
         testPriceDisputed();
 
-        QuestionData memory data = adapter.getQuestion(questionID);
+        QuestionData memory data;
+        data = adapter.getQuestion(questionID);
         uint256 timestamp = data.requestTimestamp;
         assertTrue(data.reset);
 
@@ -761,8 +824,11 @@ contract UmaCtfAdapterTest is AdapterHelper {
         // Ensuring that there are at most 2 requests for a question
         dispute(data.requestTimestamp, data.ancillaryData);
 
-        // The second dispute is a no-op, and the requestTimestamp is unchanged
+        data = adapter.getQuestion(questionID);
+
+        // The second dispute will set the refund flag but will not affect request timestamp
         assertEq(timestamp, data.requestTimestamp);
+        assertTrue(data.refund);
 
         // Mock the DVM dispute process and settle the Request with a NO price
         int256 noPrice = 0;
@@ -775,13 +841,67 @@ contract UmaCtfAdapterTest is AdapterHelper {
         payouts[0] = 0;
         payouts[1] = 1;
 
+        // Assert that the reward now exists on the Adapter after refund
+        assertBalance(usdc, address(adapter), data.reward);
+
+        // Assert the refund transfer to the creator
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(adapter), data.creator, data.reward);
+
         vm.expectEmit(true, true, true, true);
         emit QuestionResolved(questionID, noPrice, payouts);
 
         adapter.resolve(questionID);
+        // Assert balances post resolution
+        assertBalance(usdc, address(adapter), 0);
     }
 
-    function testPriceDisputedIgnorePriceReceived() public {
+    function testPriceDisputedDvmRespondsYes() public {
+        // Initalize and dispute a question
+        testPriceDisputed();
+
+        QuestionData memory data;
+        data = adapter.getQuestion(questionID);
+        uint256 timestamp = data.requestTimestamp;
+
+        propose(0, data.requestTimestamp, data.ancillaryData);
+
+        // Subsequent disputes to the new price request will not reset the question
+        // Ensuring that there are at most 2 requests for a question
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        data = adapter.getQuestion(questionID);
+
+        // The second dispute will set the refund flag, and leave the requestTimestamp unchanged
+        assertEq(timestamp, data.requestTimestamp);
+        assertTrue(data.refund);
+
+        // Mock the DVM dispute process and settle the Request with a NO price
+        int256 price = 1 ether;
+        oracle.setPriceExists(true);
+        oracle.setPrice(price);
+        settle(data.requestTimestamp, data.ancillaryData);
+
+        // Resolve the Question and assert that the price used is from the second dispute
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 1;
+        payouts[1] = 0;
+
+        // Assert that the reward now exists on the Adapter after refund
+        assertBalance(usdc, address(adapter), data.reward);
+
+        // Assert the refund transfer to the creator
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(adapter), data.creator, data.reward);
+
+        vm.expectEmit(true, true, true, true);
+        emit QuestionResolved(questionID, price, payouts);
+
+        adapter.resolve(questionID);
+        assertBalance(usdc, address(adapter), 0);
+    }
+
+    function testPriceDisputedDvmRespondsIgnore() public {
         // Initalize and dispute a question
         testPriceDisputed();
 
@@ -830,6 +950,8 @@ contract UmaCtfAdapterTest is AdapterHelper {
         // Assert that the question parameters in storage have been updated
         data = adapter.getQuestion(questionID);
         assertTrue(data.requestTimestamp > timestamp);
+        // Assert that the refund flag is now false, as the question has been reset
+        assertFalse(data.refund);
 
         // Assert that there is a new OO price request for the question
         Request memory request = getRequest(data.requestTimestamp, data.ancillaryData);
@@ -888,8 +1010,53 @@ contract UmaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         adapter.reset(questionID);
         QuestionData memory data = adapter.getQuestion(questionID);
+        assertFalse(data.refund);
+    }
 
-        assertTrue(data.reset);
+    function testResetWhenRefundExists() public {
+        // Initialize a question and propose/dispute it
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        QuestionData memory data;
+        data = adapter.getQuestion(questionID);
+
+        propose(0, data.requestTimestamp, data.ancillaryData);
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        fastForward(100);
+
+        data = adapter.getQuestion(questionID);
+
+        // Propose/dispute again, forcing a fallback to the DVM
+        propose(0, data.requestTimestamp, data.ancillaryData);
+        dispute(data.requestTimestamp, data.ancillaryData);
+
+        // Reward tokens should now exist on the adapter
+        assertBalance(usdc, address(adapter), data.reward);
+
+        fastForward(100);
+
+        // Reset the question, refunding the reward to the question creator
+        // And paying for the new price request from the caller
+        // Assert the refund transfer
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(adapter), data.creator, data.reward);
+
+        // Assert the question reset
+        vm.expectEmit(true, true, true, true);
+        emit QuestionReset(questionID);
+        vm.prank(admin);
+        adapter.reset(questionID);
+
+        // Assert state post reset
+        // Adapter should have no reward tokens
+        assertBalance(usdc, address(adapter), 0);
+
+        data = adapter.getQuestion(questionID);
+
+        // Refund flag false, due to reset
+        assertFalse(data.refund);
     }
 
     function testResetRevertNotInitialized() public {
@@ -919,5 +1086,6 @@ contract UmaCtfAdapterTest is AdapterHelper {
         QuestionData memory data = adapter.getQuestion(questionID);
 
         assertTrue(data.requestTimestamp > timestamp);
+        assertFalse(data.refund);
     }
 }
