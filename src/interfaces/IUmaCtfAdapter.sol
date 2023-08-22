@@ -38,6 +38,7 @@ interface IUmaCtfAdapterEE {
     error UnsupportedToken();
     error Flagged();
     error Paused();
+    error SafetyPeriodPassed();
     error SafetyPeriodNotPassed();
     error PriceNotAvailable();
     error InvalidAncillaryData();
@@ -64,6 +65,9 @@ interface IUmaCtfAdapterEE {
 
     /// @notice Emitted when a question is flagged by an admin for emergency resolution
     event QuestionFlagged(bytes32 indexed questionID);
+
+    /// @notice Emitted when a question is unflagged by an admin
+    event QuestionUnflagged(bytes32 indexed questionID);
 
     /// @notice Emitted when a question is reset
     event QuestionReset(bytes32 indexed questionID);
