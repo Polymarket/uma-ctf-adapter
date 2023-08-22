@@ -69,9 +69,16 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /// Prepares the condition using the Adapter as the oracle and a fixed outcome slot count = 2.
     /// @param ancillaryData - Data used to resolve a question
     /// @param rewardToken   - ERC20 token address used for payment of rewards and fees
-    /// @param reward        - Reward offered to a successful proposer
-    /// @param proposalBond  - Bond required to be posted by OO proposers/disputers. If 0, the default OO bond is used.
-    /// @param liveness      - UMA liveness period in seconds. If 0, the default liveness period is used.
+    /// @param reward        - Reward offered to a successful OO proposer. 
+    ///                        Must be chosen carefully, to properly economically incentize OO proposers.
+    /// @param proposalBond  - Bond required to be posted by OO proposers/disputers.
+    ///                        If 0, the default OO bond is used.
+    ///                        Must be chosen carefully, to properly economically incentize OO proposers and disputers.
+    ///                        Questions expected to secure a large amount of value should consider a larger proposal bond. 
+    /// @param liveness      - OO liveness period in seconds. 
+    ///                        If 0, the default liveness period of 2 hours is used.
+    ///                        Must be chosen carefully, depending on the value backed by the question.
+    ///                        Questions expected to secure a large amount of value should consider a longer liveness period.
     function initialize(
         bytes memory ancillaryData,
         address rewardToken,
