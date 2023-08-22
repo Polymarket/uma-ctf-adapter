@@ -36,15 +36,15 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     IAddressWhitelist public immutable collateralWhitelist;
 
     /// @notice Time period after which an admin can emergency resolve a condition
-    uint256 public constant emergencySafetyPeriod = 2 days;
+    uint256 public constant EMERGENCY_SAFETY_PERIOD = 2 days;
 
     /// @notice Unique query identifier for the Optimistic Oracle
     /// From UMIP-107
-    bytes32 public constant yesOrNoIdentifier = "YES_OR_NO_QUERY";
+    bytes32 public constant YES_OR_NO_IDENTIFIER = "YES_OR_NO_QUERY";
 
     /// @notice Maximum ancillary data length
     /// From OOV2 function OO_ANCILLARY_DATA_LIMIT
-    uint256 public constant maxAncillaryData = 8139;
+    uint256 public constant MAX_ANCILLARY_DATA = 8139;
 
     /// @notice Mapping of questionID to QuestionData
     mapping(bytes32 => QuestionData) public questions;
@@ -95,7 +95,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (!collateralWhitelist.isOnWhitelist(rewardToken)) revert UnsupportedToken();
 
         bytes memory data = AncillaryDataLib._appendAncillaryData(msg.sender, ancillaryData);
-        if (ancillaryData.length == 0 || data.length > maxAncillaryData) revert InvalidAncillaryData();
+        if (ancillaryData.length == 0 || data.length > MAX_ANCILLARY_DATA) revert InvalidAncillaryData();
 
         questionID = keccak256(data);
 
@@ -151,7 +151,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
         // Fetches price from OO
         int256 price = optimisticOracle.getRequest(
-            address(this), yesOrNoIdentifier, questionData.requestTimestamp, questionData.ancillaryData
+            address(this), YES_OR_NO_IDENTIFIER, questionData.requestTimestamp, questionData.ancillaryData
         ).resolvedPrice;
 
         return _constructPayouts(price);
@@ -212,7 +212,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (_isFlagged(questionData)) revert Flagged();
 
-        questionData.emergencyResolutionTimestamp = block.timestamp + emergencySafetyPeriod;
+        questionData.emergencyResolutionTimestamp = block.timestamp + EMERGENCY_SAFETY_PERIOD;
         questionData.paused = true;
 
         emit QuestionFlagged(questionID);
@@ -343,14 +343,14 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         }
 
         // Send a price request to the Optimistic oracle
-        optimisticOracle.requestPrice(yesOrNoIdentifier, requestTimestamp, ancillaryData, IERC20(rewardToken), reward);
+        optimisticOracle.requestPrice(YES_OR_NO_IDENTIFIER, requestTimestamp, ancillaryData, IERC20(rewardToken), reward);
 
         // Ensure the price request is event based
-        optimisticOracle.setEventBased(yesOrNoIdentifier, requestTimestamp, ancillaryData);
+        optimisticOracle.setEventBased(YES_OR_NO_IDENTIFIER, requestTimestamp, ancillaryData);
 
         // Ensure that the dispute callback flag is set
         optimisticOracle.setCallbacks(
-            yesOrNoIdentifier,
+            YES_OR_NO_IDENTIFIER,
             requestTimestamp,
             ancillaryData,
             false, // DO NOT set callback on priceProposed
@@ -359,9 +359,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         );
 
         // Update the proposal bond on the Optimistic oracle if necessary
-        if (bond > 0) optimisticOracle.setBond(yesOrNoIdentifier, requestTimestamp, ancillaryData, bond);
+        if (bond > 0) optimisticOracle.setBond(YES_OR_NO_IDENTIFIER, requestTimestamp, ancillaryData, bond);
         if (liveness > 0) {
-            optimisticOracle.setCustomLiveness(yesOrNoIdentifier, requestTimestamp, ancillaryData, liveness);
+            optimisticOracle.setCustomLiveness(YES_OR_NO_IDENTIFIER, requestTimestamp, ancillaryData, liveness);
         }
     }
 
@@ -396,7 +396,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     function _resolve(bytes32 questionID, QuestionData storage questionData) internal {
         // Get the price from the OO
         int256 price = optimisticOracle.settleAndGetPrice(
-            yesOrNoIdentifier, questionData.requestTimestamp, questionData.ancillaryData
+            YES_OR_NO_IDENTIFIER, questionData.requestTimestamp, questionData.ancillaryData
         );
 
         // If the OO returns the ignore price, reset the question
@@ -420,7 +420,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
     function _hasPrice(QuestionData storage questionData) internal view returns (bool) {
         return optimisticOracle.hasPrice(
-            address(this), yesOrNoIdentifier, questionData.requestTimestamp, questionData.ancillaryData
+            address(this), YES_OR_NO_IDENTIFIER, questionData.requestTimestamp, questionData.ancillaryData
         );
     }
 

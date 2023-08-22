@@ -489,8 +489,8 @@ contract UmaCtfAdapterTest is AdapterHelper {
         assertTrue(data.paused);
         assertTrue(data.emergencyResolutionTimestamp > 0);
 
-        // Fast forward time past the emergencySafetyPeriod
-        fastForward(adapter.emergencySafetyPeriod());
+        // Fast forward time past the EMERGENCY_SAFETY_PERIOD
+        fastForward(adapter.EMERGENCY_SAFETY_PERIOD());
 
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 1;
@@ -523,8 +523,8 @@ contract UmaCtfAdapterTest is AdapterHelper {
         // Flag the question for emergency resolution
         adapter.flag(questionID);
 
-        // Fast forward time past the emergencySafetyPeriod
-        fastForward(adapter.emergencySafetyPeriod());
+        // Fast forward time past the EMERGENCY_SAFETY_PERIOD
+        fastForward(adapter.EMERGENCY_SAFETY_PERIOD());
 
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 1;
