@@ -173,6 +173,21 @@ contract UmaCtfAdapterTest is AdapterHelper {
         adapter.unpause(questionID);
     }
 
+    function testPauseRevertAlreadyResolved() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        QuestionData memory data = adapter.getQuestion(questionID);
+        proposeAndSettle(1 ether, data.requestTimestamp, data.ancillaryData);
+
+        adapter.resolve(questionID);
+
+        // Pausing an already resolved question reverts
+        vm.expectRevert(Resolved.selector);
+        vm.prank(admin);
+        adapter.pause(questionID);
+    }
+
     function testReady() public {
         // Valid case
         vm.prank(admin);
@@ -469,6 +484,22 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testFlagRevertNotInitialized() public {
         vm.expectRevert(NotInitialized.selector);
+        vm.prank(admin);
+        adapter.flag(questionID);
+    }
+
+    function testFlagRevertAlreadyResolved() public {
+        vm.prank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        QuestionData memory data = adapter.getQuestion(questionID);
+        proposeAndSettle(1 ether, data.requestTimestamp, data.ancillaryData);
+        
+        // Resolve the question
+        adapter.resolve(questionID);
+
+        // Flag an already resolved question
+        vm.expectRevert(Resolved.selector);
         vm.prank(admin);
         adapter.flag(questionID);
     }

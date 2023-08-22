@@ -211,6 +211,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (_isFlagged(questionData)) revert Flagged();
+        if (questionData.resolved) revert Resolved();
 
         questionData.emergencyResolutionTimestamp = block.timestamp + EMERGENCY_SAFETY_PERIOD;
         questionData.paused = true;
@@ -259,6 +260,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         QuestionData storage questionData = questions[questionID];
 
         if (!_isInitialized(questionData)) revert NotInitialized();
+        if (questionData.resolved) revert Resolved();
 
         questionData.paused = true;
         emit QuestionPaused(questionID);
