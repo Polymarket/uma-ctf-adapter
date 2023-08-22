@@ -145,8 +145,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (_isFlagged(questionData)) revert Flagged();
         if (questionData.paused) revert Paused();
 
-        if (!_hasPrice(questionData)) revert PriceNotAvailable();        
-        
+        if (!_hasPrice(questionData)) revert PriceNotAvailable();
+
         // Fetches price from OO
         int256 price = optimisticOracle.getRequest(
             address(this), yesOrNoIdentifier, questionData.requestTimestamp, questionData.ancillaryData
@@ -161,6 +161,14 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     function priceDisputed(bytes32, uint256, bytes memory ancillaryData, uint256) external onlyOptimisticOracle {
         bytes32 questionID = keccak256(ancillaryData);
         QuestionData storage questionData = questions[questionID];
+
+        // If a Question is already resolved, e.g by emergencyResolve, the priceDisputed callback should not update
+        // any storage parameters.
+        // Refund the reward to the question creator
+        if (questionData.resolved) {
+            TransferHelper._transfer(questionData.rewardToken, questionData.creator, questionData.reward);
+            return;
+        }
 
         if (questionData.reset) {
             questionData.refund = true;

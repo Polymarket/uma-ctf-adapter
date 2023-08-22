@@ -438,7 +438,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         payouts[0] = 1;
         payouts[1] = 0;
         adapter.emergencyResolve(questionID, payouts);
-        
+
         // Reverts as the question is flagged
         vm.expectRevert(Flagged.selector);
         adapter.getExpectedPayouts(questionID);
@@ -958,6 +958,45 @@ contract UmaCtfAdapterTest is AdapterHelper {
         assertEq(address(0), request.proposer);
         assertEq(address(0), request.disputer);
         assertEq(usdc, address(request.currency));
+    }
+
+    function testPriceDisputedEmergencyResolved() public {
+        vm.startPrank(admin);
+        adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
+
+        QuestionData memory data;
+        data = adapter.getQuestion(questionID);
+        uint256 timestamp = data.requestTimestamp;
+
+        adapter.flag(questionID);
+
+        fastForward(adapter.emergencySafetyPeriod());
+
+        uint256[] memory payouts = new uint256[](2);
+        payouts[0] = 0;
+        payouts[1] = 1;
+
+        // Emergency resolve the question
+        adapter.emergencyResolve(questionID, payouts);
+        vm.stopPrank();
+
+        // Propose the OO Request
+        propose(0, timestamp, data.ancillaryData);
+
+        // Dispute the request, executing the priceDisputed callback of the already resolved question
+        // Since the question is already resolved, the priceDisputed callback will refund the reward to the
+        // question creator *without* updating the request timestamp.
+
+        // Assert the refund from Adapter to the creator
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(address(adapter), data.creator, data.reward);
+
+        dispute(timestamp, data.ancillaryData);
+
+        // Assert state post dispute
+        data = adapter.getQuestion(questionID);
+        // Timestamp remains unchanged
+        assertEq(timestamp, data.requestTimestamp);
     }
 
     function testReset() public {
