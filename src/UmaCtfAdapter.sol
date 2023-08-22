@@ -148,11 +148,14 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         bytes32 questionID = keccak256(ancillaryData);
         QuestionData storage questionData = questions[questionID];
 
-        if (questionData.reset) return;
+        if (questionData.reset) {
+            questionData.refund = true;
+            return;
+        }
 
         // If the question has not been reset previously, reset the question
         // Ensures that there are at most 2 OO Requests at a time for a question
-        _reset(address(this), questionID, questionData);
+        _reset(address(this), questionID, false, questionData);
     }
 
     /// @notice Checks if a question is initialized
@@ -199,8 +202,11 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (questionData.resolved) revert Resolved();
 
+        // Refund the reward to the question creator if necessary
+        if (questionData.refund) _refund(questionData);
+
         // Reset the question, paying for the price request from the caller
-        _reset(msg.sender, questionID, questionData);
+        _reset(msg.sender, questionID, true, questionData);
     }
 
     /// @notice Allows an admin to resolve a CTF market in an emergency
@@ -215,6 +221,10 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (block.timestamp < questionData.emergencyResolutionTimestamp) revert SafetyPeriodNotPassed();
 
         questionData.resolved = true;
+
+        // Refund the reward to the question creator if necessary
+        if (questionData.refund) _refund(questionData);
+
         ctf.reportPayouts(questionID, payouts);
         emit QuestionEmergencyResolved(questionID, payouts);
     }
@@ -270,6 +280,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             resolved: false,
             paused: false,
             reset: false,
+            refund: false,
             rewardToken: rewardToken,
             creator: creator,
             ancillaryData: ancillaryData
@@ -332,11 +343,14 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
     /// @notice Reset the question by updating the requestTimestamp field and sending a new price request to the OO
     /// @param questionID - The unique questionID
-    function _reset(address requestor, bytes32 questionID, QuestionData storage questionData) internal {
+    function _reset(address requestor, bytes32 questionID, bool resetRefund, QuestionData storage questionData)
+        internal
+    {
         uint256 requestTimestamp = block.timestamp;
         // Update the question parameters in storage
         questionData.requestTimestamp = requestTimestamp;
         questionData.reset = true;
+        if (resetRefund) questionData.refund = false;
 
         // Send out a new price request with the new timestamp
         _requestPrice(
@@ -362,13 +376,17 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         );
 
         // If the OO returns the ignore price, reset the question
-        if (price == _ignorePrice()) return _reset(address(this), questionID, questionData);
-
-        // Construct the payout array for the question
-        uint256[] memory payouts = _constructPayouts(price);
+        if (price == _ignorePrice()) return _reset(address(this), questionID, true, questionData);
 
         // Set resolved flag
         questionData.resolved = true;
+
+        // If refund flag is set, this indicates that the question's reward now sits on the Adapter.
+        // Refund the reward to the question creator on resolution
+        if (questionData.refund) _refund(questionData);
+
+        // Construct the payout array for the question
+        uint256[] memory payouts = _constructPayouts(price);
 
         // Resolve the underlying CTF market
         ctf.reportPayouts(questionID, payouts);
@@ -380,6 +398,10 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         return optimisticOracle.hasPrice(
             address(this), yesOrNoIdentifier, questionData.requestTimestamp, questionData.ancillaryData
         );
+    }
+
+    function _refund(QuestionData storage questionData) internal {
+        return TransferHelper._transfer(questionData.rewardToken, questionData.creator, questionData.reward);
     }
 
     function _isFlagged(QuestionData storage questionData) internal view returns (bool) {
