@@ -1,4 +1,0 @@
-openzeppelin/=lib/openzeppelin-contracts/contracts/
-openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/
-forge-std/=lib/forge-std/src/
-solmate/=lib/solmate/src/
