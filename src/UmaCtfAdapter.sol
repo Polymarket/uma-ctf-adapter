@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { IERC20 } from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 import { Auth } from "./mixins/Auth.sol";
 import { BulletinBoard } from "./mixins/BulletinBoard.sol";
@@ -74,13 +74,13 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /// Prepares the condition using the Adapter as the oracle and a fixed outcome slot count = 2.
     /// @param ancillaryData - Data used to resolve a question
     /// @param rewardToken   - ERC20 token address used for payment of rewards and fees
-    /// @param reward        - Reward offered to a successful OO proposer. 
+    /// @param reward        - Reward offered to a successful OO proposer.
     ///                        Must be chosen carefully, to properly economically incentize OO proposers.
     /// @param proposalBond  - Bond required to be posted by OO proposers/disputers.
     ///                        If 0, the default OO bond is used.
     ///                        Must be chosen carefully, to properly economically incentize OO proposers and disputers.
-    ///                        Questions expected to secure a large amount of value should consider a larger proposal bond. 
-    /// @param liveness      - OO liveness period in seconds. 
+    ///                        Questions expected to secure a large amount of value should consider a larger proposal bond.
+    /// @param liveness      - OO liveness period in seconds.
     ///                        If 0, the default liveness period of 2 hours is used.
     ///                        Must be chosen carefully, depending on the value backed by the question.
     ///                        Questions expected to secure a large amount of value should consider a longer liveness period.
@@ -149,9 +149,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (!_hasPrice(questionData)) revert PriceNotAvailable();
 
         // Fetches price from OO
-        int256 price = optimisticOracle.getRequest(
-            address(this), YES_OR_NO_IDENTIFIER, questionData.requestTimestamp, questionData.ancillaryData
-        ).resolvedPrice;
+        int256 price = optimisticOracle
+            .getRequest(address(this), YES_OR_NO_IDENTIFIER, questionData.requestTimestamp, questionData.ancillaryData)
+            .resolvedPrice;
 
         return _constructPayouts(price);
     }
@@ -361,7 +361,11 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
         // Send a price request to the Optimistic oracle
         optimisticOracle.requestPrice(
-            YES_OR_NO_IDENTIFIER, requestTimestamp, ancillaryData, IERC20(rewardToken), reward
+            YES_OR_NO_IDENTIFIER,
+            requestTimestamp,
+            ancillaryData,
+            IERC20(rewardToken),
+            reward
         );
 
         // Ensure the price request is event based
@@ -386,9 +390,12 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
 
     /// @notice Reset the question by updating the requestTimestamp field and sending a new price request to the OO
     /// @param questionID - The unique questionID
-    function _reset(address requestor, bytes32 questionID, bool resetRefund, QuestionData storage questionData)
-        internal
-    {
+    function _reset(
+        address requestor,
+        bytes32 questionID,
+        bool resetRefund,
+        QuestionData storage questionData
+    ) internal {
         uint256 requestTimestamp = block.timestamp;
         // Update the question parameters in storage
         questionData.requestTimestamp = requestTimestamp;
@@ -415,7 +422,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     function _resolve(bytes32 questionID, QuestionData storage questionData) internal {
         // Get the price from the OO
         int256 price = optimisticOracle.settleAndGetPrice(
-            YES_OR_NO_IDENTIFIER, questionData.requestTimestamp, questionData.ancillaryData
+            YES_OR_NO_IDENTIFIER,
+            questionData.requestTimestamp,
+            questionData.ancillaryData
         );
 
         // If the OO returns the ignore price, reset the question
@@ -438,9 +447,13 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     }
 
     function _hasPrice(QuestionData storage questionData) internal view returns (bool) {
-        return optimisticOracle.hasPrice(
-            address(this), YES_OR_NO_IDENTIFIER, questionData.requestTimestamp, questionData.ancillaryData
-        );
+        return
+            optimisticOracle.hasPrice(
+                address(this),
+                YES_OR_NO_IDENTIFIER,
+                questionData.requestTimestamp,
+                questionData.ancillaryData
+            );
     }
 
     function _refund(QuestionData storage questionData) internal {
