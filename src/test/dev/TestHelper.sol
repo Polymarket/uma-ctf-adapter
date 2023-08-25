@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 import { Test, console2 as console, stdStorage, StdStorage, stdError } from "forge-std/Test.sol";
-import { ERC20 } from "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import { ERC20 } from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 abstract contract TestHelper is Test {
     mapping(address => mapping(address => uint256)) private balanceCheckpoints;
