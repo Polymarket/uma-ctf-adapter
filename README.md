@@ -38,7 +38,7 @@ After resolution data is available, anyone can call `resolve` which resolves the
 
 ## Audit 
 
-These contracts have been audited by OpenZeppelin and the report is available [here](./audit/Polymarket%20UMA%20Optimistic%20Oracle%20Adapter%20Audit.pdf).
+These contracts have been audited by OpenZeppelin and the report is available [here](./audit/Polymarket_UMA_Optimistic_Oracle_Adapter_Audit.pdf).
 
 ## Deployments
 
