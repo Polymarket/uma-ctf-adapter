@@ -13,7 +13,7 @@
 
 ## Overview
 
-This repository contains contracts used to resolve [Polymarket](https://polymarket.com/) prediction markets via UMA's [optimistic oracle](https://docs.umaproject.org/oracle/optimistic-oracle-interface).
+This repository contains contracts used to resolve [Polymarket](https://polymarket.com/) prediction markets via UMA's [optimistic oracle](https://docs.uma.xyz/developers/optimistic-oracle-v3).
 
 ## Architecture
 ![Contract Architecture](./docs/adapter.png)
