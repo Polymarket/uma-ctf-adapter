@@ -35,7 +35,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     IAddressWhitelist public immutable collateralWhitelist;
 
     /// @notice Time period after which an admin can emergency resolve a condition
-    uint256 public constant EMERGENCY_SAFETY_PERIOD = 2 days;
+    uint256 public constant EMERGENCY_SAFETY_PERIOD = 6 hours;
 
     /// @notice Unique query identifier for the Optimistic Oracle
     /// From UMIP-107
