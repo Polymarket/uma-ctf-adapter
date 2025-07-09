@@ -34,8 +34,8 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /// @notice Collateral Whitelist
     IAddressWhitelist public immutable collateralWhitelist;
 
-    /// @notice Time period after which an admin can emergency resolve a condition
-    uint256 public constant EMERGENCY_SAFETY_PERIOD = 1 hours;
+    /// @notice Time period after which an admin can manually resolve a condition
+    uint256 public constant SAFETY_PERIOD = 1 hours;
 
     /// @notice Unique query identifier for the Optimistic Oracle
     /// From UMIP-107
@@ -163,7 +163,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         bytes32 questionID = keccak256(ancillaryData);
         QuestionData storage questionData = questions[questionID];
 
-        // If a Question is already resolved, e.g by emergencyResolve, the priceDisputed callback should not update
+        // If a Question is already resolved, e.g by resolveManually, the priceDisputed callback should not update
         // any storage parameters.
         // Refund the reward to the question creator
         if (questionData.resolved) {
@@ -187,7 +187,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         return _isInitialized(questions[questionID]);
     }
 
-    /// @notice Checks if a question has been flagged for emergency resolution
+    /// @notice Checks if a question has been flagged for manual resolution
     /// @param questionID - The unique questionID
     function isFlagged(bytes32 questionID) public view returns (bool) {
         return _isFlagged(questions[questionID]);
@@ -203,7 +203,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
                             ADMIN ONLY FUNCTIONS 
     ///////////////////////////////////////////////////////////////////*/
 
-    /// @notice Flags a market for emergency resolution
+    /// @notice Flags a market for manual resolution
     /// @param questionID - The unique questionID of the question
     function flag(bytes32 questionID) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
@@ -212,13 +212,13 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (_isFlagged(questionData)) revert Flagged();
         if (questionData.resolved) revert Resolved();
 
-        questionData.emergencyResolutionTimestamp = block.timestamp + EMERGENCY_SAFETY_PERIOD;
+        questionData.manualResolutionTimestamp = block.timestamp + SAFETY_PERIOD;
         questionData.paused = true;
 
         emit QuestionFlagged(questionID);
     }
 
-    /// @notice Unflags a market for emergency resolution
+    /// @notice Unflags a market for manual resolution
     /// @param questionID - The unique questionID of the question
     function unflag(bytes32 questionID) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
@@ -226,9 +226,9 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (!_isFlagged(questionData)) revert NotFlagged();
         if (questionData.resolved) revert Resolved();
-        if (block.timestamp > questionData.emergencyResolutionTimestamp) revert SafetyPeriodPassed();
+        if (block.timestamp > questionData.manualResolutionTimestamp) revert SafetyPeriodPassed();
 
-        questionData.emergencyResolutionTimestamp = 0;
+        questionData.manualResolutionTimestamp = 0;
         questionData.paused = false;
 
         emit QuestionUnflagged(questionID);
@@ -249,16 +249,16 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         _reset(msg.sender, questionID, true, questionData);
     }
 
-    /// @notice Allows an admin to resolve a CTF market in an emergency
+    /// @notice Allows an admin to resolve a CTF market manually
     /// @param questionID   - The unique questionID of the question
     /// @param payouts      - Array of position payouts for the referenced question
-    function emergencyResolve(bytes32 questionID, uint256[] calldata payouts) external onlyAdmin {
+    function resolveManually(bytes32 questionID, uint256[] calldata payouts) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
 
         if (!_isValidPayoutArray(payouts)) revert InvalidPayouts();
         if (!_isInitialized(questionData)) revert NotInitialized();
         if (!_isFlagged(questionData)) revert NotFlagged();
-        if (block.timestamp < questionData.emergencyResolutionTimestamp) revert SafetyPeriodNotPassed();
+        if (block.timestamp < questionData.manualResolutionTimestamp) revert SafetyPeriodNotPassed();
 
         questionData.resolved = true;
 
@@ -266,10 +266,10 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         if (questionData.refund) _refund(questionData);
 
         ctf.reportPayouts(questionID, payouts);
-        emit QuestionEmergencyResolved(questionID, payouts);
+        emit QuestionManuallyResolved(questionID, payouts);
     }
 
-    /// @notice Allows an admin to pause market resolution in an emergency
+    /// @notice Allows an admin to pause market resolution
     /// @param questionID - The unique questionID of the question
     function pause(bytes32 questionID) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
@@ -281,7 +281,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
         emit QuestionPaused(questionID);
     }
 
-    /// @notice Allows an admin to unpause market resolution in an emergency
+    /// @notice Allows an admin to unpause market resolution
     /// @param questionID - The unique questionID of the question
     function unpause(bytes32 questionID) external onlyAdmin {
         QuestionData storage questionData = questions[questionID];
@@ -317,7 +317,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
             reward: reward,
             proposalBond: proposalBond,
             liveness: liveness,
-            emergencyResolutionTimestamp: 0,
+            manualResolutionTimestamp: 0,
             resolved: false,
             paused: false,
             reset: false,
@@ -448,7 +448,7 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     }
 
     function _isFlagged(QuestionData storage questionData) internal view returns (bool) {
-        return questionData.emergencyResolutionTimestamp > 0;
+        return questionData.manualResolutionTimestamp > 0;
     }
 
     function _isInitialized(QuestionData storage questionData) internal view returns (bool) {

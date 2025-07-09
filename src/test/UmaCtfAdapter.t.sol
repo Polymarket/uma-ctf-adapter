@@ -441,18 +441,18 @@ contract UmaCtfAdapterTest is AdapterHelper {
         adapter.getExpectedPayouts(questionID);
     }
 
-    function testExpectedPayoutsRevertEmergencyResolved() public {
+    function testExpectedPayoutsRevertResolveManually() public {
         vm.startPrank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
-        // Flag and emergency resolve the question
+        // Flag and manual resolve the question
         adapter.flag(questionID);
-        fastForward(adapter.EMERGENCY_SAFETY_PERIOD());
+        fastForward(adapter.SAFETY_PERIOD());
 
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 1;
         payouts[1] = 0;
-        adapter.emergencyResolve(questionID, payouts);
+        adapter.resolveManually(questionID, payouts);
 
         // Reverts as the question is flagged
         vm.expectRevert(Flagged.selector);
@@ -513,7 +513,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         QuestionData memory data;
         data = adapter.getQuestion(questionID);
-        assertTrue(data.emergencyResolutionTimestamp > 0);
+        assertTrue(data.manualResolutionTimestamp > 0);
 
         vm.expectEmit(true, true, true, true);
         emit QuestionUnflagged(questionID);
@@ -523,7 +523,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         // Assert state post unflag
         data = adapter.getQuestion(questionID);
-        assertEq(0, data.emergencyResolutionTimestamp);
+        assertEq(0, data.manualResolutionTimestamp);
         assertFalse(data.paused);
 
     }
@@ -556,10 +556,10 @@ contract UmaCtfAdapterTest is AdapterHelper {
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 1;
         payouts[1] = 0;
-        fastForward(adapter.EMERGENCY_SAFETY_PERIOD());
+        fastForward(adapter.SAFETY_PERIOD());
 
         vm.prank(admin);
-        adapter.emergencyResolve(questionID, payouts);
+        adapter.resolveManually(questionID, payouts);
 
         // Attempt unflag an already resolved question
         vm.expectRevert(Resolved.selector);
@@ -574,7 +574,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         vm.prank(admin);
         adapter.flag(questionID);
 
-        fastForward(adapter.EMERGENCY_SAFETY_PERIOD());
+        fastForward(adapter.SAFETY_PERIOD());
 
         // Attempt unflag a question after the safety period has passed
         vm.expectRevert(SafetyPeriodPassed.selector);
@@ -582,24 +582,24 @@ contract UmaCtfAdapterTest is AdapterHelper {
         adapter.unflag(questionID);
     }
 
-    function testEmergencyResolve() public {
+    function testResolveManually() public {
         fastForward(100);
 
         vm.startPrank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
-        // Flag the question for emergency resolution
+        // Flag the question for manual resolution
         adapter.flag(questionID);
 
         QuestionData memory data;
 
-        // Ensure the relevant flags are set, meaning, the question is paused and the emergencyResolutionTimestamp is set
+        // Ensure the relevant flags are set, meaning, the question is paused and the manualResolutionTimestamp is set
         data = adapter.getQuestion(questionID);
         assertTrue(data.paused);
-        assertTrue(data.emergencyResolutionTimestamp > 0);
+        assertTrue(data.manualResolutionTimestamp > 0);
 
-        // Fast forward time past the EMERGENCY_SAFETY_PERIOD
-        fastForward(adapter.EMERGENCY_SAFETY_PERIOD());
+        // Fast forward time past the SAFETY_PERIOD
+        fastForward(adapter.SAFETY_PERIOD());
 
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 1;
@@ -609,18 +609,18 @@ contract UmaCtfAdapterTest is AdapterHelper {
         emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
 
         vm.expectEmit(true, true, true, true);
-        emit QuestionEmergencyResolved(questionID, payouts);
+        emit QuestionManuallyResolved(questionID, payouts);
 
-        // Emergency resolve the question
-        adapter.emergencyResolve(questionID, payouts);
+        // Manual resolve the question
+        adapter.resolveManually(questionID, payouts);
 
-        // Check the flags post emergency resolution
+        // Check the flags post manual resolution
         data = adapter.getQuestion(questionID);
         assertTrue(data.resolved);
     }
 
-    function testEmergencyResolvePaused() public {
-        // Emergency resolution will still affect paused questions
+    function testResolveManuallyPaused() public {
+        // Manual resolution will still affect paused questions
         fastForward(100);
 
         vm.startPrank(admin);
@@ -629,11 +629,11 @@ contract UmaCtfAdapterTest is AdapterHelper {
         // Pause the question
         adapter.pause(questionID);
 
-        // Flag the question for emergency resolution
+        // Flag the question for manual resolution
         adapter.flag(questionID);
 
-        // Fast forward time past the EMERGENCY_SAFETY_PERIOD
-        fastForward(adapter.EMERGENCY_SAFETY_PERIOD());
+        // Fast forward time past the SAFETY_PERIOD
+        fastForward(adapter.SAFETY_PERIOD());
 
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 1;
@@ -643,15 +643,15 @@ contract UmaCtfAdapterTest is AdapterHelper {
         emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
 
         vm.expectEmit(true, true, true, true);
-        emit QuestionEmergencyResolved(questionID, payouts);
+        emit QuestionManuallyResolved(questionID, payouts);
 
-        // Emergency resolve the question
-        adapter.emergencyResolve(questionID, payouts);
+        // Manual resolve the question
+        adapter.resolveManually(questionID, payouts);
         QuestionData memory data = adapter.getQuestion(questionID);
         assertTrue(data.resolved);
     }
 
-    function testEmergencyResolveWhenRefundExists() public {
+    function testResolveManuallyWhenRefundExists() public {
         // Initialize and propose/dispute a question
         vm.prank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
@@ -673,17 +673,17 @@ contract UmaCtfAdapterTest is AdapterHelper {
         // Assert that the reward now exists on the Adapter after refund
         assertBalance(usdc, address(adapter), data.reward);
 
-        // Flag the question for emergency resolution
+        // Flag the question for manual resolution
         vm.prank(admin);
         adapter.flag(questionID);
 
-        // Ensure the relevant flags are set, meaning, the question is paused and the emergencyResolutionTimestamp is set
+        // Ensure the relevant flags are set, meaning, the question is paused and the manualResolutionTimestamp is set
         data = adapter.getQuestion(questionID);
         assertTrue(data.paused);
-        assertTrue(data.emergencyResolutionTimestamp > 0);
+        assertTrue(data.manualResolutionTimestamp > 0);
 
-        // Fast forward time past the emergencySafetyPeriod
-        fastForward(adapter.EMERGENCY_SAFETY_PERIOD());
+        // Fast forward time past the safety period
+        fastForward(adapter.SAFETY_PERIOD());
 
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 0;
@@ -697,13 +697,13 @@ contract UmaCtfAdapterTest is AdapterHelper {
         emit ConditionResolution(conditionId, address(adapter), questionID, 2, payouts);
 
         vm.expectEmit(true, true, true, true);
-        emit QuestionEmergencyResolved(questionID, payouts);
+        emit QuestionManuallyResolved(questionID, payouts);
 
-        // Emergency resolve the question
+        // Manually resolve the question
         vm.prank(admin);
-        adapter.emergencyResolve(questionID, payouts);
+        adapter.resolveManually(questionID, payouts);
 
-        // Assert state post emergency resolution
+        // Assert state post manual resolution
 
         // Refund transferred to creator, adapter balance is empty
         assertBalance(usdc, address(adapter), 0);
@@ -713,7 +713,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         assertTrue(data.refund);
     }
 
-    function testEmergencyResolveRevertNotFlagged() public {
+    function testResolveManuallyRevertNotFlagged() public {
         fastForward(100);
         vm.startPrank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
@@ -722,10 +722,10 @@ contract UmaCtfAdapterTest is AdapterHelper {
         payouts[0] = 1;
         payouts[1] = 0;
         vm.expectRevert(NotFlagged.selector);
-        adapter.emergencyResolve(questionID, payouts);
+        adapter.resolveManually(questionID, payouts);
     }
 
-    function testEmergencyResolveRevertSafetyPeriod() public {
+    function testResolveManuallyRevertSafetyPeriod() public {
         fastForward(100);
         vm.startPrank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
@@ -737,10 +737,10 @@ contract UmaCtfAdapterTest is AdapterHelper {
         payouts[1] = 0;
 
         vm.expectRevert(SafetyPeriodNotPassed.selector);
-        adapter.emergencyResolve(questionID, payouts);
+        adapter.resolveManually(questionID, payouts);
     }
 
-    function testEmergencyResolveRevertInvalidPayouts() public {
+    function testResolveManuallyRevertInvalidPayouts() public {
         fastForward(100);
         vm.startPrank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
@@ -755,10 +755,10 @@ contract UmaCtfAdapterTest is AdapterHelper {
         invalidPayouts[3] = 6;
 
         vm.expectRevert(InvalidPayouts.selector);
-        adapter.emergencyResolve(questionID, invalidPayouts);
+        adapter.resolveManually(questionID, invalidPayouts);
     }
 
-    function testEmergencyResolveRevertNotAdmin() public {
+    function testResolveManuallyRevertNotAdmin() public {
         vm.startPrank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
         adapter.flag(questionID);
@@ -771,17 +771,17 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         vm.expectRevert(NotAdmin.selector);
         vm.prank(carla);
-        adapter.emergencyResolve(questionID, payouts);
+        adapter.resolveManually(questionID, payouts);
     }
 
-    function testEmergencyResolveRevertNotInitialized() public {
+    function testResolveManuallyRevertNotInitialized() public {
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 1;
         payouts[1] = 0;
 
         vm.expectRevert(NotInitialized.selector);
         vm.prank(admin);
-        adapter.emergencyResolve(questionID, payouts);
+        adapter.resolveManually(questionID, payouts);
     }
 
     function testIsValidPayoutArray() public {
@@ -1069,7 +1069,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         assertEq(usdc, address(request.currency));
     }
 
-    function testPriceDisputedEmergencyResolved() public {
+    function testPriceDisputedResolveManuallyd() public {
         vm.startPrank(admin);
         adapter.initialize(ancillaryData, usdc, 1_000_000, 10_000_000_000, 0);
 
@@ -1079,14 +1079,14 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
         adapter.flag(questionID);
 
-        fastForward(adapter.EMERGENCY_SAFETY_PERIOD());
+        fastForward(adapter.SAFETY_PERIOD());
 
         uint256[] memory payouts = new uint256[](2);
         payouts[0] = 0;
         payouts[1] = 1;
 
-        // Emergency resolve the question
-        adapter.emergencyResolve(questionID, payouts);
+        // Manual resolve the question
+        adapter.resolveManually(questionID, payouts);
         vm.stopPrank();
 
         // Propose the OO Request
