@@ -525,7 +525,6 @@ contract UmaCtfAdapterTest is AdapterHelper {
         data = adapter.getQuestion(questionID);
         assertEq(0, data.manualResolutionTimestamp);
         assertFalse(data.paused);
-
     }
 
     function testUnflagRevertNotAdmin() public {
@@ -786,7 +785,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
 
     function testIsValidPayoutArray() public {
         uint256[] memory payouts;
-        
+
         // Valid payout arrays
         // [0, 1]
         payouts = new uint256[](2);
@@ -813,7 +812,7 @@ contract UmaCtfAdapterTest is AdapterHelper {
         payouts[1] = 0;
         payouts[2] = 1;
         assertFalse(isValidPayoutArray(payouts));
-        
+
         // [3, 4]
         payouts = new uint256[](2);
         payouts[0] = 3;
