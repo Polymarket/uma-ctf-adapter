@@ -4,7 +4,7 @@ pragma solidity 0.8.15;
 import { Script } from "forge-std/Script.sol";
 import { UmaCtfAdapter } from "src/UmaCtfAdapter.sol";
 
-/// @title Deploy
+/// @title DeployAdapter
 /// @notice Script to deploy the UmaCtfAdapter
 /// @author Polymarket
 contract DeployAdapter is Script {
@@ -22,9 +22,23 @@ contract DeployAdapter is Script {
 
         // revoke deployer's auth
         ctfAdapter.renounceAdmin();
-
+        
         adapter = address(ctfAdapter);
-
+        
         vm.stopBroadcast();
+
+        if(!_verifyStatePostDeployment(admin, ctf, adapter)){
+            revert("state verification post deployment failed");
+        }
+    }
+
+    function _verifyStatePostDeployment(address admin, address ctf, address adapter) internal view returns (bool) {
+        UmaCtfAdapter ctfAdapter = UmaCtfAdapter(adapter);
+        
+        if (ctfAdapter.isAdmin(msg.sender)) revert("Deployer admin not renounced");
+        if (!ctfAdapter.isAdmin(admin)) revert("Adapter admin not set");        
+        if (address(ctfAdapter.ctf()) != ctf) revert("Unexpected ConditionalTokensFramework set on adapter");
+
+        return true;
     }
 }
