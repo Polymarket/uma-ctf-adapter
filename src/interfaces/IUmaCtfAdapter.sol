@@ -75,7 +75,7 @@ interface IUmaCtfAdapterEE {
     /// @notice Emitted when a question is resolved
     event QuestionResolved(bytes32 indexed questionID, int256 indexed settledPrice, uint256[] payouts);
 
-    /// @notice Emitted when a question is manully resolved
+    /// @notice Emitted when a question is manually resolved
     event QuestionManuallyResolved(bytes32 indexed questionID, uint256[] payouts);
 }
 
