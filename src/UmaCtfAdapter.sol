@@ -56,10 +56,11 @@ contract UmaCtfAdapter is IUmaCtfAdapter, Auth, BulletinBoard, IOptimisticReques
     /// @param _ctf     - The Conditional Token Framework Address
     ///                 - When deployed for negative risk markets, this should be the `NegRiskOperator` contract address
     /// @param _finder  - The UMA Finder contract address
-    constructor(address _ctf, address _finder) {
+    /// @param _oo      - The Optimistic Oracle contract address
+    constructor(address _ctf, address _finder, address _oo) {
         ctf = IConditionalTokens(_ctf);
         IFinder finder = IFinder(_finder);
-        optimisticOracle = IOptimisticOracleV2(finder.getImplementationAddress("OptimisticOracleV2"));
+        optimisticOracle = IOptimisticOracleV2(_oo);
         collateralWhitelist = IAddressWhitelist(finder.getImplementationAddress("CollateralWhitelist"));
     }
 

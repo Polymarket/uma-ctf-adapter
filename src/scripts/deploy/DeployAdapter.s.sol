@@ -12,10 +12,11 @@ contract DeployAdapter is Script {
     /// @param admin        - The admin for the Adapter
     /// @param ctf          - The ConditionalTokens Framework address
     /// @param finder       - The UMA Finder address
-    function deployAdapter(address admin, address ctf, address finder) public returns (address adapter) {
+    /// @param oo           - The Optimistic Oracle address
+    function deployAdapter(address admin, address ctf, address finder, address oo) public returns (address adapter) {
         vm.startBroadcast();
         
-        UmaCtfAdapter ctfAdapter = new UmaCtfAdapter(ctf, finder);
+        UmaCtfAdapter ctfAdapter = new UmaCtfAdapter(ctf, finder, oo);
         
         // Add admin auth to the Admin address
         ctfAdapter.addAdmin(admin);

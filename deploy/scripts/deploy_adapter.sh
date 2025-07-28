@@ -8,6 +8,7 @@ echo "Deploy args:
 Admin: $ADMIN
 ConditionalTokensFramework: $CTF
 Finder: $FINDER
+OptimisticOracle: $OPTIMISTIC_ORACLE
 "
 
 OUTPUT="$(forge script DeployAdapter \
@@ -15,7 +16,7 @@ OUTPUT="$(forge script DeployAdapter \
     --rpc-url $RPC_URL \
     --json \
     --broadcast \
-    -s "deployAdapter(address,address,address)" $ADMIN $CTF $FINDER)"
+    -s "deployAdapter(address,address,address,address)" $ADMIN $CTF $FINDER $OPTIMISTIC_ORACLE)"
 
 ADAPTER=$(echo "$OUTPUT" | grep "{" | jq -r .returns.adapter.value)
 echo "Adapter deployed: $ADAPTER"
