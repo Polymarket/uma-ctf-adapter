@@ -77,7 +77,7 @@ abstract contract AdapterHelper is TestHelper, IAuthEE, IUmaCtfAdapterEE {
 
         // Deploy adapter
         vm.startPrank(admin);
-        adapter = new UmaCtfAdapter(ctf, finder);
+        adapter = new UmaCtfAdapter(ctf, finder, address(optimisticOracle));
 
         conditionId = IConditionalTokens(ctf).getConditionId(address(adapter), questionID, 2);
 
